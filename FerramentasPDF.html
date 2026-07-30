@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ferramentas de PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --paper:#F6F3EC; --paper-2:#EFEAE0; --ink:#21302A; --ink-soft:#5B6B62;
+    --line:#D8D0BE; --stamp:#B23A2E; --stamp-dark:#8E2C22; --ok:#2F6B4F;
+    --sidebar-w:250px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh;}
+
+  .app{display:flex; min-height:100vh;}
+
+  /* Sidebar */
+  .sidebar{
+    width:var(--sidebar-w); flex-shrink:0; background:#fff; border-right:1px solid var(--line);
+    padding:24px 14px; overflow-y:auto;
+  }
+  .brand{
+    font-family:Georgia,'Times New Roman',serif; font-weight:700; font-size:20px;
+    padding:0 10px 20px; cursor:pointer; display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot{width:9px;height:9px;background:var(--stamp);border-radius:50%;display:inline-block;}
+  .nav-group{margin-bottom:18px;}
+  .nav-group-title{
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--ink-soft); padding:0 10px; margin-bottom:6px;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px;
+    cursor:pointer; font-size:14px; font-weight:500; color:var(--ink);
+    transition:background .12s ease;
+  }
+  .nav-item:hover{background:var(--paper-2);}
+  .nav-item.active{background:#FBF1EE; color:var(--stamp-dark); font-weight:700;}
+  .nav-item .ic{
+    width:26px;height:26px; border-radius:6px; background:var(--paper-2);
+    display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;
+  }
+  .nav-item.active .ic{background:var(--stamp); color:#fff;}
+
+  /* Content */
+  .content{flex:1; min-width:0; padding:48px 40px 80px;}
+  .panel{display:none; max-width:760px; margin:0 auto;}
+  .panel.show{display:block;}
+
+  .eyebrow{
+    font-family:'Courier New',monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--stamp); display:flex; align-items:center; gap:8px; margin-bottom:14px;
+  }
+  .eyebrow::before{content:"";width:7px;height:7px;background:var(--stamp);border-radius:50%;display:inline-block;}
+  .panel h1{font-family:Georgia,'Times New Roman',serif; font-size:36px; font-weight:700; line-height:1.08; margin:0 0 10px; letter-spacing:-0.01em;}
+  .panel > p.desc{color:var(--ink-soft); font-size:15px; line-height:1.55; max-width:520px; margin:0 0 30px;}
+
+  /* Home grid */
+  .home-cat{margin-bottom:34px;}
+  .home-cat h3{font-size:13px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-soft); margin:0 0 12px;}
+  .home-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px;}
+  .home-card{
+    background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px 14px;
+    cursor:pointer; transition:border-color .15s ease, transform .1s ease; display:flex; flex-direction:column; gap:10px;
+  }
+  .home-card:hover{border-color:var(--stamp); transform:translateY(-2px);}
+  .home-card .ic{width:32px;height:32px;border-radius:7px;background:var(--stamp);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .home-card .t{font-size:13.5px; font-weight:600;}
+
+  /* Shared widgets */
+  .dropzone{
+    border:2px dashed var(--line); border-radius:14px; padding:44px 24px; text-align:center;
+    cursor:pointer; background:var(--paper-2); transition:border-color .18s ease, background .18s ease, transform .12s ease;
+  }
+  .dropzone.drag{border-color:var(--stamp); background:#EFE2DD; transform:scale(1.005);}
+  .dropzone .icon{font-size:26px; margin-bottom:10px; opacity:.7;}
+  .dropzone .main-txt{font-size:16px; font-weight:600; margin-bottom:4px;}
+  .dropzone .sub-txt{font-size:13.5px; color:var(--ink-soft);}
+  .dropzone .sub-txt b{color:var(--stamp); font-weight:600; text-decoration:underline;}
+  input[type=file]{display:none;}
+
+  .file-card{
+    display:flex; align-items:center; gap:14px; background:#fff; border:1px solid var(--line);
+    border-radius:10px; padding:12px 14px; margin-top:18px;
+  }
+  .file-card .grip{cursor:grab; color:var(--ink-soft); font-size:15px; letter-spacing:2px; user-select:none;}
+  .file-card .badge{
+    width:34px;height:40px; background:var(--stamp); border-radius:4px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; color:#fff;
+    font-family:'Courier New',monospace; font-size:9px; font-weight:700; overflow:hidden;
+  }
+  .file-card .badge img{width:100%; height:100%; object-fit:cover;}
+  .file-card .info{flex:1; min-width:0;}
+  .file-card .fname{font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .file-card .fmeta{font-size:12px; color:var(--ink-soft); margin-top:2px; font-family:'Courier New',monospace;}
+  .icon-btn{
+    border:none; background:transparent; color:var(--ink-soft); cursor:pointer; width:28px;height:28px;
+    border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px;
+    transition:background .12s ease, color .12s ease;
+  }
+  .icon-btn:hover{background:var(--paper-2); color:var(--ink);}
+  .icon-btn.danger:hover{background:#F6DEDA; color:var(--stamp-dark);}
+  .icon-btn:disabled{opacity:.3; cursor:not-allowed;}
+
+  .file-list{margin-top:14px; display:flex; flex-direction:column; gap:10px;}
+  .file-list .file-card{margin-top:0;}
+  .file-card.dragging{opacity:.4;}
+  .file-card .num{
+    font-family:'Courier New',monospace; font-size:12px; color:#fff; background:var(--ink);
+    width:22px;height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+
+  .option-group{margin-top:26px;}
+  .option-label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:10px;}
+  .field-row{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
+  .field-row label{font-size:13.5px; color:var(--ink-soft); min-width:110px;}
+  input[type=text], input[type=number], select{
+    padding:9px 11px; border:1px solid var(--line); border-radius:7px; font-size:14px; font-family:inherit; background:#fff;
+  }
+  input[type=range]{accent-color:var(--stamp);}
+
+  .mode-options{display:flex; gap:10px; margin-bottom:20px;}
+  .mode-btn{
+    flex:1; border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:14px 14px;
+    text-align:left; cursor:pointer; transition:border-color .15s ease, background .15s ease;
+  }
+  .mode-btn.active{border-color:var(--stamp); background:#FBF1EE;}
+  .mode-btn .m-title{font-size:14px; font-weight:700; margin-bottom:3px;}
+  .mode-btn.active .m-title{color:var(--stamp-dark);}
+  .mode-btn .m-sub{font-size:12.5px; color:var(--ink-soft); line-height:1.4;}
+
+  .chip-list{display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;}
+  .chip{
+    display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line);
+    border-radius:9px; padding:8px 8px 8px 12px; cursor:grab; font-size:13px;
+  }
+  .chip.dragging{opacity:.4;}
+  .chip .pnum{font-weight:700;}
+  .chip .rot-ic{display:inline-block; transition:transform .15s ease;}
+
+  .actions-row{margin-top:26px; display:flex; gap:12px;}
+  button.primary{
+    background:var(--stamp); color:#fff; border:none; font-weight:700; font-size:15px;
+    padding:14px 26px; border-radius:9px; cursor:pointer; transition:background .15s ease, transform .1s ease; flex:1;
+  }
+  button.primary:hover{background:var(--stamp-dark);}
+  button.primary:active{transform:scale(.985);}
+  button.primary:disabled{background:#CBC3B2; cursor:not-allowed;}
+  button.secondary{
+    background:transparent; border:1px solid var(--line); color:var(--ink-soft); font-size:14px; font-weight:600;
+    padding:14px 18px; border-radius:9px; cursor:pointer; transition:border-color .15s ease, color .15s ease;
+  }
+  button.secondary:hover{border-color:var(--ink-soft); color:var(--ink);}
+
+  .status-row{margin-top:16px; font-size:13.5px; display:none; align-items:center; gap:10px;}
+  .status-row.show{display:flex;}
+  .spinner{width:14px;height:14px; border:2px solid var(--line); border-top-color:var(--stamp); border-radius:50%; animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .result-box{
+    margin-top:18px; background:#EAF3EC; border:1px solid #C6E0CC; border-radius:10px; padding:18px;
+    display:none; align-items:center; justify-content:space-between; gap:14px;
+  }
+  .result-box.show{display:flex;}
+  .result-box .rtitle{font-weight:700; color:var(--ok); margin-bottom:2px;}
+  .result-box .rsub{color:var(--ink-soft); font-size:12.5px;}
+  a.download-btn{
+    background:var(--ok); color:#fff; text-decoration:none; font-size:13.5px; font-weight:700;
+    padding:10px 16px; border-radius:7px; white-space:nowrap; transition:background .15s ease;
+  }
+  a.download-btn:hover{background:#255A41;}
+
+  .hint{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
+  .note-box{
+    margin-top:24px; background:var(--paper-2); border:1px solid var(--line); border-radius:9px;
+    padding:12px 14px; font-size:12.5px; color:var(--ink-soft); line-height:1.5;
+  }
+
+  @media (max-width: 860px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%; display:flex; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line); padding:14px;}
+    .brand{display:none;}
+    .nav-group{display:flex; gap:6px; margin-bottom:0; margin-right:14px;}
+    .nav-group-title{display:none;}
+    .nav-item{white-space:nowrap;}
+    .content{padding:28px 18px 60px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand" data-target="panel-home"><span class="dot"></span>Ferramentas PDF</div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Organizar</div>
+      <div class="nav-item" data-target="panel-merge"><span class="ic">📎</span>Juntar PDF</div>
+      <div class="nav-item" data-target="panel-split"><span class="ic">✂️</span>Dividir PDF</div>
+      <div class="nav-item" data-target="panel-rotate"><span class="ic">🔄</span>Girar PDF</div>
+      <div class="nav-item" data-target="panel-delete"><span class="ic">🗑️</span>Excluir páginas</div>
+      <div class="nav-item" data-target="panel-extract"><span class="ic">🧩</span>Extrair páginas</div>
+      <div class="nav-item" data-target="panel-organize"><span class="ic">🗂️</span>Organizar páginas</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Editar</div>
+      <div class="nav-item" data-target="panel-number"><span class="ic">#️⃣</span>Numerar páginas</div>
+      <div class="nav-item" data-target="panel-watermark"><span class="ic">💧</span>Marca d'água</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Converter</div>
+      <div class="nav-item" data-target="panel-pdf2jpg"><span class="ic">🖼️</span>PDF para JPG</div>
+      <div class="nav-item" data-target="panel-jpg2pdf"><span class="ic">📷</span>JPG para PDF</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Otimizar</div>
+      <div class="nav-item" data-target="panel-compress"><span class="ic">🗜️</span>Comprimir PDF</div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- HOME -->
+    <div class="panel show" id="panel-home">
+      <div class="eyebrow">Tudo local · sem envio de arquivos</div>
+      <h1>Ferramentas de PDF</h1>
+      <p class="desc">Escolha uma ferramenta. Todo o processamento acontece aqui no seu navegador — nenhum arquivo é enviado para servidor algum.</p>
+
+      <div class="home-cat">
+        <h3>Organizar</h3>
+        <div class="home-grid">
+          <div class="home-card" data-target="panel-merge"><div class="ic">📎</div><div class="t">Juntar PDF</div></div>
+          <div class="home-card" data-target="panel-split"><div class="ic">✂️</div><div class="t">Dividir PDF</div></div>
+          <div class="home-card" data-target="panel-rotate"><div class="ic">🔄</div><div class="t">Girar PDF</div></div>
+          <div class="home-card" data-target="panel-delete"><div class="ic">🗑️</div><div class="t">Excluir páginas</div></div>
+          <div class="home-card" data-target="panel-extract"><div class="ic">🧩</div><div class="t">Extrair páginas</div></div>
+          <div class="home-card" data-target="panel-organize"><div class="ic">🗂️</div><div class="t">Organizar páginas</div></div>
+        </div>
+      </div>
+
+      <div class="home-cat">
+        <h3>Editar</h3>
+        <div class="home-grid">
+          <div class="home-card" data-target="panel-number"><div class="ic">#️⃣</div><div class="t">Numerar páginas</div></div>
+          <div class="home-card" data-target="panel-watermark"><div class="ic">💧</div><div class="t">Marca d'água</div></div>
+        </div>
+      </div>
+
+      <div class="home-cat">
+        <h3>Converter</h3>
+        <div class="home-grid">
+          <div class="home-card" data-target="panel-pdf2jpg"><div class="ic">🖼️</div><div class="t">PDF para JPG</div></div>
+          <div class="home-card" data-target="panel-jpg2pdf"><div class="ic">📷</div><div class="t">JPG para PDF</div></div>
+        </div>
+      </div>
+
+      <div class="home-cat">
+        <h3>Otimizar</h3>
+        <div class="home-grid">
+          <div class="home-card" data-target="panel-compress"><div class="ic">🗜️</div><div class="t">Comprimir PDF</div></div>
+        </div>
+      </div>
+
+      <div class="note-box">
+        Ferramentas que dependem de serviço externo (conversão de/para Word, Excel e PowerPoint, OCR, assistente de IA e assinatura eletrônica) não estão incluídas, pois exigem processamento em servidor.
+      </div>
+    </div>
+
+    <!-- MERGE -->
+    <div class="panel" id="panel-merge">
+      <div class="eyebrow">Organizar</div>
+      <h1>Juntar PDF</h1>
+      <p class="desc">Arraste vários PDFs, organize a ordem e gere um único arquivo.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">📎</div>
+        <div class="main-txt">Arraste os arquivos PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" multiple data-role="input">
+      </div>
+
+      <div class="file-list" data-role="list"></div>
+      <div class="hint" data-role="summary" style="display:none;"></div>
+
+      <div class="actions-row" data-role="actions" style="display:none;">
+        <button class="secondary" data-role="clear">Limpar tudo</button>
+        <button class="primary" data-role="run" disabled>Juntar PDFs</button>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Juntando arquivos…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ PDF gerado com sucesso</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="documento-unido.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- SPLIT -->
+    <div class="panel" id="panel-split">
+      <div class="eyebrow">Organizar</div>
+      <h1>Dividir PDF</h1>
+      <p class="desc">Envie um PDF e escolha como separar as páginas.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">✂️</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="option-group">
+          <div class="option-label">Como dividir</div>
+          <div class="mode-options">
+            <div class="mode-btn active" data-mode="ranges">
+              <div class="m-title">Por intervalos</div>
+              <div class="m-sub">Cada grupo de páginas vira um PDF separado</div>
+            </div>
+            <div class="mode-btn" data-mode="every">
+              <div class="m-title">Páginas individuais</div>
+              <div class="m-sub">Cada página vira um PDF separado</div>
+            </div>
+          </div>
+          <div data-role="rangePanel"></div>
+          <button class="secondary" data-role="addRange" style="margin-top:6px;">+ Adicionar intervalo</button>
+          <div class="hint" data-role="everyHint" style="display:none;">Cada página será salva como um PDF individual, dentro de um .zip.</div>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run" disabled>Dividir PDF</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Dividindo arquivo…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ Dividido com sucesso</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="paginas-divididas.zip">Baixar .zip</a>
+      </div>
+    </div>
+
+    <!-- ROTATE -->
+    <div class="panel" id="panel-rotate">
+      <div class="eyebrow">Organizar</div>
+      <h1>Girar PDF</h1>
+      <p class="desc">Gire todas as páginas do documento na direção escolhida.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">🔄</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="option-group">
+          <div class="option-label">Rotação a aplicar em todas as páginas</div>
+          <div class="field-row">
+            <button class="secondary" data-role="rotLeft">↺ Girar 90° à esquerda</button>
+            <button class="secondary" data-role="rotRight">↻ Girar 90° à direita</button>
+            <button class="secondary" data-role="rotReset">Redefinir</button>
+          </div>
+          <div class="hint">Rotação atual a aplicar: <b data-role="rotValue">0°</b></div>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run">Girar e baixar PDF</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Girando páginas…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ PDF girado com sucesso</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="documento-girado.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- DELETE PAGES -->
+    <div class="panel" id="panel-delete">
+      <div class="eyebrow">Organizar</div>
+      <h1>Excluir páginas</h1>
+      <p class="desc">Escolha quais páginas remover do documento.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">🗑️</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="option-group">
+          <div class="option-label">Páginas a excluir</div>
+          <div class="field-row"><input type="text" data-role="pages" placeholder="ex: 2, 5, 8-10" style="flex:1; min-width:200px;"></div>
+          <div class="hint">Use vírgulas para páginas soltas e hífen para intervalos. O documento tem <b data-role="pageCount">0</b> páginas.</div>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run" disabled>Excluir e baixar PDF</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Removendo páginas…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ Páginas removidas</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="documento-sem-paginas.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- EXTRACT PAGES -->
+    <div class="panel" id="panel-extract">
+      <div class="eyebrow">Organizar</div>
+      <h1>Extrair páginas</h1>
+      <p class="desc">Escolha quais páginas manter — o resto é descartado.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">🧩</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="option-group">
+          <div class="option-label">Páginas a manter</div>
+          <div class="field-row"><input type="text" data-role="pages" placeholder="ex: 1-3, 7" style="flex:1; min-width:200px;"></div>
+          <div class="hint">A ordem digitada é respeitada. O documento tem <b data-role="pageCount">0</b> páginas.</div>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run" disabled>Extrair e baixar PDF</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Extraindo páginas…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ Páginas extraídas</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="paginas-extraidas.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- ORGANIZE PAGES -->
+    <div class="panel" id="panel-organize">
+      <div class="eyebrow">Organizar</div>
+      <h1>Organizar páginas</h1>
+      <p class="desc">Arraste para reordenar, gire ou exclua páginas individualmente.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">🗂️</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="chip-list" data-role="chips"></div>
+        <div class="hint">Arraste os cartões para reordenar. Use ↻ para girar e ✕ para excluir.</div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run">Salvar novo PDF</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Salvando…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ PDF salvo</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="documento-organizado.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- NUMBER PAGES -->
+    <div class="panel" id="panel-number">
+      <div class="eyebrow">Editar</div>
+      <h1>Numerar páginas</h1>
+      <p class="desc">Adicione a numeração das páginas em qualquer canto do documento.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">#️⃣</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="option-group">
+          <div class="field-row"><label>Posição</label>
+            <select data-role="position">
+              <option value="bottom-center" selected>Inferior · centro</option>
+              <option value="bottom-right">Inferior · direita</option>
+              <option value="bottom-left">Inferior · esquerda</option>
+              <option value="top-center">Superior · centro</option>
+              <option value="top-right">Superior · direita</option>
+              <option value="top-left">Superior · esquerda</option>
+            </select>
+          </div>
+          <div class="field-row"><label>Formato</label>
+            <select data-role="format">
+              <option value="n" selected>1, 2, 3…</option>
+              <option value="page-n-of-total">Página 1 de N</option>
+            </select>
+          </div>
+          <div class="field-row"><label>Começar em</label><input type="number" data-role="start" value="1" min="1" style="width:80px;"></div>
+          <div class="field-row"><label>Tamanho da fonte</label><input type="number" data-role="fontsize" value="11" min="6" max="30" style="width:80px;"></div>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run">Numerar e baixar PDF</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Numerando páginas…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ Páginas numeradas</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="documento-numerado.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- WATERMARK -->
+    <div class="panel" id="panel-watermark">
+      <div class="eyebrow">Editar</div>
+      <h1>Marca d'água</h1>
+      <p class="desc">Adicione um texto em marca d'água em todas as páginas.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">💧</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="option-group">
+          <div class="field-row"><label>Texto</label><input type="text" data-role="text" value="CONFIDENCIAL" style="flex:1; min-width:200px;"></div>
+          <div class="field-row"><label>Tamanho</label><input type="number" data-role="fontsize" value="48" min="10" max="150" style="width:80px;"></div>
+          <div class="field-row"><label>Opacidade</label><input type="range" data-role="opacity" min="0.05" max="0.6" step="0.05" value="0.25"></div>
+          <div class="field-row"><label>Ângulo</label><input type="number" data-role="angle" value="45" min="-90" max="90" style="width:80px;"></div>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run">Aplicar e baixar PDF</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Aplicando marca d'água…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ Marca d'água aplicada</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="documento-marca-dagua.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- PDF TO JPG -->
+    <div class="panel" id="panel-pdf2jpg">
+      <div class="eyebrow">Converter</div>
+      <h1>PDF para JPG</h1>
+      <p class="desc">Transforme cada página do PDF em uma imagem JPG.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">🖼️</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="option-group">
+          <div class="field-row"><label>Qualidade</label>
+            <select data-role="quality">
+              <option value="1">Baixa (mais rápido)</option>
+              <option value="1.5" selected>Média</option>
+              <option value="2.5">Alta</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run">Converter e baixar .zip</button>
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Convertendo páginas…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ Convertido com sucesso</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="paginas-jpg.zip">Baixar .zip</a>
+      </div>
+    </div>
+
+    <!-- JPG TO PDF -->
+    <div class="panel" id="panel-jpg2pdf">
+      <div class="eyebrow">Converter</div>
+      <h1>JPG para PDF</h1>
+      <p class="desc">Envie imagens e junte tudo em um único PDF, uma imagem por página.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">📷</div>
+        <div class="main-txt">Arraste as imagens aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b> (JPG ou PNG)</div>
+        <input type="file" accept="image/jpeg,image/png" multiple data-role="input">
+      </div>
+
+      <div class="file-list" data-role="list"></div>
+      <div class="hint" data-role="summary" style="display:none;"></div>
+
+      <div class="actions-row" data-role="actions" style="display:none;">
+        <button class="secondary" data-role="clear">Limpar tudo</button>
+        <button class="primary" data-role="run" disabled>Gerar PDF</button>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Gerando PDF…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ PDF gerado</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="imagens.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+    <!-- COMPRESS -->
+    <div class="panel" id="panel-compress">
+      <div class="eyebrow">Otimizar</div>
+      <h1>Comprimir PDF</h1>
+      <p class="desc">Reorganiza a estrutura interna do arquivo para reduzir o tamanho.</p>
+
+      <div class="dropzone" data-role="dropzone">
+        <div class="icon">🗜️</div>
+        <div class="main-txt">Arraste o PDF aqui</div>
+        <div class="sub-txt">ou <b>clique para escolher</b></div>
+        <input type="file" accept="application/pdf" data-role="input">
+      </div>
+
+      <div data-role="fileArea" style="display:none;">
+        <div class="file-card">
+          <div class="badge">PDF</div>
+          <div class="info"><div class="fname" data-role="fname"></div><div class="fmeta" data-role="fmeta"></div></div>
+          <button class="icon-btn danger" data-role="remove" title="Remover">✕</button>
+        </div>
+
+        <div class="actions-row">
+          <button class="secondary" data-role="clear">Limpar</button>
+          <button class="primary" data-role="run">Comprimir e baixar PDF</button>
+        </div>
+
+        <div class="note-box">
+          Esta compressão é estrutural (reorganiza objetos internos do PDF) e roda sem servidor. Ela funciona melhor em PDFs com muitas páginas ou metadados redundantes; não recodifica imagens internas, então o ganho varia bastante conforme o arquivo.
+        </div>
+      </div>
+
+      <div class="status-row" data-role="status"><div class="spinner"></div><span data-role="statusText">Comprimindo…</span></div>
+      <div class="result-box" data-role="result">
+        <div><div class="rtitle" data-role="rtitle">✓ Concluído</div><div class="rsub" data-role="rsub"></div></div>
+        <a class="download-btn" data-role="download" download="documento-comprimido.pdf">Baixar PDF</a>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const { PDFDocument, degrees, rgb, StandardFonts } = PDFLib;
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ---------- Navigation ---------- */
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('show', p.id === id));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.target === id));
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('[data-target]').forEach(el => {
+  el.addEventListener('click', () => showPanel(el.dataset.target));
+});
+
+/* ---------- Helpers ---------- */
+function fmtSize(bytes){
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+function q(root, role){ return root.querySelector(`[data-role="${role}"]`); }
+function qa(root, role){ return root.querySelectorAll(`[data-role="${role}"]`); }
+
+function parseRangeSequence(str, maxPage){
+  const out = [];
+  const parts = str.split(',').map(s => s.trim()).filter(Boolean);
+  for(const part of parts){
+    if(part.includes('-')){
+      const [a,b] = part.split('-').map(s => parseInt(s.trim()));
+      if(!a || !b || a<1 || b>maxPage || a>b) throw new Error(`Intervalo inválido: "${part}"`);
+      for(let i=a;i<=b;i++) out.push(i-1);
+    }else{
+      const n = parseInt(part);
+      if(!n || n<1 || n>maxPage) throw new Error(`Página inválida: "${part}"`);
+      out.push(n-1);
+    }
+  }
+  if(out.length===0) throw new Error('Informe ao menos uma página.');
+  return out;
+}
+
+function setupDropzone(panel, {multiple, accept, onFiles}){
+  const dz = q(panel, 'dropzone');
+  const input = q(panel, 'input');
+  dz.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => { if(e.target.files.length) onFiles(e.target.files); input.value=''; });
+  ['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => { if(e.dataTransfer.files.length) onFiles(e.dataTransfer.files); });
+}
+
+function runStatus(panel, {onStart, onDone, onError, doneFilename}){
+  const status = q(panel,'status');
+  const statusText = q(panel,'statusText');
+  const result = q(panel,'result');
+  return {
+    async run(fn){
+      status.classList.add('show');
+      result.classList.remove('show');
+      try{
+        const {blob, sub, filename} = await fn();
+        const url = URL.createObjectURL(blob);
+        q(panel,'download').href = url;
+        q(panel,'download').download = filename || doneFilename;
+        q(panel,'rsub').textContent = sub;
+        q(panel,'rtitle').textContent = '✓ Concluído com sucesso';
+        q(panel,'rtitle').style.color = '';
+        result.classList.add('show');
+      }catch(err){
+        console.error(err);
+        q(panel,'rsub').textContent = err.message || 'Não foi possível processar o arquivo.';
+        q(panel,'rtitle').textContent = '✕ Ocorreu um erro';
+        q(panel,'rtitle').style.color = '#B23A2E';
+        result.classList.add('show');
+      }finally{
+        status.classList.remove('show');
+      }
+    }
+  };
+}
+
+/* ================= MERGE ================= */
+(function(){
+  const panel = document.getElementById('panel-merge');
+  const list = q(panel,'list'), summary = q(panel,'summary'), actions = q(panel,'actions'), runBtn = q(panel,'run'), clearBtn = q(panel,'clear');
+  let files = []; let idc = 0; let dragIdx = null;
+  const status = runStatus(panel, {doneFilename:'documento-unido.pdf'});
+
+  async function addFiles(fl){
+    for(const f of Array.from(fl)){
+      if(!(f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf'))) continue;
+      const entry = { id: idc++, file:f, pageCount:null };
+      files.push(entry); render();
+      try{
+        const buf = await f.arrayBuffer();
+        const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+        entry.pageCount = doc.getPageCount();
+      }catch(e){ entry.pageCount = '?'; entry.error = true; }
+      render();
+    }
+  }
+
+  function render(){
+    list.innerHTML = '';
+    if(files.length===0){ actions.style.display='none'; summary.style.display='none'; return; }
+    actions.style.display='flex'; summary.style.display='block';
+    files.forEach((entry, idx) => {
+      const card = document.createElement('div');
+      card.className='file-card'; card.draggable=true;
+      const pages = entry.pageCount===null ? '…' : (entry.error ? 'erro ao ler' : entry.pageCount+(entry.pageCount===1?' pág.':' págs.'));
+      card.innerHTML = `
+        <span class="grip">⠿</span><span class="num">${idx+1}</span><div class="badge">PDF</div>
+        <div class="info"><div class="fname">${entry.file.name}</div><div class="fmeta">${fmtSize(entry.file.size)} · ${pages}</div></div>
+        <div style="display:flex;gap:4px;">
+          <button class="icon-btn up" ${idx===0?'disabled':''}>↑</button>
+          <button class="icon-btn down" ${idx===files.length-1?'disabled':''}>↓</button>
+          <button class="icon-btn danger remove">✕</button>
+        </div>`;
+      card.querySelector('.up').addEventListener('click', () => { [files[idx-1],files[idx]]=[files[idx],files[idx-1]]; render(); });
+      card.querySelector('.down').addEventListener('click', () => { [files[idx+1],files[idx]]=[files[idx],files[idx+1]]; render(); });
+      card.querySelector('.remove').addEventListener('click', () => { files.splice(idx,1); render(); });
+      card.addEventListener('dragstart', () => { card.classList.add('dragging'); dragIdx = idx; });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      card.addEventListener('dragover', e => e.preventDefault());
+      card.addEventListener('drop', e => { e.preventDefault(); if(dragIdx!==null && dragIdx!==idx){ const [it]=files.splice(dragIdx,1); files.splice(idx,0,it); render(); } dragIdx=null; });
+      list.appendChild(card);
+    });
+    const total = files.reduce((s,f)=> s+(typeof f.pageCount==='number'?f.pageCount:0),0);
+    summary.textContent = `${files.length} arquivo${files.length>1?'s':''} · ${total} página${total!==1?'s':''} no total`;
+    runBtn.disabled = !files.every(f=>f.pageCount!==null) || files.length<1;
+  }
+
+  setupDropzone(panel, {multiple:true, onFiles: addFiles});
+  clearBtn.addEventListener('click', () => { files=[]; render(); q(panel,'result').classList.remove('show'); });
+  runBtn.addEventListener('click', () => status.run(async () => {
+    const merged = await PDFDocument.create();
+    for(const entry of files){
+      const buf = await entry.file.arrayBuffer();
+      const src = await PDFDocument.load(buf, {ignoreEncryption:true});
+      const pages = await merged.copyPages(src, src.getPageIndices());
+      pages.forEach(p => merged.addPage(p));
+    }
+    const bytes = await merged.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`${files.length} arquivos combinados · ${merged.getPageCount()} páginas · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= SPLIT ================= */
+(function(){
+  const panel = document.getElementById('panel-split');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  const rangePanel = q(panel,'rangePanel'), addRangeBtn = q(panel,'addRange'), everyHint = q(panel,'everyHint');
+  const runBtn = q(panel,'run'), clearBtn = q(panel,'clear'), removeBtn = q(panel,'remove');
+  let currentFile=null, pageCount=0, mode='ranges', rows=[], ridc=0;
+  const status = runStatus(panel, {doneFilename:'paginas-divididas.zip'});
+
+  async function loadFile(file){
+    currentFile = file;
+    q(panel,'fname').textContent = file.name;
+    q(panel,'fmeta').textContent = fmtSize(file.size)+' · lendo…';
+    dropzone.style.display='none'; fileArea.style.display='block';
+    try{
+      const buf = await file.arrayBuffer();
+      const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+      pageCount = doc.getPageCount();
+      q(panel,'fmeta').textContent = `${fmtSize(file.size)} · ${pageCount} página${pageCount!==1?'s':''}`;
+      rows = [{id:ridc++, from:1, to:pageCount}];
+      renderRanges(); updateBtn();
+    }catch(e){ q(panel,'fmeta').textContent='Não foi possível ler este PDF.'; }
+  }
+  function reset(){
+    currentFile=null; pageCount=0; dropzone.style.display='block'; fileArea.style.display='none';
+    q(panel,'input').value=''; q(panel,'result').classList.remove('show'); rows=[];
+  }
+  setupDropzone(panel,{onFiles: fl => loadFile(fl[0])});
+  removeBtn.addEventListener('click', reset);
+  clearBtn.addEventListener('click', reset);
+
+  panel.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      panel.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); mode = btn.dataset.mode;
+      rangePanel.style.display = mode==='ranges' ? 'block':'none';
+      addRangeBtn.style.display = mode==='ranges' ? 'inline-block':'none';
+      everyHint.style.display = mode==='every' ? 'block':'none';
+      updateBtn();
+    });
+  });
+
+  function renderRanges(){
+    rangePanel.innerHTML='';
+    rows.forEach((row, idx) => {
+      const div = document.createElement('div'); div.className='field-row';
+      div.innerHTML = `<span>De</span>
+        <input type="number" min="1" max="${pageCount}" value="${row.from}" style="width:70px;" class="from">
+        <span>até</span>
+        <input type="number" min="1" max="${pageCount}" value="${row.to??''}" placeholder="${pageCount}" style="width:70px;" class="to">
+        <button class="icon-btn danger" style="margin-left:auto;" ${rows.length===1?'disabled':''}>✕</button>`;
+      div.querySelector('.from').addEventListener('input', e => { row.from = parseInt(e.target.value)||1; updateBtn(); });
+      div.querySelector('.to').addEventListener('input', e => { row.to = e.target.value?parseInt(e.target.value):null; updateBtn(); });
+      div.querySelector('button').addEventListener('click', () => { rows.splice(idx,1); renderRanges(); updateBtn(); });
+      rangePanel.appendChild(div);
+    });
+  }
+  addRangeBtn.addEventListener('click', () => {
+    const last = rows[rows.length-1];
+    const nextFrom = last && last.to ? last.to+1 : (last? last.from+1:1);
+    rows.push({id:ridc++, from:Math.min(nextFrom,pageCount), to:pageCount});
+    renderRanges(); updateBtn();
+  });
+  function updateBtn(){
+    if(!currentFile){ runBtn.disabled=true; return; }
+    if(mode==='every'){ runBtn.disabled=false; return; }
+    const valid = rows.every(r => r.from>=1 && r.from<=pageCount && (r.to===null || (r.to>=r.from && r.to<=pageCount)));
+    runBtn.disabled = !valid || rows.length===0;
+  }
+
+  runBtn.addEventListener('click', () => status.run(async () => {
+    const buf = await currentFile.arrayBuffer();
+    const src = await PDFDocument.load(buf, {ignoreEncryption:true});
+    const zip = new JSZip();
+    const base = currentFile.name.replace(/\.pdf$/i,'');
+    let count=0;
+    if(mode==='every'){
+      for(let i=0;i<pageCount;i++){
+        const out = await PDFDocument.create();
+        const [pg] = await out.copyPages(src,[i]);
+        out.addPage(pg);
+        zip.file(`${base}-pagina-${i+1}.pdf`, await out.save());
+        count++;
+      }
+    }else{
+      let idx=1;
+      for(const row of rows){
+        const from=row.from, to=row.to??pageCount;
+        const indices=[]; for(let p=from;p<=to;p++) indices.push(p-1);
+        const out = await PDFDocument.create();
+        const pages = await out.copyPages(src, indices);
+        pages.forEach(p=>out.addPage(p));
+        zip.file(`${base}-parte-${idx}.pdf`, await out.save());
+        idx++; count++;
+      }
+    }
+    const blob = await zip.generateAsync({type:'blob'});
+    return { blob, sub:`${count} arquivo${count!==1?'s':''} PDF · ${fmtSize(blob.size)} no total` };
+  }));
+})();
+
+/* ================= ROTATE ================= */
+(function(){
+  const panel = document.getElementById('panel-rotate');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  let currentFile=null, rotation=0;
+  const status = runStatus(panel, {doneFilename:'documento-girado.pdf'});
+
+  async function loadFile(file){
+    currentFile=file; rotation=0;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size);
+    q(panel,'rotValue').textContent='0°';
+    dropzone.style.display='none'; fileArea.style.display='block';
+  }
+  function reset(){ currentFile=null; rotation=0; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+  q(panel,'rotLeft').addEventListener('click', () => { rotation = (rotation-90+360)%360; q(panel,'rotValue').textContent = rotation+'°'; });
+  q(panel,'rotRight').addEventListener('click', () => { rotation = (rotation+90)%360; q(panel,'rotValue').textContent = rotation+'°'; });
+  q(panel,'rotReset').addEventListener('click', () => { rotation=0; q(panel,'rotValue').textContent='0°'; });
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const buf = await currentFile.arrayBuffer();
+    const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+    doc.getPages().forEach(p => {
+      const current = p.getRotation().angle;
+      p.setRotation(degrees((current+rotation)%360));
+    });
+    const bytes = await doc.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`Rotação de ${rotation}° aplicada · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= DELETE PAGES ================= */
+(function(){
+  const panel = document.getElementById('panel-delete');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  let currentFile=null, pageCount=0;
+  const status = runStatus(panel, {doneFilename:'documento-sem-paginas.pdf'});
+
+  async function loadFile(file){
+    currentFile=file;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size)+' · lendo…';
+    dropzone.style.display='none'; fileArea.style.display='block';
+    try{
+      const buf = await file.arrayBuffer();
+      const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+      pageCount = doc.getPageCount();
+      q(panel,'fmeta').textContent = `${fmtSize(file.size)} · ${pageCount} páginas`;
+      q(panel,'pageCount').textContent = pageCount;
+    }catch(e){ q(panel,'fmeta').textContent='Não foi possível ler este PDF.'; }
+  }
+  function reset(){ currentFile=null; pageCount=0; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'pages').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+  q(panel,'pages').addEventListener('input', e => { q(panel,'run').disabled = !e.target.value.trim(); });
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const toRemove = new Set(parseRangeSequence(q(panel,'pages').value, pageCount));
+    if(toRemove.size >= pageCount) throw new Error('Você não pode excluir todas as páginas.');
+    const buf = await currentFile.arrayBuffer();
+    const src = await PDFDocument.load(buf, {ignoreEncryption:true});
+    const keep = []; for(let i=0;i<pageCount;i++) if(!toRemove.has(i)) keep.push(i);
+    const out = await PDFDocument.create();
+    const pages = await out.copyPages(src, keep);
+    pages.forEach(p=>out.addPage(p));
+    const bytes = await out.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`${toRemove.size} página(s) removida(s) · restaram ${keep.length} · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= EXTRACT PAGES ================= */
+(function(){
+  const panel = document.getElementById('panel-extract');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  let currentFile=null, pageCount=0;
+  const status = runStatus(panel, {doneFilename:'paginas-extraidas.pdf'});
+
+  async function loadFile(file){
+    currentFile=file;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size)+' · lendo…';
+    dropzone.style.display='none'; fileArea.style.display='block';
+    try{
+      const buf = await file.arrayBuffer();
+      const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+      pageCount = doc.getPageCount();
+      q(panel,'fmeta').textContent = `${fmtSize(file.size)} · ${pageCount} páginas`;
+      q(panel,'pageCount').textContent = pageCount;
+    }catch(e){ q(panel,'fmeta').textContent='Não foi possível ler este PDF.'; }
+  }
+  function reset(){ currentFile=null; pageCount=0; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'pages').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+  q(panel,'pages').addEventListener('input', e => { q(panel,'run').disabled = !e.target.value.trim(); });
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const keep = parseRangeSequence(q(panel,'pages').value, pageCount);
+    const buf = await currentFile.arrayBuffer();
+    const src = await PDFDocument.load(buf, {ignoreEncryption:true});
+    const out = await PDFDocument.create();
+    const pages = await out.copyPages(src, keep);
+    pages.forEach(p=>out.addPage(p));
+    const bytes = await out.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`${keep.length} página(s) extraída(s) · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= ORGANIZE PAGES ================= */
+(function(){
+  const panel = document.getElementById('panel-organize');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone'), chipsEl = q(panel,'chips');
+  let currentFile=null, pages=[], dragIdx=null;
+  const status = runStatus(panel, {doneFilename:'documento-organizado.pdf'});
+
+  async function loadFile(file){
+    currentFile=file;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size)+' · lendo…';
+    dropzone.style.display='none'; fileArea.style.display='block';
+    try{
+      const buf = await file.arrayBuffer();
+      const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+      const count = doc.getPageCount();
+      q(panel,'fmeta').textContent = `${fmtSize(file.size)} · ${count} páginas`;
+      pages = Array.from({length:count}, (_,i) => ({ originalIndex:i, label:i+1, rotDelta:0, removed:false }));
+      renderChips();
+    }catch(e){ q(panel,'fmeta').textContent='Não foi possível ler este PDF.'; }
+  }
+  function reset(){ currentFile=null; pages=[]; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+
+  function renderChips(){
+    chipsEl.innerHTML='';
+    pages.filter(p=>!p.removed).forEach((pg, idx) => {
+      const chip = document.createElement('div'); chip.className='chip'; chip.draggable=true;
+      chip.innerHTML = `<span class="pnum">${pg.label}</span><span class="rot-ic" style="transform:rotate(${pg.rotDelta}deg)">📄</span>
+        <button class="icon-btn rot" title="Girar">↻</button><button class="icon-btn danger del" title="Excluir">✕</button>`;
+      chip.querySelector('.rot').addEventListener('click', () => { pg.rotDelta = (pg.rotDelta+90)%360; renderChips(); });
+      chip.querySelector('.del').addEventListener('click', () => { pg.removed=true; renderChips(); });
+      chip.addEventListener('dragstart', () => { chip.classList.add('dragging'); dragIdx = pages.indexOf(pg); });
+      chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+      chip.addEventListener('dragover', e => e.preventDefault());
+      chip.addEventListener('drop', e => {
+        e.preventDefault();
+        const dropTarget = pages.indexOf(pg);
+        if(dragIdx!==null && dragIdx!==dropTarget){
+          const [item] = pages.splice(dragIdx,1);
+          pages.splice(dropTarget,0,item);
+          renderChips();
+        }
+        dragIdx=null;
+      });
+      chipsEl.appendChild(chip);
+    });
+  }
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const remaining = pages.filter(p=>!p.removed);
+    if(remaining.length===0) throw new Error('Não é possível salvar um PDF sem páginas.');
+    const buf = await currentFile.arrayBuffer();
+    const src = await PDFDocument.load(buf, {ignoreEncryption:true});
+    const out = await PDFDocument.create();
+    const copied = await out.copyPages(src, remaining.map(p=>p.originalIndex));
+    copied.forEach((page, i) => {
+      const delta = remaining[i].rotDelta;
+      if(delta) page.setRotation(degrees((page.getRotation().angle+delta)%360));
+      out.addPage(page);
+    });
+    const bytes = await out.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`${remaining.length} páginas no PDF final · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= NUMBER PAGES ================= */
+(function(){
+  const panel = document.getElementById('panel-number');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  let currentFile=null;
+  const status = runStatus(panel, {doneFilename:'documento-numerado.pdf'});
+
+  async function loadFile(file){
+    currentFile=file;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size);
+    dropzone.style.display='none'; fileArea.style.display='block';
+  }
+  function reset(){ currentFile=null; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const buf = await currentFile.arrayBuffer();
+    const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const start = parseInt(q(panel,'start').value)||1;
+    const fontSize = parseInt(q(panel,'fontsize').value)||11;
+    const position = q(panel,'position').value;
+    const format = q(panel,'format').value;
+    const total = doc.getPageCount();
+    doc.getPages().forEach((page, i) => {
+      const n = start + i;
+      const label = format==='page-n-of-total' ? `Página ${n} de ${total}` : String(n);
+      const { width, height } = page.getSize();
+      const textWidth = font.widthOfTextAtSize(label, fontSize);
+      const margin = 28;
+      let x, y;
+      if(position.includes('center')) x = (width-textWidth)/2;
+      else if(position.includes('right')) x = width - textWidth - margin;
+      else x = margin;
+      y = position.startsWith('bottom') ? margin : height - margin - fontSize;
+      page.drawText(label, { x, y, size:fontSize, font, color: rgb(0.15,0.15,0.15) });
+    });
+    const bytes = await doc.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`${total} páginas numeradas a partir de ${start} · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= WATERMARK ================= */
+(function(){
+  const panel = document.getElementById('panel-watermark');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  let currentFile=null;
+  const status = runStatus(panel, {doneFilename:'documento-marca-dagua.pdf'});
+
+  async function loadFile(file){
+    currentFile=file;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size);
+    dropzone.style.display='none'; fileArea.style.display='block';
+  }
+  function reset(){ currentFile=null; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const buf = await currentFile.arrayBuffer();
+    const doc = await PDFDocument.load(buf, {ignoreEncryption:true});
+    const font = await doc.embedFont(StandardFonts.HelveticaBold);
+    const text = q(panel,'text').value.trim() || 'CONFIDENCIAL';
+    const fontSize = parseInt(q(panel,'fontsize').value)||48;
+    const opacity = parseFloat(q(panel,'opacity').value)||0.25;
+    const angle = parseFloat(q(panel,'angle').value)||0;
+    doc.getPages().forEach(page => {
+      const { width, height } = page.getSize();
+      const textWidth = font.widthOfTextAtSize(text, fontSize);
+      page.drawText(text, {
+        x: width/2 - textWidth/2, y: height/2, size:fontSize, font,
+        color: rgb(0.5,0.1,0.1), opacity, rotate: degrees(angle)
+      });
+    });
+    const bytes = await doc.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`Marca d'água "${text}" aplicada em ${doc.getPageCount()} páginas · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= PDF TO JPG ================= */
+(function(){
+  const panel = document.getElementById('panel-pdf2jpg');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  let currentFile=null;
+  const status = runStatus(panel, {doneFilename:'paginas-jpg.zip'});
+
+  async function loadFile(file){
+    currentFile=file;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size);
+    dropzone.style.display='none'; fileArea.style.display='block';
+  }
+  function reset(){ currentFile=null; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const scale = parseFloat(q(panel,'quality').value)||1.5;
+    const buf = await currentFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const zip = new JSZip();
+    const base = currentFile.name.replace(/\.pdf$/i,'');
+    for(let i=1;i<=pdf.numPages;i++){
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.88));
+      zip.file(`${base}-pagina-${i}.jpg`, blob);
+    }
+    const zipBlob = await zip.generateAsync({ type:'blob' });
+    return { blob: zipBlob, sub:`${pdf.numPages} imagens JPG · ${fmtSize(zipBlob.size)} no total` };
+  }));
+})();
+
+/* ================= JPG TO PDF ================= */
+(function(){
+  const panel = document.getElementById('panel-jpg2pdf');
+  const list = q(panel,'list'), summary = q(panel,'summary'), actions = q(panel,'actions'), runBtn = q(panel,'run'), clearBtn = q(panel,'clear');
+  let files = []; let idc=0; let dragIdx=null;
+  const status = runStatus(panel, {doneFilename:'imagens.pdf'});
+
+  function addFiles(fl){
+    for(const f of Array.from(fl)){
+      if(!(f.type==='image/jpeg' || f.type==='image/png')) continue;
+      const entry = { id: idc++, file:f, url: URL.createObjectURL(f) };
+      files.push(entry);
+    }
+    render();
+  }
+  function render(){
+    list.innerHTML='';
+    if(files.length===0){ actions.style.display='none'; summary.style.display='none'; return; }
+    actions.style.display='flex'; summary.style.display='block';
+    files.forEach((entry, idx) => {
+      const card = document.createElement('div'); card.className='file-card'; card.draggable=true;
+      card.innerHTML = `
+        <span class="grip">⠿</span><span class="num">${idx+1}</span>
+        <div class="badge"><img src="${entry.url}"></div>
+        <div class="info"><div class="fname">${entry.file.name}</div><div class="fmeta">${fmtSize(entry.file.size)}</div></div>
+        <div style="display:flex;gap:4px;">
+          <button class="icon-btn up" ${idx===0?'disabled':''}>↑</button>
+          <button class="icon-btn down" ${idx===files.length-1?'disabled':''}>↓</button>
+          <button class="icon-btn danger remove">✕</button>
+        </div>`;
+      card.querySelector('.up').addEventListener('click', () => { [files[idx-1],files[idx]]=[files[idx],files[idx-1]]; render(); });
+      card.querySelector('.down').addEventListener('click', () => { [files[idx+1],files[idx]]=[files[idx],files[idx+1]]; render(); });
+      card.querySelector('.remove').addEventListener('click', () => { files.splice(idx,1); render(); });
+      card.addEventListener('dragstart', () => { card.classList.add('dragging'); dragIdx=idx; });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      card.addEventListener('dragover', e => e.preventDefault());
+      card.addEventListener('drop', e => { e.preventDefault(); if(dragIdx!==null && dragIdx!==idx){ const [it]=files.splice(dragIdx,1); files.splice(idx,0,it); render(); } dragIdx=null; });
+      list.appendChild(card);
+    });
+    summary.textContent = `${files.length} imagem${files.length>1?'ns':''} selecionada${files.length>1?'s':''}`;
+    runBtn.disabled = files.length===0;
+  }
+  setupDropzone(panel, {multiple:true, onFiles: addFiles});
+  clearBtn.addEventListener('click', () => { files=[]; render(); q(panel,'result').classList.remove('show'); });
+
+  runBtn.addEventListener('click', () => status.run(async () => {
+    const doc = await PDFDocument.create();
+    for(const entry of files){
+      const bytes = await entry.file.arrayBuffer();
+      const img = entry.file.type==='image/png' ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
+      const page = doc.addPage([img.width, img.height]);
+      page.drawImage(img, { x:0, y:0, width:img.width, height:img.height });
+    }
+    const bytes = await doc.save();
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    return { blob, sub:`${files.length} imagens · ${fmtSize(blob.size)}` };
+  }));
+})();
+
+/* ================= COMPRESS ================= */
+(function(){
+  const panel = document.getElementById('panel-compress');
+  const fileArea = q(panel,'fileArea'), dropzone = q(panel,'dropzone');
+  let currentFile=null;
+  const status = runStatus(panel, {doneFilename:'documento-comprimido.pdf'});
+
+  async function loadFile(file){
+    currentFile=file;
+    q(panel,'fname').textContent=file.name;
+    q(panel,'fmeta').textContent=fmtSize(file.size);
+    dropzone.style.display='none'; fileArea.style.display='block';
+  }
+  function reset(){ currentFile=null; dropzone.style.display='block'; fileArea.style.display='none'; q(panel,'input').value=''; q(panel,'result').classList.remove('show'); }
+  setupDropzone(panel, {onFiles: fl => loadFile(fl[0])});
+  q(panel,'remove').addEventListener('click', reset);
+  q(panel,'clear').addEventListener('click', reset);
+
+  q(panel,'run').addEventListener('click', () => status.run(async () => {
+    const originalSize = currentFile.size;
+    const buf = await currentFile.arrayBuffer();
+    const doc = await PDFDocument.load(buf, {ignoreEncryption:true, updateMetadata:false});
+    doc.setProducer(''); doc.setCreator('');
+    const bytes = await doc.save({ useObjectStreams:true });
+    const blob = new Blob([bytes], {type:'application/pdf'});
+    const diff = originalSize - blob.size;
+    const pct = originalSize>0 ? Math.max(0,(diff/originalSize)*100).toFixed(1) : 0;
+    const sub = diff>0
+      ? `${fmtSize(originalSize)} → ${fmtSize(blob.size)} (redução de ${pct}%)`
+      : `${fmtSize(originalSize)} → ${fmtSize(blob.size)} (este arquivo já estava bem otimizado)`;
+    return { blob, sub };
+  }));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimTrib — Simulador de Regime Tributário</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --navy: #0F1B2D;
+    --navy-mid: #1A2F4A;
+    --navy-light: #243B55;
+    --emerald: #10B981;
+    --emerald-light: #D1FAE5;
+    --amber: #F59E0B;
+    --amber-light: #FEF3C7;
+    --rose: #F43F5E;
+    --rose-light: #FFE4E6;
+    --slate: #F8FAFC;
+    --slate-mid: #E2E8F0;
+    --slate-dark: #94A3B8;
+    --text: #1E293B;
+    --text-muted: #64748B;
+    --white: #FFFFFF;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(15,27,45,0.10);
+    --shadow-lg: 0 8px 48px rgba(15,27,45,0.16);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--slate);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--navy);
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid var(--navy-light);
+  }
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--emerald);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .logo-text { font-size: 1.1rem; font-weight: 700; color: var(--white); letter-spacing: -0.02em; }
+  .logo-text span { color: var(--emerald); }
+  .header-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--slate-dark);
+    background: var(--navy-light);
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 3.5rem 2rem 3rem;
+    text-align: center;
+  }
+  .hero-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--emerald);
+    margin-bottom: 1rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 0.75rem;
+  }
+  .hero h1 em { font-style: normal; color: var(--emerald); }
+  .hero p {
+    font-size: 1rem;
+    color: var(--slate-dark);
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  /* CARD */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--slate-mid);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .card-header-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .icon-blue { background: #EFF6FF; }
+  .icon-green { background: var(--emerald-light); }
+  .icon-amber { background: var(--amber-light); }
+  .card-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .card-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .card-body { padding: 1.5rem; }
+
+  /* FORM */
+  .form-grid {
+    display: grid;
+    gap: 1rem;
+  }
+  .form-row-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 500px) { .form-row-2 { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  input, select {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--slate);
+    border: 1.5px solid var(--slate-mid);
+    border-radius: 8px;
+    padding: 9px 12px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    width: 100%;
+  }
+  input:focus, select:focus {
+    border-color: var(--emerald);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+    background: var(--white);
+  }
+  .input-prefix {
+    position: relative;
+  }
+  .input-prefix span {
+    position: absolute;
+    left: 11px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .input-prefix input { padding-left: 30px; }
+
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    margin-bottom: -0.25rem;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--slate-mid);
+  }
+
+  /* TOGGLE SWITCH */
+  .toggle-group {
+    display: flex;
+    background: var(--slate);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .toggle-group label {
+    flex: 1;
+    text-align: center;
+    padding: 7px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    transition: all 0.15s;
+  }
+  .toggle-group input { display: none; }
+  .toggle-group input:checked + label {
+    background: var(--white);
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+
+  /* CTA BUTTON */
+  .btn-simular {
+    width: 100%;
+    padding: 13px;
+    background: var(--emerald);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    letter-spacing: -0.01em;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 2px 12px rgba(16,185,129,0.30);
+  }
+  .btn-simular:hover { background: #0da872; box-shadow: 0 4px 18px rgba(16,185,129,0.40); }
+  .btn-simular:active { transform: scale(0.99); }
+
+  /* RESULTS */
+  .results-panel { display: none; }
+  .results-panel.visible { display: block; }
+
+  .resultado-grid {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .regime-card {
+    border-radius: 10px;
+    border: 2px solid var(--slate-mid);
+    padding: 1rem 1.1rem;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: default;
+  }
+  .regime-card.melhor {
+    border-color: var(--emerald);
+    box-shadow: 0 0 0 4px rgba(16,185,129,0.10);
+    background: linear-gradient(135deg, #f0fdf8 0%, var(--white) 100%);
+  }
+  .regime-card.medio { border-color: var(--amber); }
+  .regime-card.pior { border-color: var(--slate-mid); opacity: 0.85; }
+
+  .regime-badge {
+    position: absolute;
+    top: -11px; right: 12px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .badge-melhor { background: var(--emerald); color: var(--white); }
+  .badge-medio { background: var(--amber); color: var(--white); }
+  .badge-pior { background: var(--slate-mid); color: var(--text-muted); }
+
+  .regime-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.65rem;
+  }
+  .regime-nome {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .regime-aliquota {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .regime-aliquota.green { color: var(--emerald); }
+  .regime-aliquota.amber { color: var(--amber); }
+  .regime-aliquota.red { color: var(--rose); }
+
+  .regime-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 0.7rem;
+  }
+
+  .regime-breakdown {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 1rem;
+  }
+  .breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.76rem;
+  }
+  .breakdown-label { color: var(--text-muted); }
+  .breakdown-value { font-weight: 600; color: var(--text); }
+
+  .regime-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--slate-mid);
+  }
+  .total-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+  .total-valor {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .total-valor.green { color: var(--emerald); }
+  .total-valor.amber { color: var(--amber); }
+  .total-valor.red { color: var(--rose); }
+
+  /* ECONOMIAS */
+  .economia-box {
+    background: var(--emerald-light);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+  }
+  .economia-icon { font-size: 1.4rem; }
+  .economia-text { font-size: 0.78rem; color: #065F46; font-weight: 500; line-height: 1.5; }
+  .economia-text strong { font-size: 1rem; font-weight: 800; display: block; }
+
+  /* CHART */
+  .chart-wrap {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--slate-mid);
+  }
+  .chart-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.85rem;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 8px;
+  }
+  .bar-label { font-size: 0.75rem; font-weight: 600; width: 110px; flex-shrink: 0; color: var(--text-muted); }
+  .bar-track {
+    flex: 1;
+    height: 22px;
+    background: var(--slate-mid);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+  }
+  .bar-fill span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  .fill-green { background: var(--emerald); }
+  .fill-amber { background: var(--amber); }
+  .fill-navy { background: #4B6FA5; }
+
+  /* NOTAS */
+  .notas {
+    margin-top: 1.25rem;
+    padding: 0.85rem 1rem;
+    background: var(--slate);
+    border-radius: 8px;
+    border-left: 3px solid var(--amber);
+  }
+  .notas p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .notas p + p { margin-top: 4px; }
+  .notas strong { color: var(--text); }
+
+  /* PLACEHOLDER */
+  .placeholder {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+  }
+  .placeholder-icon { font-size: 2.8rem; margin-bottom: 0.75rem; opacity: 0.35; }
+  .placeholder p { font-size: 0.85rem; line-height: 1.6; max-width: 260px; margin: 0 auto; }
+
+  /* DISCLAIMER */
+  footer {
+    text-align: center;
+    padding: 1.5rem 2rem 2.5rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* TOOLTIP */
+  .tooltip-wrap { position: relative; display: inline-flex; align-items: center; margin-left: 4px; }
+  .tooltip-icon {
+    width: 15px; height: 15px;
+    background: var(--slate-mid);
+    border-radius: 50%;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: help;
+  }
+  .tooltip-box {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--navy);
+    color: var(--white);
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+    line-height: 1.4;
+    max-width: 220px;
+    white-space: normal;
+    text-align: left;
+    width: 220px;
+  }
+  .tooltip-wrap:hover .tooltip-box { display: block; }
+
+  /* ANIMAÇÃO */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeIn 0.4s ease both; }
+  .animate-delay-1 { animation-delay: 0.05s; }
+  .animate-delay-2 { animation-delay: 0.12s; }
+  .animate-delay-3 { animation-delay: 0.20s; }
+
+  /* SCROLL PARA RESULTADOS */
+  @media (max-width: 900px) {
+    .results-panel { scroll-margin-top: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="logo-text">Sim<span>Trib</span></span>
+    </a>
+    <span class="header-badge">Simulador Tributário</span>
+  </div>
+</header>
+
+<div class="hero">
+  <p class="hero-eyebrow">Planejamento Tributário Inteligente</p>
+  <h1>Encontre o <em>melhor regime</em><br>para sua empresa</h1>
+  <p>Compare Simples Nacional, Lucro Presumido e Lucro Real com base nos dados reais do seu negócio.</p>
+</div>
+
+<div class="main">
+  <!-- FORMULÁRIO -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-icon icon-blue">📋</div>
+      <div>
+        <div class="card-title">Dados da Empresa</div>
+        <div class="card-subtitle">Preencha para gerar a simulação</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+
+        <div class="field">
+          <label>Razão Social / Nome</label>
+          <input type="text" id="razao" placeholder="Ex.: Comércio Silva Ltda">
+        </div>
+
+        <div class="field">
+          <label>Atividade principal
+            <span class="tooltip-wrap">
+              <span class="tooltip-icon">?</span>
+              <span class="tooltip-box">A atividade define os anexos do Simples Nacional e impacta a alíquota efetiva.</span>
+            </span>
+          </label>
+          <select id="atividade">
+            <option value="">Selecione...</option>
+            <option value="comercio">Comércio (Revenda de mercadorias)</option>
+            <option value="industria">Indústria / Fabricação</option>
+            <option value="servicos_simples">Serviços — Anexo III (TI, Agência, Eng.)</option>
+            <option value="servicos_v">Serviços — Anexo V (Consultoria, Gestão)</option>
+            <option value="servicos_vi">Serviços — Fator R (Médico, Advogado, Contador)</option>
+          </select>
+        </div>
+
+        <p class="section-label">Faturamento e Custos</p>
+
+        <div class="form-grid form-row-2">
+          <div class="field">
+            <label>Faturamento Anual (R$)</label>
+            <div class="input-prefix">
+              <span>R$</span>
+              <input type="number" id="faturamento" placeholder="0,00" min="0" step="1000">
+            </div>
+          </div>
+          <div class="field">
+            <label>Folha de Pagamento Anual (R$)
+              <span class="tooltip-wrap">
+                <span class="tooltip-icon">?</span>
+                <span class="tooltip-box">Salários + encargos (sem 13º e FGTS) — usado para calcular o Fator R no Simples e a folha no Lucro Real.</span>
+              </span>
+            </label>
+            <div class="input-prefix">
+              <span>R$</span>
+              <input type="number" id="folha" placeholder="0,00" min="0" step="1000">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid form-row-2">
+          <div class="field">
+            <label>Custo das Mercadorias / Serviços (CMV/CSV) Anual</label>
+            <div class="input-prefix">
+              <span>R$</span>
+              <input type="number" id="cmv" placeholder="0,00" min="0" step="1000">
+            </div>
+          </div>
+          <div class="field">
+            <label>Despesas Operacionais Anuais</label>
+            <div class="input-prefix">
+              <span>R$</span>
+              <input type="number" id="despesas" placeholder="0,00" min="0" step="1000">
+            </div>
+          </div>
+        </div>
+
+        <p class="section-label">Contexto Tributário</p>
+
+        <div class="form-grid form-row-2">
+          <div class="field">
+            <label>Regime atual</label>
+            <select id="regimeAtual">
+              <option value="nenhum">Empresa nova (nenhum)</option>
+              <option value="simples">Simples Nacional</option>
+              <option value="presumido">Lucro Presumido</option>
+              <option value="real">Lucro Real</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <select id="estado">
+              <option value="SP">SP</option><option value="RJ">RJ</option>
+              <option value="MG">MG</option><option value="RS">RS</option>
+              <option value="PR">PR</option><option value="SC">SC</option>
+              <option value="BA">BA</option><option value="CE">CE</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Possui funcionários?</label>
+          <div class="toggle-group">
+            <input type="radio" name="func" id="func_sim" value="sim">
+            <label for="func_sim">✓ Sim</label>
+            <input type="radio" name="func" id="func_nao" value="nao" checked>
+            <label for="func_nao">✗ Não</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Possui créditos de PIS/COFINS?
+            <span class="tooltip-wrap">
+              <span class="tooltip-icon">?</span>
+              <span class="tooltip-box">Créditos de insumos, ativos e outras entradas permitem deduzir PIS/COFINS no Lucro Real (regime não-cumulativo).</span>
+            </span>
+          </label>
+          <div class="toggle-group">
+            <input type="radio" name="creditos" id="cred_sim" value="sim">
+            <label for="cred_sim">✓ Sim, tenho créditos</label>
+            <input type="radio" name="cred_nao" id="cred_nao" value="nao" checked>
+            <label for="cred_nao">✗ Não sei / Não</label>
+          </div>
+        </div>
+
+        <button class="btn-simular" onclick="simular()">⚡ Gerar Simulação Comparativa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div>
+    <div class="card results-panel" id="resultsPanel">
+      <div class="card-header">
+        <div class="card-header-icon icon-green">📊</div>
+        <div>
+          <div class="card-title" id="resultTitle">Resultado da Simulação</div>
+          <div class="card-subtitle" id="resultSubtitle">Comparativo anual dos três regimes</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="resultado-grid" id="resultadoGrid"></div>
+        <div id="economiaBox"></div>
+        <div class="chart-wrap" id="chartWrap"></div>
+        <div class="notas" id="notasBox"></div>
+      </div>
+    </div>
+
+    <div class="card" id="placeholderPanel">
+      <div class="placeholder">
+        <div class="placeholder-icon">🧮</div>
+        <p>Preencha os dados da empresa ao lado e clique em <strong>Gerar Simulação</strong> para ver a comparação.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ⚠️ <strong>Aviso Legal:</strong> Esta ferramenta fornece estimativas com base em parâmetros gerais e não substitui a análise de um contador ou advogado tributarista. Alíquotas, benefícios fiscais estaduais e deduções específicas podem alterar os resultados. Consulte sempre um profissional habilitado antes de optar pelo regime tributário.
+</footer>
+
+<script>
+// ───────────────────────────────────────────────────────
+// TABELAS E CONSTANTES
+// ───────────────────────────────────────────────────────
+
+// Simples Nacional — Anexo I (Comércio) — faixas 2024
+const SIMPLES_COMERCIO = [
+  { ate: 180000,   aliq: 0.0400, deducao: 0 },
+  { ate: 360000,   aliq: 0.0738, deducao: 5940 },
+  { ate: 720000,   aliq: 0.0820, deducao: 11940 },
+  { ate: 1800000,  aliq: 0.0990, deducao: 20100 },
+  { ate: 3600000,  aliq: 0.1030, deducao: 35640 },
+  { ate: 4800000,  aliq: 0.1250, deducao: 378000 },
+];
+
+// Simples Nacional — Anexo II (Indústria)
+const SIMPLES_INDUSTRIA = [
+  { ate: 180000,   aliq: 0.0450, deducao: 0 },
+  { ate: 360000,   aliq: 0.0780, deducao: 5940 },
+  { ate: 720000,   aliq: 0.1000, deducao: 13860 },
+  { ate: 1800000,  aliq: 0.1120, deducao: 22500 },
+  { ate: 3600000,  aliq: 0.1147, deducao: 37350 },
+  { ate: 4800000,  aliq: 0.1600, deducao: 378000 },
+];
+
+// Simples Nacional — Anexo III (Serviços, TI, etc.)
+const SIMPLES_SERV_III = [
+  { ate: 180000,   aliq: 0.0600, deducao: 0 },
+  { ate: 360000,   aliq: 0.1123, deducao: 9360 },
+  { ate: 720000,   aliq: 0.1350, deducao: 17640 },
+  { ate: 1800000,  aliq: 0.1600, deducao: 35640 },
+  { ate: 3600000,  aliq: 0.2100, deducao: 125640 },
+  { ate: 4800000,  aliq: 0.3300, deducao: 648000 },
+];
+
+// Simples Nacional — Anexo V (Consultoria, etc.)
+const SIMPLES_SERV_V = [
+  { ate: 180000,   aliq: 0.1550, deducao: 0 },
+  { ate: 360000,   aliq: 0.1800, deducao: 4500 },
+  { ate: 720000,   aliq: 0.1950, deducao: 9900 },
+  { ate: 1800000,  aliq: 0.2050, deducao: 17100 },
+  { ate: 3600000,  aliq: 0.2300, deducao: 62100 },
+  { ate: 4800000,  aliq: 0.3050, deducao: 540000 },
+];
+
+// Simples Fator R (Anexo V ou III dependendo da folha/receita)
+const SIMPLES_FATOR_R_III = SIMPLES_SERV_III;
+const SIMPLES_FATOR_R_V   = SIMPLES_SERV_V;
+
+// Percentuais de presunção do Lucro Presumido (IRPJ + CSLL)
+const PRESUNCAO = {
+  comercio:       { irpj: 0.08,  csll: 0.12 },
+  industria:      { irpj: 0.08,  csll: 0.12 },
+  servicos_simples: { irpj: 0.32, csll: 0.32 },
+  servicos_v:     { irpj: 0.32,  csll: 0.32 },
+  servicos_vi:    { irpj: 0.32,  csll: 0.32 },
+};
+
+// PIS/COFINS Lucro Presumido (cumulativo)
+const PC_PRESUMIDO = 0.0365; // 0.65% PIS + 3% COFINS
+
+// PIS/COFINS Lucro Real (não-cumulativo)
+const PC_REAL = 0.0925; // 1.65% PIS + 7.6% COFINS
+
+// IRPJ / CSLL alíquotas
+const IRPJ_ALIQ  = 0.15;
+const IRPJ_ADICIONAL_ALIQ = 0.10; // sobre lucro > 240k/ano
+const CSLL_ALIQ  = 0.09;
+
+// ISS estimado para serviços (2-5%)
+const ISS = { comercio: 0, industria: 0, servicos_simples: 0.03, servicos_v: 0.03, servicos_vi: 0.03 };
+
+// ───────────────────────────────────────────────────────
+// HELPERS
+// ───────────────────────────────────────────────────────
+function fmt(v) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function pct(v) { return (v * 100).toFixed(2).replace('.', ',') + '%'; }
+
+function calcSimples(fat, tabela) {
+  if (fat > 4800000) return null; // fora do limite
+  const faixa = tabela.find(f => fat <= f.ate);
+  if (!faixa) return null;
+  const aliqEfetiva = (fat * faixa.aliq - faixa.deducao) / fat;
+  return { total: fat * aliqEfetiva, aliqEfetiva };
+}
+
+// ───────────────────────────────────────────────────────
+// SIMULAÇÃO
+// ───────────────────────────────────────────────────────
+function simular() {
+  const fat  = parseFloat(document.getElementById('faturamento').value) || 0;
+  const folha = parseFloat(document.getElementById('folha').value) || 0;
+  const cmv   = parseFloat(document.getElementById('cmv').value) || 0;
+  const desp  = parseFloat(document.getElementById('despesas').value) || 0;
+  const ativ  = document.getElementById('atividade').value;
+  const temCreditos = document.querySelector('input[name="creditos"]:checked').value === 'sim';
+
+  if (!fat || !ativ) {
+    alert('Preencha ao menos o faturamento anual e a atividade principal.');
+    return;
+  }
+
+  // ── 1. SIMPLES NACIONAL ──
+  let tabelaSimples = SIMPLES_COMERCIO;
+  let fatorR = false;
+
+  if (ativ === 'industria') tabelaSimples = SIMPLES_INDUSTRIA;
+  else if (ativ === 'servicos_simples') tabelaSimples = SIMPLES_SERV_III;
+  else if (ativ === 'servicos_v') tabelaSimples = SIMPLES_SERV_V;
+  else if (ativ === 'servicos_vi') {
+    // Fator R: folha/receita >= 28% → Anexo III; senão Anexo V
+    fatorR = true;
+    const ratioR = fat > 0 ? folha / fat : 0;
+    tabelaSimples = ratioR >= 0.28 ? SIMPLES_FATOR_R_III : SIMPLES_FATOR_R_V;
+  }
+
+  const resSimples = calcSimples(fat, tabelaSimples);
+  const simplesValor = resSimples ? resSimples.total : null;
+  const simplesAliq  = resSimples ? resSimples.aliqEfetiva : null;
+
+  // ── 2. LUCRO PRESUMIDO ──
+  const pres = PRESUNCAO[ativ] || PRESUNCAO['servicos_v'];
+  const baseIRPJ_P = fat * pres.irpj;
+  const baseCSLL_P = fat * pres.csll;
+  const irpj_p = baseIRPJ_P * IRPJ_ALIQ + Math.max(0, baseIRPJ_P - 240000) * IRPJ_ADICIONAL_ALIQ;
+  const csll_p = baseCSLL_P * CSLL_ALIQ;
+  const pisCofins_p = fat * PC_PRESUMIDO;
+  const iss_p = fat * (ISS[ativ] || 0);
+  const presumidoValor = irpj_p + csll_p + pisCofins_p + iss_p;
+  const presumidoAliq  = presumidoValor / fat;
+
+  // ── 3. LUCRO REAL ──
+  const lucro = Math.max(0, fat - cmv - desp - folha);
+  const irpj_r = lucro * IRPJ_ALIQ + Math.max(0, lucro - 240000) * IRPJ_ADICIONAL_ALIQ;
+  const csll_r = lucro * CSLL_ALIQ;
+  // PIS/COFINS não-cumulativo: paga sobre fat, mas credita aprox. 9.25% de cmv (se tiver créditos)
+  const creditoPisCofins = temCreditos ? cmv * PC_REAL : 0;
+  const pisCofins_r = Math.max(0, fat * PC_REAL - creditoPisCofins);
+  const iss_r = fat * (ISS[ativ] || 0);
+  const realValor = irpj_r + csll_r + pisCofins_r + iss_r;
+  const realAliq  = realValor / fat;
+
+  // ── ORDENAR ──
+  const regimes = [
+    { nome: 'Simples Nacional', valor: simplesValor, aliq: simplesAliq, cor: 'green',
+      breakdown: { 'DAS unificado': simplesValor },
+      desc: 'Recolhimento unificado via DAS. Inclui IRPJ, CSLL, PIS, COFINS, CSLL e contribuições.',
+      disponivel: fat <= 4800000,
+      extras: fatorR ? `Fator R aplicado (folha/receita: ${pct(folha/fat)})` : null
+    },
+    { nome: 'Lucro Presumido', valor: presumidoValor, aliq: presumidoAliq, cor: 'amber',
+      breakdown: { 'IRPJ + Adic.': irpj_p, 'CSLL': csll_p, 'PIS + COFINS': pisCofins_p, 'ISS/IPI': iss_p },
+      desc: 'Tributação simplificada com base presumida. PIS/COFINS cumulativo. Indicado para margens acima da presunção.',
+      disponivel: fat <= 78000000,
+      extras: null
+    },
+    { nome: 'Lucro Real', valor: realValor, aliq: realAliq, cor: 'red',
+      breakdown: { 'IRPJ + Adic.': irpj_r, 'CSLL': csll_r, 'PIS + COFINS (líq.)': pisCofins_r, 'ISS/IPI': iss_r },
+      desc: 'Tributação sobre o lucro contábil. Exige escrituração completa. Vantajoso com margens baixas ou créditos de PIS/COFINS.',
+      disponivel: true,
+      extras: temCreditos ? `Crédito de PIS/COFINS descontado: ${fmt(creditoPisCofins)}` : 'Sem créditos de PIS/COFINS considerados'
+    },
+  ].filter(r => r.disponivel && r.valor !== null)
+   .sort((a, b) => a.valor - b.valor);
+
+  const melhor = regimes[0];
+  const economiaMelhor = regimes.length > 1 ? regimes[regimes.length - 1].valor - melhor.valor : 0;
+
+  // ── RENDER ──
+  const grid = document.getElementById('resultadoGrid');
+  grid.innerHTML = '';
+
+  const cores = ['green', 'amber', 'red'];
+  const badges = ['Melhor opção ✓', 'Intermediário', 'Maior carga'];
+  const classes = ['melhor', 'medio', 'pior'];
+
+  regimes.forEach((r, i) => {
+    const delay = ['animate-delay-1','animate-delay-2','animate-delay-3'][i];
+    const aliqColor = i === 0 ? 'green' : i === 1 ? 'amber' : 'red';
+
+    const breakdownHTML = Object.entries(r.breakdown).map(([k,v]) =>
+      `<div class="breakdown-item">
+        <span class="breakdown-label">${k}</span>
+        <span class="breakdown-value">${fmt(v)}</span>
+      </div>`
+    ).join('');
+
+    grid.innerHTML += `
+      <div class="regime-card ${classes[i]} animate ${delay}">
+        <span class="regime-badge badge-${classes[i]}">${badges[i]}</span>
+        <div class="regime-header">
+          <div>
+            <div class="regime-nome">${r.nome}</div>
+            <div class="regime-desc">${r.desc}</div>
+            ${r.extras ? `<div style="font-size:0.72rem;color:#6B7280;margin-top:-6px;margin-bottom:6px;">ℹ️ ${r.extras}</div>` : ''}
+          </div>
+          <div class="regime-aliquota ${aliqColor}">${pct(r.aliq)}</div>
+        </div>
+        <div class="regime-breakdown">${breakdownHTML}</div>
+        <div class="regime-total">
+          <span class="total-label">Total de impostos/ano</span>
+          <span class="total-valor ${aliqColor}">${fmt(r.valor)}</span>
+        </div>
+      </div>`;
+  });
+
+  // ECONOMIA
+  const ecoBox = document.getElementById('economiaBox');
+  if (economiaMelhor > 0) {
+    ecoBox.innerHTML = `
+      <div class="economia-box animate animate-delay-3">
+        <div class="economia-icon">💰</div>
+        <div class="economia-text">
+          <strong>Economia potencial de ${fmt(economiaMelhor)}/ano</strong>
+          Migrando para o <strong>${melhor.nome}</strong> em relação à opção mais cara.
+        </div>
+      </div>`;
+  } else { ecoBox.innerHTML = ''; }
+
+  // GRÁFICO DE BARRAS
+  const maxVal = Math.max(...regimes.map(r => r.valor));
+  const fillCores = ['fill-green','fill-amber','fill-navy'];
+  let barsHTML = `<div class="chart-title">Carga tributária comparada (R$)</div>`;
+  regimes.forEach((r, i) => {
+    const w = Math.round((r.valor / maxVal) * 100);
+    barsHTML += `
+      <div class="bar-row">
+        <div class="bar-label">${r.nome}</div>
+        <div class="bar-track">
+          <div class="bar-fill ${fillCores[i]}" style="width:0%" data-target="${w}">
+            <span>${fmt(r.valor)}</span>
+          </div>
+        </div>
+      </div>`;
+  });
+  document.getElementById('chartWrap').innerHTML = barsHTML;
+
+  // NOTAS
+  const notasBox = document.getElementById('notasBox');
+  notasBox.innerHTML = `<p>📌 <strong>Faturamento anual simulado:</strong> ${fmt(fat)} | 
+    <strong>Lucro estimado:</strong> ${fmt(lucro)} | 
+    <strong>Margem:</strong> ${pct(fat > 0 ? lucro/fat : 0)}</p>
+    <p>⚠️ Cálculos baseados em alíquotas federais gerais (2024). ICMS, ISS municipal e benefícios regionais não estão incluídos. Consulte um contador.</p>`;
+
+  // Título resultado
+  document.getElementById('resultTitle').textContent = 'Resultado para ' + (document.getElementById('razao').value || 'sua empresa');
+  document.getElementById('resultSubtitle').textContent = `Comparativo anual · Faturamento ${fmt(fat)}`;
+
+  // Mostrar painel
+  document.getElementById('placeholderPanel').style.display = 'none';
+  const panel = document.getElementById('resultsPanel');
+  panel.classList.add('visible');
+
+  // Animar barras depois do render
+  setTimeout(() => {
+    panel.querySelectorAll('.bar-fill').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  }, 120);
+
+  // Scroll em mobile
+  if (window.innerWidth < 900) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+</script>
+</body>
+</html>

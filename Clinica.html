@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sistema de Produção — Cliza</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --plum-900:#3D1636;
+    --plum-800:#4A1D45;
+    --plum-700:#5C2350;
+    --plum-500:#8A3D79;
+    --plum-300:#C495B8;
+    --rose-100:#F6ECF2;
+    --bg:#FAFAF8;
+    --card:#FFFFFF;
+    --teal-700:#0E5548;
+    --teal-600:#146B5D;
+    --teal-100:#E3F2EE;
+    --gold-600:#9C6E22;
+    --gold-500:#B9862E;
+    --gold-100:#F7EEDD;
+    --ink-900:#241522;
+    --ink-600:#5B4A57;
+    --ink-400:#8B7A87;
+    --line:#E7DDE4;
+    --danger:#B23A3A;
+    --danger-100:#F8E9E9;
+    --radius:14px;
+    --shadow:0 2px 10px rgba(61,22,54,0.07), 0 8px 24px rgba(61,22,54,0.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink-900);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--plum-300);color:var(--plum-900);}
+
+  /* ---------- TELA DE LOGIN ---------- */
+  #tela-login{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(138,61,121,0.16), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(20,107,93,0.14), transparent 45%),
+      var(--plum-900);
+    padding:24px;
+  }
+  .cartao-login{
+    background:var(--card);
+    border-radius:20px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    width:100%;
+    max-width:400px;
+    padding:40px 36px 32px;
+  }
+  .marca-login{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    margin-bottom:28px;
+  }
+  .marca-login .selo{
+    width:44px;height:44px;border-radius:12px;
+    background:linear-gradient(135deg,var(--plum-700),var(--plum-500));
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-family:'Fraunces',serif;font-weight:700;font-size:20px;
+    margin-bottom:14px;
+  }
+  .marca-login h1{font-size:26px;margin:0 0 2px;color:var(--plum-900);font-weight:600;}
+  .marca-login p{margin:0;color:var(--ink-400);font-size:14px;}
+  .campo{margin-bottom:16px;}
+  .campo label{
+    display:block;font-size:12.5px;font-weight:600;letter-spacing:.02em;
+    color:var(--ink-600);margin-bottom:6px;text-transform:uppercase;
+  }
+  .campo input, .campo select, .campo textarea{
+    width:100%;padding:11px 13px;border-radius:9px;border:1.5px solid var(--line);
+    font-size:15px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink-900);
+    transition:border-color .15s;
+  }
+  .campo input:focus, .campo select:focus, .campo textarea:focus{
+    outline:none;border-color:var(--plum-500);
+  }
+  .botao{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--plum-800);color:#fff;border:none;border-radius:9px;
+    padding:12px 20px;font-size:14.5px;font-weight:600;cursor:pointer;
+    font-family:'Inter',sans-serif;transition:background .15s, transform .05s;
+  }
+  .botao:hover{background:var(--plum-700);}
+  .botao:active{transform:scale(0.98);}
+  .botao.largo{width:100%;}
+  .botao.secundario{background:var(--rose-100);color:var(--plum-800);}
+  .botao.secundario:hover{background:#efdbe8;}
+  .botao.sutil{background:transparent;color:var(--ink-600);border:1.5px solid var(--line);}
+  .botao.sutil:hover{border-color:var(--plum-500);color:var(--plum-800);}
+  .botao.perigo{background:var(--danger-100);color:var(--danger);}
+  .botao.perigo:hover{background:#f2d5d5;}
+  .botao.pequeno{padding:7px 12px;font-size:13px;border-radius:7px;}
+  #erro-login{color:var(--danger);font-size:13.5px;margin-top:10px;min-height:18px;}
+  .contas-demo{
+    margin-top:22px;padding-top:18px;border-top:1px dashed var(--line);
+    font-size:12.5px;color:var(--ink-400);line-height:1.7;
+  }
+  .contas-demo b{color:var(--ink-600);}
+
+  /* ---------- APP ---------- */
+  #app{display:none;min-height:100vh;flex-direction:column;}
+  #faixa-demo{
+    background:var(--gold-100);color:var(--gold-600);text-align:center;
+    font-size:13px;padding:8px;font-weight:600;letter-spacing:.02em;
+  }
+  header.topo{
+    background:var(--plum-900);color:#fff;
+    padding:18px 32px 0;
+    display:flex;justify-content:space-between;align-items:flex-end;
+    flex-wrap:wrap;gap:16px;
+  }
+  .marca-topo{display:flex;align-items:center;gap:12px;padding-bottom:14px;}
+  .marca-topo .selo{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,var(--plum-500),var(--teal-600));
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-family:'Fraunces',serif;font-weight:700;font-size:16px;
+  }
+  .marca-topo div h2{margin:0;font-size:17px;font-weight:600;}
+  .marca-topo div span{font-size:11.5px;color:var(--plum-300);}
+
+  nav.abas{display:flex;gap:2px;padding-bottom:0;}
+  .aba{
+    background:rgba(255,255,255,0.06);
+    color:var(--plum-300);
+    border:none;cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:600;
+    padding:12px 26px 12px;
+    clip-path:polygon(10% 0, 100% 0, 92% 100%, 0% 100%);
+    margin-right:-14px;
+    position:relative;
+  }
+  .aba:first-child{clip-path:polygon(0 0, 100% 0, 92% 100%, 0% 100%);margin-left:0;}
+  .aba.ativa{background:var(--bg);color:var(--plum-900);z-index:2;}
+  .aba:hover:not(.ativa){color:#fff;}
+
+  .info-usuario{display:flex;align-items:center;gap:14px;padding-bottom:14px;}
+  .info-usuario span{font-size:13px;color:var(--plum-300);}
+  .info-usuario span b{color:#fff;}
+
+  main{flex:1;padding:32px;max-width:1320px;width:100%;margin:0 auto;}
+  .painel{display:none;}
+  .painel.ativo{display:block;animation:surgir .25s ease;}
+  @keyframes surgir{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  .cabecalho-painel{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
+  .cabecalho-painel h2{margin:0;font-size:24px;color:var(--plum-900);font-weight:600;}
+  .cabecalho-painel p{margin:4px 0 0;color:var(--ink-400);font-size:13.5px;}
+
+  .filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .filtros .campo{margin-bottom:0;min-width:140px;}
+
+  .cartao{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:24px;margin-bottom:20px;
+  }
+  .cartao h3{margin:0 0 18px;font-size:16px;color:var(--plum-900);font-weight:600;}
+
+  .grade-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{
+    text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);
+    color:var(--ink-600);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;
+    white-space:nowrap;
+  }
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink-900);white-space:nowrap;}
+  tbody tr:hover{background:var(--rose-100);}
+  .tabela-scroll{overflow-x:auto;}
+  .celula-acoes{display:flex;gap:6px;}
+  .tag{
+    display:inline-block;padding:3px 9px;border-radius:100px;font-size:11.5px;font-weight:600;
+    background:var(--teal-100);color:var(--teal-700);
+  }
+  .vazio{text-align:center;color:var(--ink-400);padding:40px 20px;font-size:14px;}
+
+  /* KPIs */
+  .grade-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:22px;}
+  .kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;}
+  .kpi .rotulo{font-size:12px;color:var(--ink-400);text-transform:uppercase;letter-spacing:.03em;font-weight:600;}
+  .kpi .valor{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:var(--plum-900);margin-top:8px;}
+  .kpi .valor.teal{color:var(--teal-700);}
+  .kpi .valor.gold{color:var(--gold-600);}
+
+  .grade-2{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;}
+  .grade-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:900px){.grade-2,.grade-3{grid-template-columns:1fr;}}
+
+  .barra-meta{background:var(--line);border-radius:100px;height:8px;overflow:hidden;margin-top:6px;}
+  .barra-meta > div{height:100%;border-radius:100px;background:var(--teal-600);}
+
+  .squad-titulo{
+    display:flex;align-items:center;gap:10px;margin:30px 0 14px;
+  }
+  .squad-titulo .linha{flex:1;height:1px;background:var(--line);}
+  .squad-titulo span{
+    font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--plum-500);white-space:nowrap;
+  }
+
+  /* Modal */
+  .sobreposicao{
+    display:none;position:fixed;inset:0;background:rgba(36,21,34,0.5);
+    align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .sobreposicao.aberta{display:flex;}
+  .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;padding:28px 28px 24px;}
+  .modal h3{margin:0 0 18px;color:var(--plum-900);}
+  .modal-acoes{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+
+  .rodape-nota{display:flex;justify-content:flex-end;margin-top:10px;}
+  textarea{resize:vertical;min-height:70px;}
+
+  @media (max-width:720px){
+    main{padding:18px;}
+    header.topo{padding:16px 16px 0;}
+    .aba{padding:10px 16px;font-size:13px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== TELA DE LOGIN ===================== -->
+<div id="tela-login">
+  <div class="cartao-login">
+    <div class="marca-login">
+      <div class="selo">C</div>
+      <h1>Sistema de Produção</h1>
+      <p>Acesso restrito à equipe da clínica</p>
+    </div>
+    <form id="form-login">
+      <div class="campo">
+        <label for="usuario">Usuário</label>
+        <input type="text" id="usuario" autocomplete="username" required />
+      </div>
+      <div class="campo">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="botao largo">Entrar</button>
+      <div id="erro-login"></div>
+    </form>
+    <div class="contas-demo" id="contas-demo"></div>
+  </div>
+</div>
+
+<!-- ===================== APLICAÇÃO ===================== -->
+<div id="app">
+  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — conecte o Google Sheets em CONFIG.API_URL para usar dados reais (veja o GUIA_DE_CONFIGURACAO.md)</div>
+  <header class="topo">
+    <div class="marca-topo">
+      <div class="selo">C</div>
+      <div>
+        <h2>Produção &amp; Indicadores</h2>
+        <span>Clínica Cliza</span>
+      </div>
+    </div>
+    <nav class="abas" id="nav-abas"></nav>
+    <div class="info-usuario">
+      <span>Logado como <b id="nome-usuario-topo"></b></span>
+      <button class="botao sutil pequeno" id="botao-sair">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ---------- LANÇAMENTO ---------- -->
+    <section class="painel" id="painel-lancamento">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Lançamento de atendimento</h2>
+          <p>Registre um atendimento realizado. Os campos com seta são padronizados por lista.</p>
+        </div>
+      </div>
+      <div class="cartao">
+        <h3>Novo registro</h3>
+        <form id="form-lancamento">
+          <div class="grade-form" id="grade-lancamento"></div>
+          <div style="margin-top:20px;display:flex;gap:10px;">
+            <button type="submit" class="botao">Salvar atendimento</button>
+            <span id="confirmacao-lancamento" style="align-self:center;color:var(--teal-700);font-size:13.5px;font-weight:600;"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <h3 style="margin:0;">Meus últimos lançamentos</h3>
+        </div>
+        <div class="tabela-scroll">
+          <table id="tabela-meus-lancamentos"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- GERENCIAL ---------- -->
+    <section class="painel" id="painel-gerencial">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Painel gerencial</h2>
+          <p>Consulte, corrija ou complemente os lançamentos de qualquer profissional.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo">
+            <label>Mês</label>
+            <select id="filtro-mes-gerencial"></select>
+          </div>
+          <div class="campo">
+            <label>Ano</label>
+            <select id="filtro-ano-gerencial"></select>
+          </div>
+          <div class="campo">
+            <label>Profissional</label>
+            <select id="filtro-prof-gerencial"><option value="">Todos</option></select>
+          </div>
+          <button class="botao secundario" id="botao-novo-registro-gerencial">+ Novo registro</button>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h3>Lançamentos do período</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-gerencial"></table>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h3>Metas do período (por profissional)</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-metas"></table>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h3>Sugestões de melhoria para o próximo período</h3>
+        <textarea id="texto-nota" style="width:100%;" placeholder="Anote aqui os pontos discutidos na reunião mensal..."></textarea>
+        <div class="rodape-nota"><button class="botao secundario pequeno" id="botao-salvar-nota">Salvar anotação</button></div>
+      </div>
+    </section>
+
+    <!-- ---------- DASHBOARD ---------- -->
+    <section class="painel" id="painel-dashboard">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Dashboard de indicadores</h2>
+          <p>Visão consolidada do período selecionado.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo">
+            <label>Mês</label>
+            <select id="filtro-mes-dashboard"></select>
+          </div>
+          <div class="campo">
+            <label>Ano</label>
+            <select id="filtro-ano-dashboard"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grade-kpi">
+        <div class="kpi"><div class="rotulo">Atendimentos no período</div><div class="valor" id="kpi-atendimentos">—</div></div>
+        <div class="kpi"><div class="rotulo">Valor produzido</div><div class="valor teal" id="kpi-valor">—</div></div>
+        <div class="kpi"><div class="rotulo">Ticket médio</div><div class="valor" id="kpi-ticket">—</div></div>
+        <div class="kpi"><div class="rotulo">% da meta de valor atingida</div><div class="valor gold" id="kpi-meta">—</div></div>
+      </div>
+
+      <div class="squad-titulo"><span>Squad Atendimento</span><div class="linha"></div></div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Atendimentos por profissional</h3><canvas id="grafico-profissional" height="220"></canvas></div>
+        <div class="cartao"><h3>Distribuição por convênio</h3><canvas id="grafico-convenio" height="220"></canvas></div>
+      </div>
+
+      <div class="squad-titulo"><span>Squad Financeiro</span><div class="linha"></div></div>
+      <div class="cartao">
+        <h3>Meta × realizado por profissional</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-comparativo"></table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== MODAL DE EDIÇÃO ===================== -->
+<div class="sobreposicao" id="sobreposicao-modal">
+  <div class="modal">
+    <h3 id="titulo-modal">Editar registro</h3>
+    <form id="form-modal">
+      <div class="grade-form" id="grade-modal"></div>
+      <div class="modal-acoes">
+        <button type="button" class="botao perigo" id="botao-excluir-modal" style="margin-right:auto;">Excluir</button>
+        <button type="button" class="botao sutil" id="botao-cancelar-modal">Cancelar</button>
+        <button type="submit" class="botao">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO
+   Depois de publicar o Apps Script (ver GUIA_DE_CONFIGURACAO.md), cole
+   a URL do Web App aqui. Enquanto estiver vazio, o sistema roda em
+   MODO DEMONSTRAÇÃO com dados de exemplo guardados só nesta sessão.
+===================================================================== */
+const CONFIG = {
+  API_URL: "" // <-- cole aqui a URL do seu Web App do Apps Script
+};
+
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MODO_DEMO = !CONFIG.API_URL;
+
+/* ---------------------------------------------------------------------
+   ESTADO
+--------------------------------------------------------------------- */
+const estado = {
+  usuario:null, papel:null, nomeProfissional:null,
+  listas:{}, abaAtiva:'lancamento',
+  editandoId:null
+};
+
+/* ---------------------------------------------------------------------
+   DADOS DE DEMONSTRAÇÃO (usados só quando CONFIG.API_URL estiver vazio)
+--------------------------------------------------------------------- */
+const demo = {
+  usuarios:[
+    {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação'},
+    {usuario:'angelina', senha:'123', papel:'profissional', nome_profissional:'ANGELINA'},
+    {usuario:'lisiene', senha:'123', papel:'profissional', nome_profissional:'LISIENE'},
+    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA'}
+  ],
+  listas:{
+    profissionais:['ANGELINA','LISIENE','RENATA','IZADORA ZARA','VALERIA','VICTOR MOREIRA','DR MARCELO USG','DRA RICARLA','DRA AMANDA'],
+    convenios:['UNIMED','CAMED','CASSI','CAFAZ','SÃO CAMILO','SINDICATO','PARTICULAR'],
+    procedimentos:['SESSÃO','CONSULTA','RETORNO','EXAME','USG','POLIPECTOMIA','MUCOSECTOMIA','PREPARO'],
+    atendentes:['KAILLANY','ADRIELE','SOCORRO','ROBERTA','GLEIDY MARA','KEROLAINE'],
+    turnos:['MANHÃ','TARDE'],
+    formas_pagamento:['CONVÊNIO','PIX','CARTÃO','ESPÉCIE'],
+    biopsias_frascos:['','1 FRASCO','2 FRASCOS','3 FRASCOS','4 FRASCOS','5 FRASCOS','6 FRASCOS','7 FRASCOS','8 FRASCOS']
+  },
+  producao:[
+    {id:'d1',prof:'ANGELINA',data:'2026-05-04',turno:'MANHÃ',paciente:'YSE DE QUEIROZ PONTE',protocolo:'206774113',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d2',prof:'ANGELINA',data:'2026-05-05',turno:'MANHÃ',paciente:'LARA PAULA PESSOA ARAUJO',protocolo:'206861817',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d3',prof:'LISIENE',data:'2026-05-04',turno:'TARDE',paciente:'KHYO RAMON ANJOS CUNHA',protocolo:'206632649',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d4',prof:'LISIENE',data:'2026-05-06',turno:'TARDE',paciente:'MIRYAN LIRA VIANA',protocolo:'',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'',valor:120,forma_pagamento:'ESPÉCIE',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d5',prof:'RENATA',data:'2026-05-07',turno:'MANHÃ',paciente:'MARIA CLARA SILVA ARAUJO',protocolo:'207794248',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'ADRIELE',mes:'Maio',ano:2026},
+    {id:'d6',prof:'DR MARCELO USG',data:'2026-05-08',turno:'TARDE',paciente:'FRANCISCO M G NOBRE JR',protocolo:'207751609',procedimento:'USG',exames:'ABDOME TOTAL',biopsias:'',convenio:'UNIMED',valor:120,forma_pagamento:'CONVÊNIO',atendente:'SOCORRO',mes:'Maio',ano:2026}
+  ],
+  metas:[
+    {prof:'ANGELINA', mes:'Maio', ano:2026, turnos_disponibilizados:6, meta_valor:1764, meta_qtd:55},
+    {prof:'LISIENE', mes:'Maio', ano:2026, turnos_disponibilizados:25, meta_valor:7350, meta_qtd:170},
+    {prof:'RENATA', mes:'Maio', ano:2026, turnos_disponibilizados:36, meta_valor:20412, meta_qtd:176},
+    {prof:'DR MARCELO USG', mes:'Maio', ano:2026, turnos_disponibilizados:16, meta_valor:15000, meta_qtd:158}
+  ],
+  notas:{}
+};
+
+/* ---------------------------------------------------------------------
+   CAMADA DE API — chama o Apps Script de verdade, ou o mock de demo
+--------------------------------------------------------------------- */
+async function api(acao, dados={}) {
+  if (MODO_DEMO) return mockApi(acao, dados);
+  const resposta = await fetch(CONFIG.API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS no Apps Script
+    body: JSON.stringify({action:acao, data:dados})
+  });
+  return resposta.json();
+}
+
+function mockApi(acao, dados) {
+  switch(acao){
+    case 'login': {
+      const achado = demo.usuarios.find(u => u.usuario===dados.usuario && u.senha===dados.senha);
+      if(!achado) return {ok:false, erro:'Usuário ou senha inválidos.'};
+      return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional};
+    }
+    case 'listarListas': return {ok:true, listas:demo.listas};
+    case 'listarProducao': {
+      let registros = demo.producao.slice();
+      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+      if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
+      if(dados.prof) registros = registros.filter(r=>r.prof.toUpperCase()===dados.prof.toUpperCase());
+      return {ok:true, registros};
+    }
+    case 'adicionarProducao': {
+      const d = new Date(dados.data+'T00:00:00');
+      const novo = Object.assign({id:'d'+Math.random().toString(36).slice(2,9)}, dados, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
+      demo.producao.unshift(novo);
+      return {ok:true};
+    }
+    case 'atualizarProducao': {
+      const idx = demo.producao.findIndex(r=>r.id===dados.id);
+      if(idx===-1) return {ok:false, erro:'Não encontrado'};
+      const d = new Date(dados.registro.data+'T00:00:00');
+      demo.producao[idx] = Object.assign({id:dados.id}, dados.registro, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
+      return {ok:true};
+    }
+    case 'excluirProducao': {
+      demo.producao = demo.producao.filter(r=>r.id!==dados.id);
+      return {ok:true};
+    }
+    case 'listarMetas': {
+      let metas = demo.metas.slice();
+      if(dados.mes) metas = metas.filter(m=>m.mes===dados.mes);
+      if(dados.ano) metas = metas.filter(m=>String(m.ano)===String(dados.ano));
+      return {ok:true, metas};
+    }
+    case 'salvarMeta': {
+      const idx = demo.metas.findIndex(m=>m.prof===dados.prof && m.mes===dados.mes && String(m.ano)===String(dados.ano));
+      if(idx>-1) demo.metas[idx] = dados; else demo.metas.push(dados);
+      return {ok:true};
+    }
+    case 'obterNota': {
+      const chave = dados.mes+'-'+dados.ano;
+      return {ok:true, texto: demo.notas[chave] || ''};
+    }
+    case 'salvarNota': {
+      demo.notas[dados.mes+'-'+dados.ano] = dados.texto;
+      return {ok:true};
+    }
+    case 'dashboard': {
+      let registros = demo.producao.slice();
+      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+      if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
+      const porProfissional = {}, porConvenio = {};
+      let totalValor = 0;
+      registros.forEach(r=>{
+        const prof = r.prof || 'Não informado';
+        const conv = r.convenio || 'PARTICULAR';
+        const valor = Number(r.valor)||0;
+        if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
+        porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
+        if(!porConvenio[conv]) porConvenio[conv]=0;
+        porConvenio[conv]+=valor;
+        totalValor+=valor;
+      });
+      let metas = demo.metas.filter(m=>m.mes===dados.mes && String(m.ano)===String(dados.ano));
+      const metaPorProf = {}; metas.forEach(m=>metaPorProf[m.prof]=m);
+      const comparativo = Object.keys(porProfissional).map(prof=>{
+        const m = metaPorProf[prof]||{};
+        return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
+                metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
+      });
+      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, comparativo};
+    }
+    default: return {ok:false, erro:'Ação desconhecida em modo demo: '+acao};
+  }
+}
+
+/* ---------------------------------------------------------------------
+   FORMATAÇÃO
+--------------------------------------------------------------------- */
+const formatarMoeda = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+/* ---------------------------------------------------------------------
+   LOGIN
+--------------------------------------------------------------------- */
+if(MODO_DEMO){
+  document.getElementById('contas-demo').innerHTML =
+    '<b>Contas de demonstração</b><br>Gerente → usuário <b>gerente</b> / senha <b>gerente123</b><br>Profissional → usuário <b>angelina</b> / senha <b>123</b>';
+}
+
+document.getElementById('form-login').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const usuario = document.getElementById('usuario').value.trim();
+  const senha = document.getElementById('senha').value.trim();
+  const erroEl = document.getElementById('erro-login');
+  erroEl.textContent = 'Entrando...';
+  try{
+    const resp = await api('login', {usuario, senha});
+    if(!resp.ok){ erroEl.textContent = resp.erro || 'Não foi possível entrar.'; return; }
+    estado.usuario = resp.usuario;
+    estado.papel = resp.papel;
+    estado.nomeProfissional = resp.nomeProfissional;
+    await iniciarApp();
+  }catch(e){
+    erroEl.textContent = 'Erro de conexão com o servidor.';
+  }
+});
+
+document.getElementById('botao-sair').addEventListener('click', ()=>{
+  location.reload();
+});
+
+/* ---------------------------------------------------------------------
+   INICIALIZAÇÃO DO APP (pós-login)
+--------------------------------------------------------------------- */
+async function iniciarApp(){
+  document.getElementById('tela-login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('faixa-demo').style.display = MODO_DEMO ? 'block' : 'none';
+  document.getElementById('nome-usuario-topo').textContent = estado.nomeProfissional || estado.usuario;
+
+  const listasResp = await api('listarListas');
+  estado.listas = listasResp.listas || {};
+
+  montarNavegacao();
+  preencherSelectsPeriodo();
+  montarFormularioLancamento();
+  await atualizarPainelAtivo();
+}
+
+/* ---------------------------------------------------------------------
+   NAVEGAÇÃO ENTRE ABAS
+--------------------------------------------------------------------- */
+function montarNavegacao(){
+  const nav = document.getElementById('nav-abas');
+  const abasDisponiveis = [{id:'lancamento', rotulo:'Lançamento'}];
+  if(estado.papel === 'gerente'){
+    abasDisponiveis.push({id:'gerencial', rotulo:'Gerencial'});
+    abasDisponiveis.push({id:'dashboard', rotulo:'Dashboard'});
+  }
+  nav.innerHTML = '';
+  abasDisponiveis.forEach((a,i)=>{
+    const botao = document.createElement('button');
+    botao.className = 'aba' + (i===0 ? ' ativa':'');
+    botao.textContent = a.rotulo;
+    botao.dataset.aba = a.id;
+    botao.addEventListener('click', ()=>trocarAba(a.id));
+    nav.appendChild(botao);
+  });
+  estado.abaAtiva = abasDisponiveis[0].id;
+  document.getElementById('painel-'+estado.abaAtiva).classList.add('ativo');
+}
+
+async function trocarAba(idAba){
+  estado.abaAtiva = idAba;
+  document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b.dataset.aba===idAba));
+  document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativo'));
+  document.getElementById('painel-'+idAba).classList.add('ativo');
+  await atualizarPainelAtivo();
+}
+
+async function atualizarPainelAtivo(){
+  if(estado.abaAtiva==='lancamento') await atualizarMeusLancamentos();
+  if(estado.abaAtiva==='gerencial') await atualizarPainelGerencial();
+  if(estado.abaAtiva==='dashboard') await atualizarDashboard();
+}
+
+/* ---------------------------------------------------------------------
+   SELECTS DE PERÍODO (mês / ano) reaproveitados em gerencial e dashboard
+--------------------------------------------------------------------- */
+function preencherSelectsPeriodo(){
+  const hoje = new Date();
+  const mesAtual = MESES[hoje.getMonth()];
+  const anoAtual = hoje.getFullYear();
+  const anos = [anoAtual-1, anoAtual, anoAtual+1];
+
+  [['filtro-mes-gerencial'],['filtro-mes-dashboard']].forEach(([id])=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = MESES.map(m=>`<option value="${m}" ${m===mesAtual?'selected':''}>${m}</option>`).join('');
+    sel.addEventListener('change', atualizarPainelAtivo);
+  });
+  [['filtro-ano-gerencial'],['filtro-ano-dashboard']].forEach(([id])=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = anos.map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('');
+    sel.addEventListener('change', atualizarPainelAtivo);
+  });
+
+  const filtroProf = document.getElementById('filtro-prof-gerencial');
+  filtroProf.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
+  filtroProf.addEventListener('change', atualizarPainelAtivo);
+
+  document.getElementById('botao-novo-registro-gerencial').addEventListener('click', ()=>abrirModal(null));
+  document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
+}
+
+/* ---------------------------------------------------------------------
+   CAMPOS DO FORMULÁRIO (compartilhados entre Lançamento e Modal)
+--------------------------------------------------------------------- */
+function definicaoCampos(){
+  const L = estado.listas;
+  return [
+    {chave:'prof', rotulo:'Profissional', tipo:'select', opcoes:L.profissionais, obrigatorio:true,
+      travado: estado.papel==='profissional'},
+    {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
+    {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos},
+    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
+    {chave:'protocolo', rotulo:'Protocolo de realização', tipo:'text'},
+    {chave:'procedimento', rotulo:'Procedimento', tipo:'select', opcoes:L.procedimentos},
+    {chave:'exames', rotulo:'Exame', tipo:'text'},
+    {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
+    {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios},
+    {chave:'valor', rotulo:'Valor (R$)', tipo:'number', obrigatorio:true},
+    {chave:'forma_pagamento', rotulo:'Forma de pagamento', tipo:'select', opcoes:L.formas_pagamento},
+    {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes}
+  ];
+}
+
+function renderizarCampo(campo, valorAtual=''){
+  const id = 'campo_'+campo.chave;
+  let controle;
+  if(campo.tipo==='select'){
+    const opcoes = (campo.opcoes||[]).map(o=>`<option value="${o}" ${o===valorAtual?'selected':''}>${o||'—'}</option>`).join('');
+    controle = `<select id="${id}" ${campo.travado?'disabled':''}><option value="">Selecionar...</option>${opcoes}</select>`;
+  } else {
+    controle = `<input type="${campo.tipo}" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" ${campo.travado?'disabled':''} ${campo.tipo==='number'?'step="0.01"':''}/>`;
+  }
+  return `<div class="campo"><label>${campo.rotulo}${campo.obrigatorio?' *':''}</label>${controle}</div>`;
+}
+
+function lerValoresCampos(prefixoContainer){
+  const registro = {};
+  definicaoCampos().forEach(c=>{
+    const el = document.getElementById('campo_'+c.chave);
+    registro[c.chave] = el ? el.value : '';
+  });
+  return registro;
+}
+
+/* ---------------------------------------------------------------------
+   PAINEL: LANÇAMENTO
+--------------------------------------------------------------------- */
+function montarFormularioLancamento(){
+  const grade = document.getElementById('grade-lancamento');
+  grade.innerHTML = definicaoCampos().map(c=>renderizarCampo(c)).join('');
+  if(estado.papel==='profissional'){
+    const selProf = document.getElementById('campo_prof');
+    selProf.innerHTML = `<option value="${estado.nomeProfissional}" selected>${estado.nomeProfissional}</option>`;
+  }
+  const hoje = new Date().toISOString().slice(0,10);
+  const campoData = document.getElementById('campo_data');
+  if(campoData) campoData.value = hoje;
+}
+
+document.getElementById('form-lancamento').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const registro = lerValoresCampos();
+  const confirmacao = document.getElementById('confirmacao-lancamento');
+  const resp = await api('adicionarProducao', registro);
+  if(resp.ok){
+    confirmacao.textContent = 'Atendimento salvo com sucesso.';
+    document.getElementById('form-lancamento').reset();
+    montarFormularioLancamento();
+    await atualizarMeusLancamentos();
+    setTimeout(()=>confirmacao.textContent='', 3500);
+  } else {
+    confirmacao.style.color = 'var(--danger)';
+    confirmacao.textContent = resp.erro || 'Não foi possível salvar.';
+  }
+});
+
+async function atualizarMeusLancamentos(){
+  const filtro = estado.papel==='profissional' ? {prof: estado.nomeProfissional} : {};
+  const resp = await api('listarProducao', filtro);
+  const registros = (resp.registros||[]).slice(-15).reverse();
+  const tabela = document.getElementById('tabela-meus-lancamentos');
+  if(registros.length===0){ tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento ainda.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Data</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Valor</th></tr></thead>
+    <tbody>${registros.map(r=>`
+      <tr>
+        <td>${formatarDataExibicao(r.data)}</td>
+        <td>${r.paciente||''}</td>
+        <td>${r.procedimento||''}</td>
+        <td>${r.convenio? `<span class="tag">${r.convenio}</span>` : '—'}</td>
+        <td class="mono">${formatarMoeda(r.valor)}</td>
+      </tr>`).join('')}</tbody>`;
+}
+
+function formatarDataExibicao(iso){
+  if(!iso) return '—';
+  const [ano,mes,dia] = String(iso).slice(0,10).split('-');
+  return dia && mes ? `${dia}/${mes}` : iso;
+}
+
+/* ---------------------------------------------------------------------
+   PAINEL: GERENCIAL
+--------------------------------------------------------------------- */
+async function atualizarPainelGerencial(){
+  const mes = document.getElementById('filtro-mes-gerencial').value;
+  const ano = document.getElementById('filtro-ano-gerencial').value;
+  const prof = document.getElementById('filtro-prof-gerencial').value;
+
+  const resp = await api('listarProducao', {mes, ano, prof});
+  const registros = resp.registros||[];
+  const tabela = document.getElementById('tabela-gerencial');
+  if(registros.length===0){
+    tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
+  } else {
+    tabela.innerHTML = `
+      <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th><th></th></tr></thead>
+      <tbody>${registros.map(r=>`
+        <tr>
+          <td>${formatarDataExibicao(r.data)}</td>
+          <td>${r.prof||''}</td>
+          <td>${r.paciente||''}</td>
+          <td>${r.procedimento||''}</td>
+          <td>${r.convenio||'—'}</td>
+          <td>${r.forma_pagamento||'—'}</td>
+          <td class="mono">${formatarMoeda(r.valor)}</td>
+          <td>${r.atendente||''}</td>
+          <td class="celula-acoes"><button class="botao sutil pequeno" data-id="${r.id}">Editar</button></td>
+        </tr>`).join('')}</tbody>`;
+    tabela.querySelectorAll('button[data-id]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const registro = registros.find(r=>r.id===b.dataset.id);
+        abrirModal(registro);
+      });
+    });
+  }
+
+  await atualizarTabelaMetas(mes, ano);
+  await carregarNota(mes, ano);
+}
+
+async function atualizarTabelaMetas(mes, ano){
+  const respMetas = await api('listarMetas', {mes, ano});
+  const metas = respMetas.metas||[];
+  const profissionais = estado.listas.profissionais||[];
+  const tabela = document.getElementById('tabela-metas');
+  tabela.innerHTML = `
+    <thead><tr><th>Profissional</th><th>Turnos disponibilizados</th><th>Meta de valor (R$)</th><th></th></tr></thead>
+    <tbody>${profissionais.map(prof=>{
+      const m = metas.find(x=>x.prof===prof) || {};
+      return `<tr data-prof="${prof}">
+        <td>${prof}</td>
+        <td><input type="number" class="input-turnos" value="${m.turnos_disponibilizados||''}" style="width:90px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td><input type="number" class="input-meta" value="${m.meta_valor||''}" style="width:120px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td><button class="botao secundario pequeno botao-salvar-meta">Salvar</button></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  tabela.querySelectorAll('.botao-salvar-meta').forEach(botao=>{
+    botao.addEventListener('click', async (ev)=>{
+      const linha = ev.target.closest('tr');
+      await api('salvarMeta', {
+        prof: linha.dataset.prof, mes, ano,
+        turnos_disponibilizados: linha.querySelector('.input-turnos').value,
+        meta_valor: linha.querySelector('.input-meta').value
+      });
+      ev.target.textContent = 'Salvo ✓';
+      setTimeout(()=>ev.target.textContent='Salvar', 1800);
+    });
+  });
+}
+
+async function carregarNota(mes, ano){
+  const resp = await api('obterNota', {mes, ano});
+  document.getElementById('texto-nota').value = resp.texto || '';
+}
+async function salvarNota(){
+  const mes = document.getElementById('filtro-mes-gerencial').value;
+  const ano = document.getElementById('filtro-ano-gerencial').value;
+  const texto = document.getElementById('texto-nota').value;
+  const botao = document.getElementById('botao-salvar-nota');
+  await api('salvarNota', {mes, ano, texto});
+  botao.textContent = 'Anotação salva ✓';
+  setTimeout(()=>botao.textContent='Salvar anotação', 1800);
+}
+
+/* ---------------------------------------------------------------------
+   MODAL DE EDIÇÃO / CRIAÇÃO
+--------------------------------------------------------------------- */
+function abrirModal(registro){
+  estado.editandoId = registro ? registro.id : null;
+  document.getElementById('titulo-modal').textContent = registro ? 'Editar registro' : 'Novo registro';
+  document.getElementById('grade-modal').innerHTML = definicaoCampos().map(c=>renderizarCampo(c, registro? registro[c.chave] : '')).join('');
+  document.getElementById('botao-excluir-modal').style.display = registro ? 'inline-flex' : 'none';
+  document.getElementById('sobreposicao-modal').classList.add('aberta');
+}
+function fecharModal(){
+  document.getElementById('sobreposicao-modal').classList.remove('aberta');
+}
+document.getElementById('botao-cancelar-modal').addEventListener('click', fecharModal);
+document.getElementById('sobreposicao-modal').addEventListener('click', (ev)=>{ if(ev.target.id==='sobreposicao-modal') fecharModal(); });
+
+document.getElementById('form-modal').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const registro = lerValoresCampos();
+  if(estado.editandoId){
+    await api('atualizarProducao', {id:estado.editandoId, registro});
+  } else {
+    await api('adicionarProducao', registro);
+  }
+  fecharModal();
+  await atualizarPainelGerencial();
+});
+
+document.getElementById('botao-excluir-modal').addEventListener('click', async ()=>{
+  if(!estado.editandoId) return;
+  if(!confirm('Excluir este registro definitivamente?')) return;
+  await api('excluirProducao', {id: estado.editandoId});
+  fecharModal();
+  await atualizarPainelGerencial();
+});
+
+/* ---------------------------------------------------------------------
+   PAINEL: DASHBOARD
+--------------------------------------------------------------------- */
+let graficoProfissional, graficoConvenio;
+const PALETA = ['#5C2350','#146B5D','#B9862E','#8A3D79','#0E5548','#C495B8','#9C6E22','#4A1D45'];
+
+async function atualizarDashboard(){
+  const mes = document.getElementById('filtro-mes-dashboard').value;
+  const ano = document.getElementById('filtro-ano-dashboard').value;
+  const resp = await api('dashboard', {mes, ano});
+  if(!resp.ok) return;
+
+  document.getElementById('kpi-atendimentos').textContent = resp.totalAtendimentos;
+  document.getElementById('kpi-valor').textContent = formatarMoeda(resp.totalValor);
+  const ticket = resp.totalAtendimentos ? resp.totalValor/resp.totalAtendimentos : 0;
+  document.getElementById('kpi-ticket').textContent = formatarMoeda(ticket);
+  const metaTotal = resp.comparativo.reduce((s,c)=>s+c.metaValor,0);
+  const pctMeta = metaTotal ? ((resp.totalValor/metaTotal)*100).toFixed(0)+'%' : '—';
+  document.getElementById('kpi-meta').textContent = pctMeta;
+
+  desenharGraficoProfissional(resp.porProfissional);
+  desenharGraficoConvenio(resp.porConvenio);
+  desenharTabelaComparativo(resp.comparativo);
+}
+
+function desenharGraficoProfissional(porProfissional){
+  const rotulos = Object.keys(porProfissional);
+  const valores = rotulos.map(r=>porProfissional[r].quantidade);
+  const ctx = document.getElementById('grafico-profissional');
+  if(graficoProfissional) graficoProfissional.destroy();
+  graficoProfissional = new Chart(ctx, {
+    type:'bar',
+    data:{labels:rotulos, datasets:[{label:'Atendimentos', data:valores, backgroundColor:'#5C2350', borderRadius:6}]},
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'#E7DDE4'}, beginAtZero:true}
+      }
+    }
+  });
+}
+
+function desenharGraficoConvenio(porConvenio){
+  const rotulos = Object.keys(porConvenio);
+  const valores = rotulos.map(r=>porConvenio[r]);
+  const ctx = document.getElementById('grafico-convenio');
+  if(graficoConvenio) graficoConvenio.destroy();
+  graficoConvenio = new Chart(ctx, {
+    type:'doughnut',
+    data:{labels:rotulos, datasets:[{data:valores, backgroundColor:PALETA}]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:12, font:{size:11}}}}}
+  });
+}
+
+function desenharTabelaComparativo(comparativo){
+  const tabela = document.getElementById('tabela-comparativo');
+  if(comparativo.length===0){ tabela.innerHTML = '<tr><td class="vazio">Sem dados para o período.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Qtd. atendimentos</th><th>Meta (R$)</th><th>Realizado (R$)</th><th>% atingido</th></tr></thead>
+    <tbody>${comparativo.map(c=>{
+      const pct = c.metaValor ? Math.min(100, (c.valorRealizado/c.metaValor)*100) : (c.valorRealizado>0?100:0);
+      const cor = pct>=100 ? 'var(--teal-600)' : (pct>=70 ? 'var(--gold-500)' : 'var(--plum-500)');
+      return `<tr>
+        <td>${c.prof}</td>
+        <td>${c.turnosDisponibilizados||'—'}</td>
+        <td>${c.quantidade}</td>
+        <td class="mono">${c.metaValor?formatarMoeda(c.metaValor):'—'}</td>
+        <td class="mono">${formatarMoeda(c.valorRealizado)}</td>
+        <td style="min-width:120px;">
+          <div class="mono" style="font-size:12px;">${pct.toFixed(0)}%</div>
+          <div class="barra-meta"><div style="width:${pct}%;background:${cor};"></div></div>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>`;
+}
+</script>
+</body>
+</html>
