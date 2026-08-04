@@ -1,974 +1,2210 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Estoque Farmacêutico</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ProdClin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  /* ======================================================================
-     IDENTIDADE VISUAL
-     Paleta pensada em ficha de controle de farmácia/dispensário: fundo
-     "papel de receituário" frio, tinta verde-petróleo, âmbar de frasco de
-     medicamento como cor de ação, verde-sálvia para Entrada e terracota
-     para Saída (nunca vermelho puro de "erro", para não parecer alarme).
-     ====================================================================== */
   :root{
-    --cor-fundo: #EEF3F0;
-    --cor-fundo-cartao: #FBFDFB;
-    --cor-tinta: #17332E;
-    --cor-tinta-suave: #4B6660;
-    --cor-acento: #E2992F;
-    --cor-acento-escuro: #B87A20;
-    --cor-entrada: #3F8F6B;
-    --cor-saida: #C1502E;
-    --cor-borda: #D7E2DC;
-    --sombra: 0 2px 10px rgba(23,51,46,0.07);
-    --fonte-display: 'Space Grotesk', sans-serif;
-    --fonte-corpo: 'IBM Plex Sans', -apple-system, sans-serif;
-    --fonte-mono: 'IBM Plex Mono', 'Courier New', monospace;
-    --raio: 10px;
+    --plum-900:#3D1636;
+    --plum-800:#4A1D45;
+    --plum-700:#5C2350;
+    --plum-500:#8A3D79;
+    --plum-300:#C495B8;
+    --rose-100:#F6ECF2;
+    --bg:#FAFAF8;
+    --card:#FFFFFF;
+    --teal-700:#0E5548;
+    --teal-600:#146B5D;
+    --teal-100:#E3F2EE;
+    --gold-600:#9C6E22;
+    --gold-500:#B9862E;
+    --gold-100:#F7EEDD;
+    --ink-900:#241522;
+    --ink-600:#5B4A57;
+    --ink-400:#8B7A87;
+    --line:#E7DDE4;
+    --danger:#B23A3A;
+    --danger-100:#F8E9E9;
+    --radius:14px;
+    --shadow:0 2px 10px rgba(61,22,54,0.07), 0 8px 24px rgba(61,22,54,0.05);
   }
-  *{ box-sizing: border-box; }
-  html,body{ margin:0; padding:0; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
   body{
-    background: var(--cor-fundo);
-    color: var(--cor-tinta);
-    font-family: var(--fonte-corpo);
-    font-size: 15px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
+    background:var(--bg);
+    color:var(--ink-900);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
   }
-  h1,h2,h3{ font-family: var(--fonte-display); margin: 0 0 4px; letter-spacing: -0.01em; }
-  h1{ font-size: 22px; } h2{ font-size: 18px; } h3{ font-size: 15px; }
-  code, .mono{ font-family: var(--fonte-mono); }
-  a{ color: var(--cor-acento-escuro); }
-  button{ font-family: var(--fonte-corpo); cursor: pointer; }
-  input, select{ font-family: var(--fonte-corpo); }
+  h1,h2,h3,.display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--plum-300);color:var(--plum-900);}
 
-  /* --- Faixa de modo demonstração --- */
-  #faixa-demo{
-    display:none;
-    background: repeating-linear-gradient(135deg, var(--cor-acento) 0 14px, #F3B85A 14px 28px);
-    color:#3A2600; font-weight:600; text-align:center; padding:7px 10px;
-    font-size: 13px; letter-spacing:.02em;
-  }
-
-  /* --- Tela de login --- */
+  /* ---------- TELA DE LOGIN ---------- */
   #tela-login{
-    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(138,61,121,0.16), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(20,107,93,0.14), transparent 45%),
+      var(--plum-900);
+    padding:24px;
   }
   .cartao-login{
-    background: var(--cor-fundo-cartao); border:1px solid var(--cor-borda); border-radius: var(--raio);
-    box-shadow: var(--sombra); padding:36px 32px; width:100%; max-width:380px;
+    background:var(--card);
+    border-radius:20px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    width:100%;
+    max-width:400px;
+    padding:40px 36px 32px;
   }
-  .logo-app{ display:flex; align-items:center; gap:10px; margin-bottom:22px; }
-  .logo-blister{ display:flex; gap:3px; }
-  .logo-blister span{ width:8px; height:8px; border-radius:50%; background: var(--cor-acento); display:block; }
-  .logo-blister span:nth-child(2){ background: var(--cor-entrada); }
-  .logo-blister span:nth-child(3){ background: var(--cor-saida); }
-  .campo{ margin-bottom:16px; }
-  .campo label{ display:block; font-size:12.5px; font-weight:600; color: var(--cor-tinta-suave); margin-bottom:5px; text-transform:uppercase; letter-spacing:.03em; }
+  .marca-login{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    margin-bottom:28px;
+  }
+  .marca-login .selo{
+    width:44px;height:44px;border-radius:12px;
+    background:linear-gradient(135deg,var(--plum-700),var(--plum-500));
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-family:'Fraunces',serif;font-weight:700;font-size:20px;
+    margin-bottom:14px;
+  }
+  .marca-login h1{font-size:26px;margin:0 0 2px;color:var(--plum-900);font-weight:600;}
+  .marca-login p{margin:0;color:var(--ink-400);font-size:14px;}
+  .campo{margin-bottom:16px;}
+  .campo label{
+    display:block;font-size:12.5px;font-weight:600;letter-spacing:.02em;
+    color:var(--ink-600);margin-bottom:6px;text-transform:uppercase;
+  }
   .campo input, .campo select, .campo textarea{
-    width:100%; padding:10px 12px; border:1px solid var(--cor-borda); border-radius:8px;
-    background:#fff; color: var(--cor-tinta); font-size:14.5px;
+    width:100%;padding:11px 13px;border-radius:9px;border:1.5px solid var(--line);
+    font-size:15px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink-900);
+    transition:border-color .15s;
   }
-  .campo input:focus, .campo select:focus, .campo textarea:focus{ outline:2px solid var(--cor-acento); outline-offset:1px; }
+  .campo input:focus, .campo select:focus, .campo textarea:focus{
+    outline:none;border-color:var(--plum-500);
+  }
   .botao{
-    display:inline-flex; align-items:center; justify-content:center; gap:6px;
-    background: var(--cor-tinta); color:#fff; border:none; border-radius:8px;
-    padding:10px 16px; font-weight:600; font-size:14px; transition: transform .08s ease, opacity .15s;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--plum-800);color:#fff;border:none;border-radius:9px;
+    padding:12px 20px;font-size:14.5px;font-weight:600;cursor:pointer;
+    font-family:'Inter',sans-serif;transition:background .15s, transform .05s;
   }
-  .botao:hover{ opacity:.92; } .botao:active{ transform: scale(.98); }
-  .botao-primario{ background: var(--cor-acento); color:#3A2600; }
-  .botao-fantasma{ background:transparent; color: var(--cor-tinta); border:1px solid var(--cor-borda); }
-  .botao-perigo{ background:#fff; color: var(--cor-saida); border:1px solid #E7C3B4; }
-  .botao:disabled{ opacity:.5; cursor:not-allowed; }
-  .botao-bloco{ width:100%; }
-  .erro-form{ color: var(--cor-saida); font-size:13px; margin-top:10px; min-height:16px; }
-  .ajuda-demo{ margin-top:18px; font-size:12.5px; color: var(--cor-tinta-suave); border-top:1px dashed var(--cor-borda); padding-top:14px; }
-
-  /* --- Layout principal --- */
-  #app{ display:none; min-height:100vh; }
-  #barra-lateral{
-    width:220px; background: var(--cor-tinta); color:#EAF2EF; flex-shrink:0;
-    padding:20px 14px; display:flex; flex-direction:column;
+  .botao:hover{background:var(--plum-700);}
+  .botao:active{transform:scale(0.98);}
+  .botao.largo{width:100%;}
+  .botao.secundario{background:var(--rose-100);color:var(--plum-800);}
+  .botao.secundario:hover{background:#efdbe8;}
+  .botao.sutil{background:transparent;color:var(--ink-600);border:1.5px solid var(--line);}
+  .botao.sutil:hover{border-color:var(--plum-500);color:var(--plum-800);}
+  .botao.perigo{background:var(--danger-100);color:var(--danger);}
+  .botao.perigo:hover{background:#f2d5d5;}
+  .botao.pequeno{padding:7px 12px;font-size:13px;border-radius:7px;}
+  #erro-login{color:var(--danger);font-size:13.5px;margin-top:10px;min-height:18px;}
+  .contas-demo{
+    margin-top:22px;padding-top:18px;border-top:1px dashed var(--line);
+    font-size:12.5px;color:var(--ink-400);line-height:1.7;
   }
-  #barra-lateral .logo-app{ color:#fff; padding:0 6px; }
-  .nav-item{
-    display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:8px;
-    color:#C9DAD4; font-size:14px; font-weight:500; margin-bottom:2px; text-decoration:none;
-    border:none; background:transparent; width:100%; text-align:left;
+  .contas-demo b{color:var(--ink-600);}
+
+  /* ---------- APP ---------- */
+  #app{display:none;min-height:100vh;flex-direction:column;}
+  #faixa-demo{
+    background:var(--gold-100);color:var(--gold-600);text-align:center;
+    font-size:13px;padding:8px;font-weight:600;letter-spacing:.02em;
   }
-  .nav-item:hover{ background: rgba(255,255,255,.06); color:#fff; }
-  .nav-item.ativo{ background: var(--cor-acento); color:#3A2600; font-weight:600; }
-  .nav-separador{ height:1px; background: rgba(255,255,255,.12); margin:12px 4px; }
-  .nav-rodape{ margin-top:auto; padding-top:14px; }
-  .quem-esta-logado{ font-size:12.5px; color:#9CB6AF; padding:0 10px 8px; }
-
-  #conteudo-principal{ flex:1; min-width:0; padding: 22px 26px 60px; }
-  .cabecalho-tela{ display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
-  .cabecalho-tela p{ color: var(--cor-tinta-suave); margin:2px 0 0; font-size:13.5px; }
-
-  /* "ficha de controle" — cartão com borda picotada no topo, remete a formulário de farmácia */
-  .ficha{
-    background: var(--cor-fundo-cartao); border:1px solid var(--cor-borda); border-radius: var(--raio);
-    box-shadow: var(--sombra); padding:20px; margin-bottom:18px; position:relative; overflow:hidden;
+  header.topo{
+    background:var(--plum-900);color:#fff;
+    padding:18px 32px 0;
+    display:flex;justify-content:space-between;align-items:flex-end;
+    flex-wrap:wrap;gap:16px;
   }
-  .ficha::before{
-    content:""; position:absolute; top:0; left:0; right:0; height:4px;
-    background-image: radial-gradient(circle, var(--cor-fundo) 2.2px, transparent 2.3px);
-    background-size: 14px 4px; background-position: 4px 0;
+  .marca-topo{display:flex;align-items:center;gap:12px;padding-bottom:14px;}
+  .marca-topo .selo{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,var(--plum-500),var(--teal-600));
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-family:'Fraunces',serif;font-weight:700;font-size:16px;
+  }
+  .marca-topo div h2{margin:0;font-size:17px;font-weight:600;}
+  .marca-topo div span{font-size:11.5px;color:var(--plum-300);}
+
+  nav.abas{display:flex;gap:2px;padding-bottom:0;}
+  .aba{
+    background:rgba(255,255,255,0.06);
+    color:var(--plum-300);
+    border:none;cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:600;
+    padding:12px 26px 12px;
+    clip-path:polygon(10% 0, 100% 0, 92% 100%, 0% 100%);
+    margin-right:-14px;
+    position:relative;
+  }
+  .aba:first-child{clip-path:polygon(0 0, 100% 0, 92% 100%, 0% 100%);margin-left:0;}
+  .aba.ativa{background:var(--bg);color:var(--plum-900);z-index:2;}
+  .aba:hover:not(.ativa){color:#fff;}
+
+  .info-usuario{display:flex;align-items:center;gap:14px;padding-bottom:14px;}
+  .info-usuario span{font-size:13px;color:var(--plum-300);}
+  .info-usuario span b{color:#fff;}
+
+  main{flex:1;padding:32px;max-width:1320px;width:100%;margin:0 auto;}
+  .painel{display:none;}
+  .painel.ativo{display:block;animation:surgir .25s ease;}
+  @keyframes surgir{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  .cabecalho-painel{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
+  .cabecalho-painel h2{margin:0;font-size:24px;color:var(--plum-900);font-weight:600;}
+  .cabecalho-painel p{margin:4px 0 0;color:var(--ink-400);font-size:13.5px;}
+
+  .filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .filtros .campo{margin-bottom:0;min-width:140px;}
+
+  .cartao{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:24px;margin-bottom:20px;
+  }
+  .cartao h3{margin:0 0 18px;font-size:16px;color:var(--plum-900);font-weight:600;}
+
+  .grade-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{
+    text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);
+    color:var(--ink-600);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;
+    white-space:nowrap;
+  }
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink-900);white-space:nowrap;}
+  tbody tr:hover{background:var(--rose-100);}
+  tbody tr.linha-total td{font-weight:700;background:var(--rose-100);border-top:2px solid var(--plum-300);}
+  .tabela-scroll{overflow-x:auto;}
+  .celula-acoes{display:flex;gap:6px;}
+  .tag{
+    display:inline-block;padding:3px 9px;border-radius:100px;font-size:11.5px;font-weight:600;
+    background:var(--teal-100);color:var(--teal-700);
+  }
+  .tag.tag-alerta{background:var(--gold-100);color:var(--gold-600);margin:2px;}
+  .vazio{text-align:center;color:var(--ink-400);padding:40px 20px;font-size:14px;}
+
+  /* Mini-biblioteca de gráficos própria (sem dependência externa) */
+  .mini-grafico{width:100%;}
+  .mini-grafico svg{width:100%;height:auto;display:block;overflow:visible;}
+  .mini-legenda{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:10px;font-size:12px;color:var(--ink-600);}
+  .mini-legenda-item{display:flex;align-items:center;gap:6px;}
+  .mini-legenda-ponto{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0;}
+  .mini-grafico .rotulo-eixo{font-size:10.5px;fill:var(--ink-400);font-family:'Inter',sans-serif;}
+  .mini-grafico .rotulo-valor{font-size:10px;fill:var(--ink-600);font-family:'IBM Plex Mono',monospace;}
+
+  /* KPIs */
+  .grade-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:22px;}
+  .kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;}
+  .kpi .rotulo{font-size:12px;color:var(--ink-400);text-transform:uppercase;letter-spacing:.03em;font-weight:600;}
+  .kpi .valor{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:var(--plum-900);margin-top:8px;}
+  .kpi .valor.teal{color:var(--teal-700);}
+  .kpi .valor.gold{color:var(--gold-600);}
+
+  .grade-2{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;}
+  .grade-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:900px){.grade-2,.grade-3{grid-template-columns:1fr;}}
+
+  .barra-meta{background:var(--line);border-radius:100px;height:8px;overflow:hidden;margin-top:6px;}
+  .barra-meta > div{height:100%;border-radius:100px;background:var(--teal-600);}
+
+  .squad-titulo{
+    display:flex;align-items:center;gap:10px;margin:30px 0 14px;
+  }
+  .squad-titulo .linha{flex:1;height:1px;background:var(--line);}
+  .squad-titulo span{
+    font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--plum-500);white-space:nowrap;
   }
 
-  .grade-kpis{ display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:14px; margin-bottom:18px; }
-  .kpi{ background: var(--cor-fundo-cartao); border:1px solid var(--cor-borda); border-radius: var(--raio); padding:16px 18px; box-shadow: var(--sombra); }
-  .kpi .rotulo{ font-size:12px; text-transform:uppercase; letter-spacing:.04em; color: var(--cor-tinta-suave); font-weight:600; }
-  .kpi .valor{ font-family: var(--fonte-display); font-size:28px; margin-top:6px; }
-  .kpi.entrada .valor{ color: var(--cor-entrada); }
-  .kpi.saida .valor{ color: var(--cor-saida); }
+  /* Modal */
+  .sobreposicao{
+    display:none;position:fixed;inset:0;background:rgba(36,21,34,0.5);
+    align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .sobreposicao.aberta{display:flex;}
+  .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;padding:28px 28px 24px;}
+  .modal h3{margin:0 0 18px;color:var(--plum-900);}
+  .modal-acoes{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
 
-  table{ width:100%; border-collapse: collapse; font-size:13.8px; }
-  th{ text-align:left; padding:9px 10px; color: var(--cor-tinta-suave); font-size:12px; text-transform:uppercase; letter-spacing:.03em; border-bottom:2px solid var(--cor-borda); white-space:nowrap; }
-  td{ padding:9px 10px; border-bottom:1px solid var(--cor-borda); vertical-align:top; }
-  tbody tr:hover{ background: rgba(23,51,46,0.035); }
-  .tabela-scroll{ overflow-x:auto; }
-  .rotulo-es{ display:inline-flex; align-items:center; gap:5px; font-weight:600; padding:2px 9px; border-radius:20px; font-size:12.5px; }
-  .rotulo-es.entrada{ background:#E4F3EC; color: var(--cor-entrada); }
-  .rotulo-es.saida{ background:#FBE8E1; color: var(--cor-saida); }
-  .acoes-linha{ display:flex; gap:6px; white-space:nowrap; }
-  .acoes-linha button{ background:none; border:1px solid var(--cor-borda); border-radius:6px; padding:4px 8px; font-size:12.5px; color: var(--cor-tinta-suave); }
-  .acoes-linha button:hover{ border-color: var(--cor-acento); color: var(--cor-tinta); }
+  .rodape-nota{display:flex;justify-content:flex-end;margin-top:10px;}
+  textarea{resize:vertical;min-height:70px;}
 
-  .barra-ferramentas{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-  .barra-ferramentas .flex-1{ flex:1; }
-  .badge-atualizacao{ font-size:12.5px; color: var(--cor-tinta-suave); display:flex; align-items:center; gap:6px; }
-  .ponto-status{ width:7px; height:7px; border-radius:50%; background: var(--cor-entrada); display:inline-block; }
-  .ponto-status.carregando{ background: var(--cor-acento); animation: pulsar 1s infinite; }
-  .ponto-status.erro{ background: var(--cor-saida); }
-  @keyframes pulsar{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
-  .aviso-discreto{ background:#FBE8E1; color:#7A2E17; border:1px solid #E7C3B4; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:12px; display:none; }
+  @media (max-width:720px){
+    main{padding:18px;}
+    header.topo{padding:16px 16px 0;}
+    .aba{padding:10px 16px;font-size:13px;}
+  }
 
-  .grafico-mensal{ display:flex; align-items:flex-end; gap:14px; height:180px; padding:10px 4px 0; overflow-x:auto; }
-  .grafico-coluna{ display:flex; flex-direction:column; align-items:center; min-width:46px; }
-  .grafico-barras{ display:flex; align-items:flex-end; gap:3px; height:140px; }
-  .grafico-barra{ width:11px; border-radius: 3px 3px 0 0; }
-  .grafico-barra.entrada{ background: var(--cor-entrada); }
-  .grafico-barra.saida{ background: var(--cor-saida); }
-  .grafico-legenda-mes{ font-size:11px; color: var(--cor-tinta-suave); margin-top:6px; font-family: var(--fonte-mono); }
-
-  .legenda-inline{ display:flex; gap:16px; font-size:12.5px; color: var(--cor-tinta-suave); margin-top:8px; }
-  .legenda-inline span{ display:inline-flex; align-items:center; gap:5px; }
-  .ponto-legenda{ width:9px; height:9px; border-radius:2px; display:inline-block; }
-
-  .duas-colunas{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
-  @media (max-width: 980px){ .duas-colunas{ grid-template-columns: 1fr; } }
-
-  /* --- Modal genérico de formulário --- */
-  .sobreposicao{ position:fixed; inset:0; background: rgba(23,51,46,.38); display:none; align-items:center; justify-content:center; padding:20px; z-index:50; }
-  .modal{ background: var(--cor-fundo-cartao); border-radius: var(--raio); padding:24px; width:100%; max-width:460px; max-height:90vh; overflow-y:auto; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
-  .modal-rodape{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
-
-  .chip-lista{ display:inline-flex; align-items:center; gap:8px; background:#F1F6F3; border:1px solid var(--cor-borda); border-radius:20px; padding:5px 6px 5px 12px; margin:0 6px 8px 0; font-size:13px; }
-  .chip-lista button{ background:none; border:none; color: var(--cor-tinta-suave); font-size:15px; line-height:1; padding:2px 6px; border-radius:50%; }
-  .chip-lista button:hover{ background:#E3ECE7; color: var(--cor-saida); }
-
-  .toggle{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:13.5px; user-select:none; }
-  .toggle input{ width:34px; height:19px; -webkit-appearance:none; appearance:none; background:#D7E2DC; border-radius:20px; position:relative; outline:none; cursor:pointer; }
-  .toggle input::before{ content:""; position:absolute; width:15px; height:15px; border-radius:50%; background:#fff; top:2px; left:2px; transition:.15s; }
-  .toggle input:checked{ background: var(--cor-entrada); }
-  .toggle input:checked::before{ left:17px; }
-
-  .vazio{ text-align:center; color: var(--cor-tinta-suave); padding:30px 10px; font-size:13.5px; }
-  .rodape-nota{ color: var(--cor-tinta-suave); font-size:12px; margin-top:26px; }
-
-  #layout-app{ display:flex; min-height:100vh; }
-  #botao-menu-mobile{ display:none; }
-  @media (max-width: 800px){
-    #layout-app{ flex-direction:column; }
-    #barra-lateral{ width:100%; flex-direction:row; align-items:center; overflow-x:auto; padding:10px 12px; gap:6px; }
-    #barra-lateral .logo-app{ display:none; }
-    .nav-rodape{ margin-top:0; }
-    .quem-esta-logado{ display:none; }
-    #conteudo-principal{ padding:16px; }
+  /* Barra de progresso global — aparece durante qualquer chamada à API */
+  #barra-progresso-topo{
+    position:fixed;top:0;left:0;width:100%;height:3px;z-index:200;
+    overflow:hidden;display:none;
+  }
+  #barra-progresso-topo.ativa{display:block;}
+  #barra-progresso-topo .filete{
+    position:absolute;top:0;left:-30%;width:30%;height:100%;
+    background:linear-gradient(90deg,var(--plum-500),var(--teal-600));
+    animation:deslizar-progresso 1s ease-in-out infinite;
+  }
+  @keyframes deslizar-progresso{
+    0%{left:-30%;width:30%;}
+    50%{left:40%;width:45%;}
+    100%{left:100%;width:30%;}
   }
 </style>
 </head>
 <body>
-
-<div id="faixa-demo">MODO DEMONSTRAÇÃO — os dados abaixo são fictícios e vivem só nesta aba. Configure CONFIG.API_URL para conectar à sua planilha.</div>
+<div id="barra-progresso-topo"><div class="filete"></div></div>
 
 <!-- ===================== TELA DE LOGIN ===================== -->
 <div id="tela-login">
   <div class="cartao-login">
-    <div class="logo-app">
-      <div class="logo-blister"><span></span><span></span><span></span></div>
-      <h1>Estoque Farmacêutico</h1>
+    <div class="marca-login">
+      <div class="selo">C</div>
+      <h1>ProdClin</h1>
+      <p id="subtitulo-login">Acesso restrito à equipe da clínica</p>
     </div>
-    <form id="form-login" onsubmit="return false;">
+    <form id="form-login">
       <div class="campo">
-        <label for="campo-usuario">Usuário</label>
-        <input id="campo-usuario" type="text" autocomplete="username" required>
+        <label for="usuario">Usuário</label>
+        <input type="text" id="usuario" autocomplete="username" required />
       </div>
       <div class="campo">
-        <label for="campo-senha">Senha</label>
-        <input id="campo-senha" type="password" autocomplete="current-password" required>
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" autocomplete="current-password" required />
       </div>
-      <button class="botao botao-primario botao-bloco" id="botao-entrar" type="submit">Entrar</button>
-      <div class="erro-form" id="erro-login"></div>
+      <button type="submit" class="botao largo">Entrar</button>
+      <div id="erro-login"></div>
     </form>
-    <div class="ajuda-demo" id="ajuda-demo" style="display:none;">
-      Modo demonstração ativo. Use <strong>admin / admin</strong> (Administrador) ou <strong>operador / operador</strong> (Operador) para entrar.
-    </div>
+    <div class="contas-demo" id="contas-demo"></div>
   </div>
 </div>
 
 <!-- ===================== APLICAÇÃO ===================== -->
 <div id="app">
-  <div id="layout-app">
-    <nav id="barra-lateral">
-      <div class="logo-app">
-        <div class="logo-blister"><span></span><span></span><span></span></div>
-        <h1 style="font-size:16px;">Estoque</h1>
+  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — conecte o Google Sheets em CONFIG.API_URL para usar dados reais (veja o GUIA_DE_CONFIGURACAO.md)</div>
+  <header class="topo">
+    <div class="marca-topo">
+      <div class="selo">C</div>
+      <div>
+        <h2>ProdClin</h2>
+        <span id="nome-clinica-topo">Clínica</span>
       </div>
-      <div id="itens-navegacao"></div>
-      <div class="nav-rodape">
-        <div class="nav-separador"></div>
-        <div class="quem-esta-logado" id="quem-esta-logado"></div>
-        <button class="nav-item" id="botao-sair">↩ Sair</button>
+    </div>
+    <nav class="abas" id="nav-abas"></nav>
+    <div class="info-usuario">
+      <span>Logado como <b id="nome-usuario-topo"></b></span>
+      <button class="botao sutil pequeno" id="botao-sair">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ---------- LANÇAMENTO ---------- -->
+    <section class="painel" id="painel-lancamento">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Lançamento de atendimento</h2>
+          <p>Registre um atendimento realizado. Os campos com seta são padronizados por lista.</p>
+        </div>
       </div>
-    </nav>
-    <main id="conteudo-principal"></main>
-  </div>
+      <div class="cartao">
+        <h3>Novo registro</h3>
+        <form id="form-lancamento">
+          <div class="grade-form" id="grade-lancamento"></div>
+          <div style="margin-top:20px;display:flex;gap:10px;">
+            <button type="submit" class="botao">Salvar atendimento</button>
+            <span id="confirmacao-lancamento" style="align-self:center;color:var(--teal-700);font-size:13.5px;font-weight:600;"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <h3 style="margin:0;">Meus últimos lançamentos</h3>
+        </div>
+        <div class="tabela-scroll">
+          <table id="tabela-meus-lancamentos"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- GERENCIAL ---------- -->
+    <section class="painel" id="painel-editar">
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:18px;">
+          <h3 style="margin:0;">Lançamentos do período</h3>
+          <div class="filtros">
+            <div class="campo">
+              <label>Buscar de</label>
+              <input type="date" id="filtro-data-inicio" />
+            </div>
+            <div class="campo">
+              <label>Até</label>
+              <input type="date" id="filtro-data-fim" />
+            </div>
+            <div class="campo">
+              <label>Profissional</label>
+              <select id="filtro-prof-gerencial"><option value="">Todos</option></select>
+            </div>
+            <div class="campo">
+              <label>Convênio</label>
+              <select id="filtro-convenio-gerencial"><option value="">Todos</option></select>
+            </div>
+            <div class="campo">
+              <label>Forma de pagamento</label>
+              <select id="filtro-forma-pagamento-gerencial"><option value="">Todas</option></select>
+            </div>
+            <button class="botao secundario" id="botao-novo-registro-gerencial">+ Novo registro</button>
+            <button class="botao sutil pequeno" id="botao-limpar-periodo">Limpar período</button>
+          </div>
+        </div>
+
+        <div class="grade-kpi" id="resumo-financeiro-editar" style="margin-bottom:18px;"></div>
+
+        <div class="tabela-scroll">
+          <table id="tabela-gerencial"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- CRÍTICA ---------- -->
+    <section class="painel" id="painel-critica">
+      <div class="cartao">
+        <div class="cabecalho-painel" style="margin-bottom:0;">
+          <div>
+            <h2>Crítica de preenchimento</h2>
+            <p>Lançamentos com campos obrigatórios em branco — complete o que faltar.</p>
+          </div>
+          <div class="filtros">
+            <div class="campo">
+              <label>Mês</label>
+              <select id="filtro-mes-critica"></select>
+            </div>
+            <div class="campo">
+              <label>Ano</label>
+              <select id="filtro-ano-critica"></select>
+            </div>
+            <div class="campo" id="campo-prof-critica">
+              <label>Profissional</label>
+              <select id="filtro-prof-critica"><option value="">Todos</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grade-kpi" id="kpi-critica" style="margin-bottom:16px;">
+        <div class="kpi"><div class="rotulo">Lançamentos no período</div><div class="valor" id="kpi-critica-total">—</div></div>
+        <div class="kpi"><div class="rotulo">Com campo pendente</div><div class="valor gold" id="kpi-critica-incompletos">—</div></div>
+        <div class="kpi"><div class="rotulo">% pendente</div><div class="valor" id="kpi-critica-pct">—</div></div>
+      </div>
+
+      <div class="cartao">
+        <h3>Lançamentos pendentes</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-critica"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- METAS ---------- -->
+    <section class="painel" id="painel-metas">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Metas</h2>
+          <p>Metas por profissional e anotações para a próxima reunião.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo">
+            <label>Mês</label>
+            <select id="filtro-mes-metas"></select>
+          </div>
+          <div class="campo">
+            <label>Ano</label>
+            <select id="filtro-ano-metas"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h3>Metas do período (por profissional)</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-metas"></table>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h3>Sugestões de melhoria para o próximo período</h3>
+        <textarea id="texto-nota" style="width:100%;" placeholder="Anote aqui os pontos discutidos na reunião mensal..."></textarea>
+        <div class="rodape-nota"><button class="botao secundario pequeno" id="botao-salvar-nota">Salvar anotação</button></div>
+      </div>
+    </section>
+
+    <!-- ---------- DASHBOARD ---------- -->
+    <section class="painel" id="painel-dashboard">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Dashboard de indicadores</h2>
+          <p>Visão consolidada do período selecionado.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo">
+            <label>Mês</label>
+            <select id="filtro-mes-dashboard"></select>
+          </div>
+          <div class="campo">
+            <label>Ano</label>
+            <select id="filtro-ano-dashboard"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grade-kpi">
+        <div class="kpi"><div class="rotulo">Atendimentos no período</div><div class="valor" id="kpi-atendimentos">—</div></div>
+        <div class="kpi"><div class="rotulo">Valor produzido</div><div class="valor teal" id="kpi-valor">—</div></div>
+        <div class="kpi"><div class="rotulo">Ticket médio</div><div class="valor" id="kpi-ticket">—</div></div>
+        <div class="kpi"><div class="rotulo">% da meta de valor atingida</div><div class="valor gold" id="kpi-meta">—</div></div>
+      </div>
+
+      <div class="squad-titulo"><span>Squad Atendimento</span><div class="linha"></div></div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Atendimentos por profissional</h3><div id="grafico-profissional" class="mini-grafico" style="min-height:220px;"></div></div>
+        <div class="cartao"><h3>Distribuição por convênio</h3><div id="grafico-convenio" class="mini-grafico" style="min-height:220px;"></div></div>
+      </div>
+
+      <div class="squad-titulo"><span>Squad Financeiro</span><div class="linha"></div></div>
+      <div class="cartao">
+        <h3>Meta × realizado por profissional</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-comparativo"></table>
+        </div>
+      </div>
+
+      <div class="squad-titulo"><span>Evolução do ano</span><div class="linha"></div></div>
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+          <h3 style="margin:0;" id="titulo-evolucao-ano">Janeiro até o mês selecionado</h3>
+          <div class="filtros">
+            <div class="campo">
+              <label>Profissional</label>
+              <select id="filtro-prof-evolucao"><option value="">Todos (somado)</option></select>
+            </div>
+          </div>
+        </div>
+        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">A matriz usa o Mês e Ano escolhidos acima como ponto final; a linha "Média período" é o valor realizado dividido pelos turnos efetivamente usados naquele mês.</p>
+        <div class="tabela-scroll">
+          <table id="tabela-evolucao-ano"></table>
+        </div>
+      </div>
+
+      <div class="grade-2">
+        <div class="cartao"><h3>Valor previsto × realizado</h3><div id="grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
+        <div class="cartao"><h3>Quantidade prevista × realizada</h3><div id="grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
+      </div>
+    </section>
+
+    <!-- ---------- ANÁLISES CRUZADAS ---------- -->
+    <section class="painel" id="painel-analises">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Análises cruzadas</h2>
+          <p>Quantidade e valor por qualquer lista, e correlação entre duas dimensões.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo">
+            <label>Mês</label>
+            <select id="filtro-mes-analises"></select>
+          </div>
+          <div class="campo">
+            <label>Ano</label>
+            <select id="filtro-ano-analises"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+          <h3 style="margin:0;">Quantidade e valor por dimensão</h3>
+          <div class="filtros">
+            <div class="campo">
+              <label>Dimensão</label>
+              <select id="filtro-dimensao-analise"></select>
+            </div>
+          </div>
+        </div>
+        <div class="grade-2">
+          <div class="tabela-scroll"><table id="tabela-analise-dimensao"></table></div>
+          <div id="grafico-analise-dimensao" class="mini-grafico" style="min-height:240px;"></div>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+          <h3 style="margin:0;">Correlação entre duas dimensões</h3>
+          <div class="filtros">
+            <div class="campo"><label>Linhas</label><select id="filtro-correlacao-a"></select></div>
+            <div class="campo"><label>Colunas</label><select id="filtro-correlacao-b"></select></div>
+            <div class="campo">
+              <label>Métrica</label>
+              <select id="filtro-correlacao-metrica">
+                <option value="valor">Valor (R$)</option>
+                <option value="quantidade">Quantidade</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">Cruze qualquer duas listas (ex.: Convênio × Procedimento, Atendente × Forma de pagamento, Profissional × Exame) para enxergar padrões qualitativos por trás dos números.</p>
+        <div class="tabela-scroll"><table id="tabela-correlacao"></table></div>
+      </div>
+    </section>
+
+    <!-- ---------- RMR ---------- -->
+    <section class="painel" id="painel-rmr">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>RMR — Reunião Mensal de Resultados</h2>
+          <p id="rmr-legenda-periodo">Relatório detalhado por profissional, exames, convênios e eficiência de turnos.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo"><label>Mês</label><select id="rmr-mes"></select></div>
+          <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
+          <button class="botao sutil pequeno" id="rmr-botao-imprimir">Imprimir / PDF</button>
+        </div>
+      </div>
+
+      <div class="grade-kpi">
+        <div class="kpi"><div class="rotulo">Atendimentos no mês</div><div class="valor" id="rmr-kpi-atendimentos">—</div><div id="rmr-kpi-atendimentos-comp" style="font-size:12px;font-weight:600;margin-top:4px;"></div></div>
+        <div class="kpi"><div class="rotulo">Valor produzido</div><div class="valor teal" id="rmr-kpi-valor">—</div><div id="rmr-kpi-valor-comp" style="font-size:12px;font-weight:600;margin-top:4px;"></div></div>
+        <div class="kpi"><div class="rotulo">Ticket médio</div><div class="valor" id="rmr-kpi-ticket">—</div></div>
+        <div class="kpi"><div class="rotulo">% da meta de valor atingida</div><div class="valor gold" id="rmr-kpi-meta">—</div></div>
+        <div class="kpi"><div class="rotulo">Profissionais ativos</div><div class="valor" id="rmr-kpi-profissionais">—</div></div>
+      </div>
+
+      <div class="squad-titulo"><span>Indicadores por profissional</span><div class="linha"></div></div>
+      <div class="cartao">
+        <h3>Selecionar profissional</h3>
+        <select id="rmr-seletor-profissional" style="max-width:320px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);"></select>
+        <div class="tabela-scroll" style="margin-top:16px;"><table id="rmr-tabela-profissional-detalhe"></table></div>
+      </div>
+      <div class="cartao">
+        <h3>Todos os profissionais — mês de referência</h3>
+        <div class="tabela-scroll"><table id="rmr-tabela-profissionais-mes"></table></div>
+      </div>
+
+      <div class="squad-titulo"><span>Detalhamento de exames</span><div class="linha"></div></div>
+      <div class="cartao"><div class="tabela-scroll"><table id="rmr-tabela-exames"></table></div></div>
+
+      <div class="squad-titulo"><span>Procedimentos e biópsias</span><div class="linha"></div></div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Por tipo de procedimento</h3><div class="tabela-scroll"><table id="rmr-tabela-procedimentos"></table></div></div>
+        <div class="cartao"><h3>Biópsias por quantidade de frascos</h3><div class="tabela-scroll"><table id="rmr-tabela-biopsias"></table></div></div>
+      </div>
+
+      <div class="squad-titulo"><span>Atendimentos por convênio</span><div class="linha"></div></div>
+      <div class="cartao">
+        <div class="campo" style="max-width:280px;margin-bottom:12px;"><input type="text" id="rmr-busca-detalhe" placeholder="Buscar paciente, convênio, profissional..." style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);"></div>
+        <div class="tabela-scroll"><table id="rmr-tabela-detalhe-nominal"></table></div>
+      </div>
+
+      <div class="squad-titulo"><span>Turnos: ociosos × vendidos</span><div class="linha"></div></div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Por profissional</h3><div class="tabela-scroll"><table id="rmr-tabela-turnos"></table></div></div>
+        <div class="cartao"><h3>Ociosos × vendidos</h3><div id="rmr-grafico-turnos" class="mini-grafico" style="min-height:230px;"></div></div>
+      </div>
+
+      <div class="squad-titulo"><span>Faturamento particular por profissional</span><div class="linha"></div></div>
+      <div class="cartao"><div id="rmr-grafico-particular" class="mini-grafico" style="min-height:220px;"></div></div>
+
+      <div class="squad-titulo"><span>Convênios × profissional</span><div class="linha"></div></div>
+      <div class="cartao"><div class="tabela-scroll"><table id="rmr-tabela-matriz-convenio"></table></div></div>
+
+      <div class="squad-titulo"><span>Eficiência de turnos e metas financeiras</span><div class="linha"></div></div>
+      <div class="cartao"><div class="tabela-scroll"><table id="rmr-tabela-eficiencia"></table></div></div>
+
+      <div class="squad-titulo"><span>Evolução anual</span><div class="linha"></div></div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Valor produzido por mês</h3><div id="rmr-grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
+        <div class="cartao"><h3>Atendimentos por mês</h3><div id="rmr-grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
+      </div>
+
+      <div class="squad-titulo"><span>Sugestões de melhoria</span><div class="linha"></div></div>
+      <div class="cartao">
+        <textarea id="rmr-texto-nota" style="width:100%;min-height:90px;" placeholder="Nenhuma anotação registrada para este período."></textarea>
+        <div class="rodape-nota"><button class="botao secundario pequeno" id="rmr-botao-salvar-nota">Salvar anotação</button></div>
+      </div>
+    </section>
+
+    <!-- ---------- CONFIGURAÇÕES ---------- -->
+    <section class="painel" id="painel-configuracoes">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Configurações</h2>
+          <p>Dados gerais do sistema, salvos na planilha (aba Configuracoes).</p>
+        </div>
+      </div>
+
+      <div class="cartao" style="max-width:480px;">
+        <h3>Identidade da clínica</h3>
+        <div class="campo">
+          <label>Nome da clínica</label>
+          <input type="text" id="config-nome-clinica" placeholder="Ex.: Clínica Cliza" />
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="botao secundario" id="botao-salvar-config">Salvar</button>
+          <span id="confirmacao-config" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+        </div>
+        <p style="margin:14px 0 0;color:var(--ink-400);font-size:12px;">
+          Esse nome aparece no cabeçalho do sistema e na tela de login, para todos os usuários.
+        </p>
+      </div>
+    </section>
+  </main>
 </div>
 
-<!-- ===================== MODAL GENÉRICO (formulário) ===================== -->
+<!-- ===================== MODAL DE EDIÇÃO ===================== -->
 <div class="sobreposicao" id="sobreposicao-modal">
   <div class="modal">
-    <h2 id="titulo-modal">Novo registro</h2>
-    <form id="form-modal" onsubmit="return false;"></form>
-    <div class="erro-form" id="erro-modal"></div>
-    <div class="modal-rodape">
-      <button class="botao botao-fantasma" id="botao-cancelar-modal" type="button">Cancelar</button>
-      <button class="botao botao-primario" id="botao-salvar-modal" type="button">Salvar</button>
-    </div>
+    <h3 id="titulo-modal">Editar registro</h3>
+    <form id="form-modal">
+      <div class="grade-form" id="grade-modal"></div>
+      <div class="modal-acoes">
+        <button type="button" class="botao perigo" id="botao-excluir-modal" style="margin-right:auto;">Excluir</button>
+        <button type="button" class="botao sutil" id="botao-cancelar-modal">Cancelar</button>
+        <button type="submit" class="botao">Salvar alterações</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <script>
-/* ============================================================================
+/* =====================================================================
    CONFIGURAÇÃO
-   Cole aqui a URL do seu Web App do Apps Script (veja GUIA_DE_CONFIGURACAO.md).
-   Deixe vazio ("") para o sistema funcionar em MODO DEMONSTRAÇÃO, com dados
-   de exemplo guardados só na memória desta aba (nada é salvo de verdade).
-   ============================================================================ */
+   Depois de publicar o Apps Script (ver GUIA_DE_CONFIGURACAO.md), cole
+   a URL do Web App aqui. Enquanto estiver vazio, o sistema roda em
+   MODO DEMONSTRAÇÃO com dados de exemplo guardados só nesta sessão.
+===================================================================== */
 const CONFIG = {
-  API_URL: '' // <<< cole aqui a URL do Web App publicado
+  API_URL: "https://script.google.com/macros/s/AKfycbzCV-ngX4oxFRKGZ4PoqifJzY0lhw40Hs2E6SQDVkP3Bmm4KxeNeYjhtHwzFwU879s/exec" // <-- cole aqui a URL do seu Web App do Apps Script
 };
 
-/* ============================================================================
-   ESTADO DA APLICAÇÃO (tudo em memória — nunca localStorage/sessionStorage)
-   ============================================================================ */
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MODO_DEMO = !CONFIG.API_URL;
+
+/* ---------------------------------------------------------------------
+   ESTADO
+--------------------------------------------------------------------- */
 const estado = {
-  token: null, usuario: null, papel: null, nome: null,
-  estrutura: null,      // resposta de getEstrutura: { abas, listas, papel }
-  telaAtual: null,      // nome da tela ativa
-  cacheListagens: {},   // aba -> registros (para não perder tela ao recarregar)
-  dashboard: { dados: null, ultimaAtualizacao: null, autoAtualizar: false, intervaloMinutos: 5, timer: null },
-  edicaoModal: null      // { aba, id, colunas } quando o modal está editando algo
+  usuario:null, papel:null, nomeProfissional:null,
+  listas:{}, abaAtiva:'lancamento',
+  editandoId:null, editandoMes:null, editandoAno:null
 };
 
-const $ = (sel, ctx) => (ctx || document).querySelector(sel);
-const $all = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
-function escaparHtml(texto){
-  return String(texto === undefined || texto === null ? '' : texto)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function normalizarTexto(t){
-  return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
-}
-function formatarData(valor){
-  if(!valor) return '';
-  const d = new Date(valor);
-  if(isNaN(d.getTime())) return String(valor);
-  return d.toLocaleDateString('pt-BR');
-}
-function paraInputData(valor){
-  if(!valor) return '';
-  const d = new Date(valor);
-  if(isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0,10);
-}
-function nomeDoMes(chaveAnoMes){
-  const [ano, mes] = chaveAnoMes.split('-').map(Number);
-  const nomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  return nomes[mes-1] + '/' + String(ano).slice(2);
-}
+/* ---------------------------------------------------------------------
+   DADOS DE DEMONSTRAÇÃO (usados só quando CONFIG.API_URL estiver vazio)
+--------------------------------------------------------------------- */
+const demo = {
+  configuracoes: { nome_clinica: 'Clínica Cliza' },
+  usuarios:[
+    {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação'},
+    {usuario:'angelina', senha:'123', papel:'profissional', nome_profissional:'ANGELINA'},
+    {usuario:'lisiene', senha:'123', papel:'profissional', nome_profissional:'LISIENE'},
+    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA'}
+  ],
+  listas:{
+    profissionais:['ANGELINA','AYANE CARNEIRO','CARLOTA','CLEIA','DANIELE ERTHAL','DR CARLOS AUGUSTO','DR CHARLES USG','DR MARCELO','DR MARCELO USG','DR MAURICIO','DR MAURICIO EXAMES','DR OSMAR','DRA AMANDA USG','DRA IVNA','DRA RICARLA USG','GABRIELE','ISABELLE','IZADORA ZARA','JAQUELANE PONTE','JOSEANE','KÁTIA RODRIGUES','KIMBERLY','LIA BRITO','LISIENE','MARILIA','RAFAELA MORAIS','RENATA','RONALDO GILDO','VALERIA','VICTOR MOREIRA'],
+    convenios:['ASSEFAZ','BRADESCO','CAFAZ','CAMED','CAPESESP','CASSI','CORREIOS','FUNSA','GEAP','ISSEC','NF PLANO ABA','PARTICULAR','PREF CARIRÉ','PREF SOBRAL','SÃO CAMILO','SAÚDE CAIXA','SINDICATO','SULAMERICA','UNIMED','AMIL'],
+    procedimentos:['SESSÃO','BIOIMPEDÂNCIA','CONSULTA','EXAMES','PROCEDIMENTO','USG','POLIPECTOMIA','MUCOSECTOMIA','PREPARO','RETORNO','OUTRO','MATERIAL','PHOPOSNEMA','CIRURGIA','ANESTESISTA','ANESTESISTA CONVÊNIO'],
+    atendentes:['KAILLANY','ADRIELE','SOCORRO','GERMANA','LETICIA','ROBERTA','KEROLAINE','GLEIDY MARA'],
+    turnos:['M','T'],
+    formas_pagamento:['CONVÊNIO','PIX','CARTÃO','ESPÉCIE'],
+    biopsias_frascos:['','1 FRASCO','2 FRASCOS','3 FRASCOS','4 FRASCOS','5 FRASCOS','6 FRASCOS','7 FRASCOS','8 FRASCOS','9 FRASCOS'],
+    exames:['MAMAS','ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)','ABDOME SUPERIOR (FÍGADO, VIAS BILIARES, VESÍCULA, PÂNCREAS E BAÇO)','ABDOME INFERIOR MASCULINO (BEXIGA, PRÓSTATA E VESÍCULAS SEMINAIS)','ABDOME INFERIOR FEMININO (BEXIGA, ÚTERO, OVÁRIO E ANEXOS)','DERMATOLÓGICO - PELE E SUBCUTÂNEO','ÓRGÃOS SUPERFICIAIS (TIREÓIDE OU ESCROTO OU PÊNIS OU CRÂNIO)','ARTICULAR (POR ARTICULAÇÃO)','OBSTÉTRICA','OBSTÉTRICA COM DOPPLER','OBSTÉTRICA MORFOLÓGICA','TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)','PRÓSTATA TRANSRETAL (NÃO INCLUI ABDOME INFERIOR MASCULINO)','PRÓSTATA (VIA ABDOMINAL)','APARELHO URINÁRIO (RINS, URETERES E BEXIGA)','PUNÇÃO BIÓPSIA/ASPIRATIVA DE ÓRGÃO OU ESTRUTURA SUPERFICIAL ORIENTADA POR US','COLONOSCOPIA','ENDOSCOPIA','AXILA','DOPPLER','PREPARO COLONOSCOPIA','POLIPECTOMIA DE EDA','POLIPECTOMIA DE COLON','PÉLVICA','CERVICAL','PAREDE ABDOMINAL','PARTES MOLES','MANOMETRIA','PHMETRIA','DOPPLER DE CARÓTIDAS']
+  },
+  producao:[
+    {id:'d1',prof:'ANGELINA',data:'2026-05-04',turno:'M',paciente:'YSE DE QUEIROZ PONTE',protocolo:'206774113',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d2',prof:'ANGELINA',data:'2026-05-05',turno:'M',paciente:'LARA PAULA PESSOA ARAUJO',protocolo:'206861817',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d3',prof:'LISIENE',data:'2026-05-04',turno:'T',paciente:'KHYO RAMON ANJOS CUNHA',protocolo:'206632649',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d4',prof:'LISIENE',data:'2026-05-06',turno:'T',paciente:'MIRYAN LIRA VIANA',protocolo:'',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'',valor:120,forma_pagamento:'ESPÉCIE',atendente:'KAILLANY',mes:'Maio',ano:2026},
+    {id:'d5',prof:'RENATA',data:'2026-05-07',turno:'M',paciente:'MARIA CLARA SILVA ARAUJO',protocolo:'207794248',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'ADRIELE',mes:'Maio',ano:2026},
+    {id:'d6',prof:'DR MARCELO USG',data:'2026-05-08',turno:'T',paciente:'FRANCISCO M G NOBRE JR',protocolo:'207751609',procedimento:'USG',exames:'ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)',biopsias:'',convenio:'UNIMED',valor:120,forma_pagamento:'CONVÊNIO',atendente:'SOCORRO',mes:'Maio',ano:2026},
+    {id:'d7',prof:'DR CHARLES USG',data:'2026-05-08',turno:'M',paciente:'JOÃO PEDRO LIMA',protocolo:'207751610',procedimento:'USG',exames:'TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)',biopsias:'',convenio:'CASSI',valor:140,forma_pagamento:'CONVÊNIO',atendente:'ROBERTA',mes:'Maio',ano:2026},
+    {id:'d8',prof:'DR MAURICIO EXAMES',data:'2026-05-09',turno:'M',paciente:'MARIA EDUARDA COSTA',protocolo:'207751611',procedimento:'PROCEDIMENTO',exames:'COLONOSCOPIA',biopsias:'2 FRASCOS',convenio:'BRADESCO',valor:850,forma_pagamento:'CONVÊNIO',atendente:'GERMANA',mes:'Maio',ano:2026},
+    {id:'d9',prof:'DR MAURICIO',data:'2026-05-09',turno:'T',paciente:'PEDRO HENRIQUE ALVES',protocolo:'207751612',procedimento:'PROCEDIMENTO',exames:'ENDOSCOPIA',biopsias:'1 FRASCO',convenio:'UNIMED',valor:620,forma_pagamento:'CONVÊNIO',atendente:'LETICIA',mes:'Maio',ano:2026},
+    {id:'d10',prof:'GABRIELE',data:'2026-05-10',turno:'M',paciente:'ANA CLARA MENDES',protocolo:'',procedimento:'BIOIMPEDÂNCIA',exames:'',biopsias:'',convenio:'',valor:80,forma_pagamento:'PIX',atendente:'ADRIELE',mes:'Maio',ano:2026},
+    {id:'d11',prof:'ISABELLE',data:'2026-05-11',turno:'T',paciente:'LUCAS GABRIEL SOUZA',protocolo:'207751613',procedimento:'CONSULTA',exames:'',biopsias:'',convenio:'SÃO CAMILO',valor:250,forma_pagamento:'CONVÊNIO',atendente:'KEROLAINE',mes:'Maio',ano:2026},
+    {id:'d12',prof:'DRA RICARLA USG',data:'2026-05-11',turno:'M',paciente:'BEATRIZ OLIVEIRA',protocolo:'207751614',procedimento:'USG',exames:'OBSTÉTRICA MORFOLÓGICA',biopsias:'',convenio:'PARTICULAR',valor:380,forma_pagamento:'CARTÃO',atendente:'ROBERTA',mes:'Maio',ano:2026},
+    {id:'d13',prof:'DR MARCELO',data:'2026-05-12',turno:'T',paciente:'RAFAEL COSTA LIMA',protocolo:'207751615',procedimento:'RETORNO',exames:'',biopsias:'',convenio:'GEAP',valor:60,forma_pagamento:'CONVÊNIO',atendente:'GLEIDY MARA',mes:'Maio',ano:2026},
+    {id:'d14',prof:'DRA AMANDA USG',data:'2026-05-12',turno:'M',paciente:'CAMILA FERREIRA',protocolo:'',procedimento:'USG',exames:'MAMAS',biopsias:'',convenio:'',valor:180,forma_pagamento:'ESPÉCIE',atendente:'SOCORRO',mes:'Maio',ano:2026}
+  ],
+  metas:[
+    {prof:'ANGELINA', mes:'Maio', ano:2026, turnos_disponibilizados:6, meta_valor:1764, meta_qtd:55},
+    {prof:'LISIENE', mes:'Maio', ano:2026, turnos_disponibilizados:25, meta_valor:7350, meta_qtd:170},
+    {prof:'RENATA', mes:'Maio', ano:2026, turnos_disponibilizados:36, meta_valor:20412, meta_qtd:176},
+    {prof:'DR MARCELO USG', mes:'Maio', ano:2026, turnos_disponibilizados:16, meta_valor:15000, meta_qtd:158}
+  ],
+  notas:{}
+};
 
-/* ============================================================================
-   MODO DEMONSTRAÇÃO — um "backend" falso, em JavaScript, que imita as mesmas
-   ações do Code.gs (login, getEstrutura, listar, criar, atualizar, excluir,
-   dashboard, relatorio, listasAdicionar/Atualizar/Remover). Serve só para
-   você testar o painel sem precisar publicar a planilha ainda.
-   ============================================================================ */
-const bancoDemo = (function(){
-  const usuarios = [
-    { ID:'u1', Usuario:'admin', Senha:'admin', Papel:'Administrador', Nome:'Ana (Administradora)' },
-    { ID:'u2', Usuario:'operador', Senha:'operador', Papel:'Operador', Nome:'Bruno (Operador)' }
-  ];
-  const listas = {
-    'Turno': ['Manhã','Tarde','Noite'],
-    'E/S': ['Entrada','Saída'],
-    'Material': ['Dipirona 500mg','Amoxicilina 500mg','Soro Fisiológico 0,9% 500ml','Paracetamol 750mg','Insulina NPH 100UI/ml','Luva de Procedimento M'],
-    'Destino': ['Farmácia Central','Enfermaria A','Enfermaria B','Centro Cirúrgico','UTI','Ambulatório']
-  };
-  function dataISO(diasAtras){ const d = new Date(); d.setDate(d.getDate()-diasAtras); return d.toISOString(); }
-  const movimentacao = [
-    { ID:'m1', Data:dataISO(58), Turno:'Manhã', Colaborador:'Bruno (Operador)', 'E/S':'Entrada', Material:'Dipirona 500mg', Lote:'DPN2301', Validade:dataISO(-320), Destino:'Farmácia Central', 'Nome do Paciente':'', 'Nota Fiscal':'NF-1001', Qtde:500 },
-    { ID:'m2', Data:dataISO(50), Turno:'Tarde', Colaborador:'Bruno (Operador)', 'E/S':'Saída', Material:'Dipirona 500mg', Lote:'DPN2301', Validade:dataISO(-320), Destino:'Enfermaria A', 'Nome do Paciente':'Maria Silva', 'Nota Fiscal':'', Qtde:40 },
-    { ID:'m3', Data:dataISO(45), Turno:'Manhã', Colaborador:'Ana (Administradora)', 'E/S':'Entrada', Material:'Amoxicilina 500mg', Lote:'AMX0987', Validade:dataISO(-200), Destino:'Farmácia Central', 'Nome do Paciente':'', 'Nota Fiscal':'NF-1002', Qtde:300 },
-    { ID:'m4', Data:dataISO(38), Turno:'Noite', Colaborador:'Bruno (Operador)', 'E/S':'Saída', Material:'Amoxicilina 500mg', Lote:'AMX0987', Validade:dataISO(-200), Destino:'Enfermaria B', 'Nome do Paciente':'João Souza', 'Nota Fiscal':'', Qtde:60 },
-    { ID:'m5', Data:dataISO(30), Turno:'Manhã', Colaborador:'Ana (Administradora)', 'E/S':'Entrada', Material:'Soro Fisiológico 0,9% 500ml', Lote:'SF4412', Validade:dataISO(-500), Destino:'Farmácia Central', 'Nome do Paciente':'', 'Nota Fiscal':'NF-1003', Qtde:200 },
-    { ID:'m6', Data:dataISO(22), Turno:'Tarde', Colaborador:'Bruno (Operador)', 'E/S':'Saída', Material:'Soro Fisiológico 0,9% 500ml', Lote:'SF4412', Validade:dataISO(-500), Destino:'Centro Cirúrgico', 'Nome do Paciente':'', 'Nota Fiscal':'', Qtde:75 },
-    { ID:'m7', Data:dataISO(16), Turno:'Noite', Colaborador:'Bruno (Operador)', 'E/S':'Saída', Material:'Insulina NPH 100UI/ml', Lote:'INS0021', Validade:dataISO(-90), Destino:'UTI', 'Nome do Paciente':'Carla Nunes', 'Nota Fiscal':'', Qtde:12 },
-    { ID:'m8', Data:dataISO(10), Turno:'Manhã', Colaborador:'Ana (Administradora)', 'E/S':'Entrada', Material:'Paracetamol 750mg', Lote:'PCT7788', Validade:dataISO(-400), Destino:'Farmácia Central', 'Nome do Paciente':'', 'Nota Fiscal':'NF-1004', Qtde:400 },
-    { ID:'m9', Data:dataISO(4), Turno:'Tarde', Colaborador:'Bruno (Operador)', 'E/S':'Saída', Material:'Paracetamol 750mg', Lote:'PCT7788', Validade:dataISO(-400), Destino:'Ambulatório', 'Nome do Paciente':'Pedro Alves', 'Nota Fiscal':'', Qtde:55 },
-    { ID:'m10', Data:dataISO(1), Turno:'Manhã', Colaborador:'Bruno (Operador)', 'E/S':'Entrada', Material:'Luva de Procedimento M', Lote:'LVM3390', Validade:dataISO(-600), Destino:'Farmácia Central', 'Nome do Paciente':'', 'Nota Fiscal':'NF-1005', Qtde:1000 }
-  ];
-  return { usuarios, listas, movimentacao };
-})();
-
-function inferirColunas(nomesCabecalho, nomeAba){
-  const listasNorm = {};
-  Object.keys(bancoDemo.listas).forEach(n => listasNorm[normalizarTexto(n)] = { nome:n, opcoes: bancoDemo.listas[n] });
-  return nomesCabecalho.filter(c => normalizarTexto(c) !== 'id').map(nomeColuna => {
-    const norm = normalizarTexto(nomeColuna);
-    let tipo = 'texto', opcoes = null;
-    if(listasNorm[norm]){ tipo = 'select'; opcoes = listasNorm[norm].opcoes; }
-    else if(norm.indexOf('data') !== -1 || norm.indexOf('validade') !== -1){ tipo = 'data'; }
-    else if(norm.indexOf('qtde') !== -1 || norm.indexOf('quantidade') !== -1 || norm.indexOf('qtd') !== -1){ tipo = 'numero'; }
-    else if(nomeAba === 'Usuarios' && norm === 'senha'){ tipo = 'senha'; }
-    return { nome: nomeColuna, tipo, opcoes };
-  });
+/* ---------------------------------------------------------------------
+   CAMADA DE API — chama o Apps Script de verdade, ou o mock de demo
+--------------------------------------------------------------------- */
+let chamadasApiEmAndamento = 0;
+function mostrarBarraProgresso(mostrar){
+  const el = document.getElementById('barra-progresso-topo');
+  if(mostrar){
+    chamadasApiEmAndamento++;
+  } else {
+    chamadasApiEmAndamento = Math.max(0, chamadasApiEmAndamento-1);
+  }
+  el.classList.toggle('ativa', chamadasApiEmAndamento>0);
 }
 
-function mapearSentidoColunas(cabecalhos){
-  const achar = (candidatos) => cabecalhos.find(c => {
-    const n = normalizarTexto(c);
-    return candidatos.some(cand => n.indexOf(cand) !== -1 || cand.indexOf(n) !== -1);
-  }) || null;
-  return {
-    data: achar(['data']), qtde: achar(['qtde','quantidade','qtd']),
-    entradaSaida: achar(['es','entradasaida']), destino: achar(['destino','local','setor']),
-    material: achar(['material','produto','medicamento','item'])
-  };
-}
-const ehEntradaDemo = v => normalizarTexto(v).indexOf('entrada') !== -1;
-const ehSaidaDemo = v => normalizarTexto(v).indexOf('saida') !== -1;
-function chaveMesDemo(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
-
-function apiDemo(action, data){
-  return new Promise(resolve => setTimeout(() => {
-    try{ resolve(processarAcaoDemo(action, data || {})); }
-    catch(erro){ resolve({ ok:false, erro: 'Erro no modo demonstração: ' + erro.message }); }
-  }, 260 + Math.random()*260));
-}
-
-function processarAcaoDemo(action, data){
-  if(action === 'login'){
-    const u = bancoDemo.usuarios.find(u => u.Usuario === data.usuario && u.Senha === data.senha);
-    if(!u) return { ok:false, erro:'Usuário ou senha inválidos.' };
-    const token = 'demo-' + u.ID;
-    return { ok:true, token, usuario:u.Usuario, papel:u.Papel, nome:u.Nome };
-  }
-
-  const sessao = bancoDemo.usuarios.find(u => 'demo-' + u.ID === data.token);
-  if(!sessao) return { ok:false, erro:'Sessão inválida ou expirada. Faça login novamente.' };
-  const papel = sessao.Papel;
-  const podeTudo = papel === 'Administrador';
-
-  if(action === 'getEstrutura'){
-    const abas = [
-      { nome:'Movimentacao', colunas: inferirColunas(Object.keys(bancoDemo.movimentacao[0]), 'Movimentacao') },
-    ];
-    if(podeTudo) abas.push({ nome:'Usuarios', colunas: inferirColunas(Object.keys(bancoDemo.usuarios[0]), 'Usuarios') });
-    return { ok:true, abas, listas: bancoDemo.listas, papel };
-  }
-
-  if(action === 'listar'){
-    if(data.aba === 'Movimentacao'){
-      return { ok:true, registros: bancoDemo.movimentacao.map(r => ({...r})) };
-    }
-    if(data.aba === 'Usuarios' && podeTudo){
-      return { ok:true, registros: bancoDemo.usuarios.map(u => ({...u, Senha:'••••••'})) };
-    }
-    return { ok:false, erro:'Seu perfil não tem permissão para essa ação.' };
-  }
-
-  if(action === 'criar'){
-    if(data.aba === 'Movimentacao'){
-      const novo = Object.assign({ ID: 'm' + Date.now() }, data.dados);
-      bancoDemo.movimentacao.push(novo);
-      return { ok:true, registro: novo };
-    }
-    if(data.aba === 'Usuarios' && podeTudo){
-      const novo = Object.assign({ ID: 'u' + Date.now() }, data.dados);
-      bancoDemo.usuarios.push(novo);
-      return { ok:true, registro: novo };
-    }
-    return { ok:false, erro:'Seu perfil não tem permissão para essa ação.' };
-  }
-
-  if(action === 'atualizar'){
-    if(!podeTudo) return { ok:false, erro:'Seu perfil (Operador) não pode editar registros.' };
-    const lista = data.aba === 'Movimentacao' ? bancoDemo.movimentacao : (data.aba === 'Usuarios' ? bancoDemo.usuarios : null);
-    if(!lista) return { ok:false, erro:'Aba não encontrada.' };
-    const registro = lista.find(r => r.ID === data.id);
-    if(!registro) return { ok:false, erro:'Registro não encontrado.' };
-    Object.assign(registro, data.dados);
-    return { ok:true, registro };
-  }
-
-  if(action === 'excluir'){
-    if(!podeTudo) return { ok:false, erro:'Seu perfil (Operador) não pode excluir registros.' };
-    const lista = data.aba === 'Movimentacao' ? bancoDemo.movimentacao : (data.aba === 'Usuarios' ? bancoDemo.usuarios : null);
-    if(!lista) return { ok:false, erro:'Aba não encontrada.' };
-    const indice = lista.findIndex(r => r.ID === data.id);
-    if(indice === -1) return { ok:false, erro:'Registro não encontrado.' };
-    lista.splice(indice,1);
-    return { ok:true, idExcluido: data.id };
-  }
-
-  if(action === 'listasAdicionar'){
-    if(!podeTudo) return { ok:false, erro:'Sem permissão.' };
-    if(!bancoDemo.listas[data.lista]) bancoDemo.listas[data.lista] = [];
-    bancoDemo.listas[data.lista].push(data.valor);
-    return { ok:true };
-  }
-  if(action === 'listasRemover'){
-    if(!podeTudo) return { ok:false, erro:'Sem permissão.' };
-    const lst = bancoDemo.listas[data.lista];
-    if(!lst) return { ok:false, erro:'Lista não encontrada.' };
-    const i = lst.indexOf(data.valor);
-    if(i !== -1) lst.splice(i,1);
-    return { ok:true };
-  }
-
-  if(action === 'dashboard' || action === 'relatorio'){
-    const cabecalhos = Object.keys(bancoDemo.movimentacao[0]);
-    const col = mapearSentidoColunas(cabecalhos);
-    if(action === 'dashboard'){
-      const hoje = new Date();
-      const ano = data.ano ? Number(data.ano) : hoje.getFullYear();
-      const mes = data.mes ? Number(data.mes) : hoje.getMonth()+1;
-      let totalEntradasMes=0, totalSaidasMes=0;
-      const porDestinoMap={}, porMaterialMesMap={}, saldoMaterialMap={}, serieMap={};
-      bancoDemo.movimentacao.forEach(l => {
-        const d = new Date(l[col.data]); if(isNaN(d.getTime())) return;
-        const qtde = Number(l[col.qtde])||0; const tipo=l[col.entradaSaida];
-        const entrada = ehEntradaDemo(tipo), saida = ehSaidaDemo(tipo);
-        const sinal = entrada?1:(saida?-1:0);
-        const material = l[col.material];
-        if(material) saldoMaterialMap[material] = (saldoMaterialMap[material]||0) + sinal*qtde;
-        const chave = chaveMesDemo(d);
-        if(!serieMap[chave]) serieMap[chave] = {mes:chave, entradas:0, saidas:0};
-        if(entrada) serieMap[chave].entradas += qtde; if(saida) serieMap[chave].saidas += qtde;
-        if(d.getFullYear()!==ano || (d.getMonth()+1)!==mes) return;
-        if(entrada) totalEntradasMes += qtde; if(saida) totalSaidasMes += qtde;
-        const destino = l[col.destino];
-        if(destino){ if(!porDestinoMap[destino]) porDestinoMap[destino]={destino,entradas:0,saidas:0}; if(entrada) porDestinoMap[destino].entradas+=qtde; if(saida) porDestinoMap[destino].saidas+=qtde; }
-        if(material){ if(!porMaterialMesMap[material]) porMaterialMesMap[material]={material,entradas:0,saidas:0}; if(entrada) porMaterialMesMap[material].entradas+=qtde; if(saida) porMaterialMesMap[material].saidas+=qtde; }
-      });
-      const serieMensal = Object.values(serieMap).sort((a,b)=>a.mes<b.mes?-1:1).slice(-12);
-      const porMaterial = Object.values(porMaterialMesMap).map(m=>({...m, saldoAtual: saldoMaterialMap[m.material]||0}))
-        .sort((a,b)=>(b.entradas+b.saidas)-(a.entradas+a.saidas));
-      return { ok:true, periodo:{mes,ano}, totalEntradasMes, totalSaidasMes, saldoMes: totalEntradasMes-totalSaidasMes,
-        serieMensal, porDestino: Object.values(porDestinoMap), porMaterial };
-    } else {
-      const dataInicio = data.dataInicio ? new Date(data.dataInicio+'T00:00:00') : null;
-      const dataFim = data.dataFim ? new Date(data.dataFim+'T23:59:59') : null;
-      let resumo={entradas:0,saidas:0}; const porDestinoMap={}, porMaterialMap={}; const movimentos=[];
-      bancoDemo.movimentacao.forEach(l => {
-        const d = new Date(l[col.data]); if(isNaN(d.getTime())) return;
-        if(dataInicio && d<dataInicio) return; if(dataFim && d>dataFim) return;
-        const destino=l[col.destino], material=l[col.material];
-        if(data.destino && destino!==data.destino) return;
-        if(data.material && material!==data.material) return;
-        const qtde=Number(l[col.qtde])||0; const tipo=l[col.entradaSaida];
-        const entrada=ehEntradaDemo(tipo), saida=ehSaidaDemo(tipo);
-        if(entrada) resumo.entradas+=qtde; if(saida) resumo.saidas+=qtde;
-        if(destino){ if(!porDestinoMap[destino]) porDestinoMap[destino]={destino,entradas:0,saidas:0}; if(entrada) porDestinoMap[destino].entradas+=qtde; if(saida) porDestinoMap[destino].saidas+=qtde; }
-        if(material){ if(!porMaterialMap[material]) porMaterialMap[material]={material,entradas:0,saidas:0}; if(entrada) porMaterialMap[material].entradas+=qtde; if(saida) porMaterialMap[material].saidas+=qtde; }
-        movimentos.push({...l});
-      });
-      return { ok:true, resumo:{...resumo, saldo:resumo.entradas-resumo.saidas},
-        porDestino: Object.values(porDestinoMap).map(d=>({...d, saldo:d.entradas-d.saidas})),
-        porMaterial: Object.values(porMaterialMap).map(m=>({...m, saldo:m.entradas-m.saidas})),
-        movimentos };
-    }
-  }
-
-  return { ok:false, erro:'Ação desconhecida: ' + action };
-}
-
-/* ============================================================================
-   CAMADA DE API — decide se fala com o Apps Script real ou com o modo demo
-   ============================================================================ */
-async function api(action, data){
-  data = Object.assign({ token: estado.token }, data || {});
-  if(!CONFIG.API_URL){ return apiDemo(action, data); }
-  try{
+async function api(acao, dados={}) {
+  mostrarBarraProgresso(true);
+  try {
+    if (MODO_DEMO) return await mockApi(acao, dados);
     const resposta = await fetch(CONFIG.API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // propositalmente text/plain: evita preflight de CORS no Apps Script
-      body: JSON.stringify({ action, data })
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS no Apps Script
+      body: JSON.stringify({action:acao, data:dados})
     });
     return await resposta.json();
-  } catch(erro){
-    return { ok:false, erro:'Falha de conexão com a planilha: ' + erro.message };
+  } finally {
+    mostrarBarraProgresso(false);
   }
 }
 
-/* ============================================================================
-   AUTENTICAÇÃO
-   ============================================================================ */
-if(!CONFIG.API_URL){ $('#faixa-demo').style.display='block'; $('#ajuda-demo').style.display='block'; }
-
-$('#form-login').addEventListener('submit', async () => {
-  const usuario = $('#campo-usuario').value.trim();
-  const senha = $('#campo-senha').value;
-  const botao = $('#botao-entrar');
-  const erroEl = $('#erro-login');
-  erroEl.textContent = ''; botao.disabled = true; botao.textContent = 'Entrando…';
-  const resp = await api('login', { usuario, senha });
-  botao.disabled = false; botao.textContent = 'Entrar';
-  if(!resp.ok){ erroEl.textContent = resp.erro || 'Não foi possível entrar.'; return; }
-  estado.token = resp.token; estado.usuario = resp.usuario; estado.papel = resp.papel; estado.nome = resp.nome;
-  await iniciarAplicacao();
-});
-
-$('#botao-sair').addEventListener('click', () => {
-  if(estado.dashboard.timer) clearInterval(estado.dashboard.timer);
-  Object.assign(estado, { token:null, usuario:null, papel:null, nome:null, estrutura:null, cacheListagens:{} });
-  $('#app').style.display='none'; $('#tela-login').style.display='flex';
-  $('#campo-usuario').value=''; $('#campo-senha').value='';
-});
-
-async function iniciarAplicacao(){
-  const estrutura = await api('getEstrutura', {});
-  if(!estrutura.ok){ $('#erro-login').textContent = estrutura.erro; return; }
-  estado.estrutura = estrutura;
-  $('#tela-login').style.display='none'; $('#app').style.display='block';
-  $('#quem-esta-logado').innerHTML = `Logado como<br><strong>${escaparHtml(estado.nome)}</strong> · ${escaparHtml(estado.papel)}`;
-  montarNavegacao();
-  abrirTela('dashboard');
-}
-
-/* ============================================================================
-   NAVEGAÇÃO — montada a partir do que getEstrutura devolveu (abas existentes)
-   ============================================================================ */
-function montarNavegacao(){
-  const nav = $('#itens-navegacao');
-  const itens = [
-    { id:'dashboard', rotulo:'📊 Dashboard' },
-    { id:'relatorio', rotulo:'📅 Relatório periódico' }
-  ];
-  estado.estrutura.abas.forEach(aba => {
-    itens.push({ id:'aba:'+aba.nome, rotulo: (normalizarTexto(aba.nome)==='usuarios' ? '👤 ' : '📋 ') + aba.nome });
-  });
-  if(estado.papel === 'Administrador'){
-    itens.push({ id:'listas', rotulo:'🏷️ Listas de opções' });
-  }
-  nav.innerHTML = itens.map(it => `<button class="nav-item" data-tela="${it.id}">${it.rotulo}</button>`).join('');
-  $all('.nav-item', nav).forEach(btn => btn.addEventListener('click', () => abrirTela(btn.dataset.tela)));
-}
-
-function marcarNavAtiva(id){
-  $all('.nav-item[data-tela]').forEach(b => b.classList.toggle('ativo', b.dataset.tela === id));
-}
-
-function abrirTela(id){
-  if(estado.dashboard.timer && id !== 'dashboard'){ clearInterval(estado.dashboard.timer); estado.dashboard.timer=null; }
-  estado.telaAtual = id;
-  marcarNavAtiva(id);
-  const raiz = $('#conteudo-principal');
-  if(id === 'dashboard') return renderizarDashboard(raiz);
-  if(id === 'relatorio') return renderizarRelatorio(raiz);
-  if(id === 'listas') return renderizarListas(raiz);
-  if(id.startsWith('aba:')) return renderizarAbaGenerica(raiz, id.slice(4));
-}
-
-/* ============================================================================
-   TELA GENÉRICA DE DADOS (tabela + formulário) — usada para Movimentacao,
-   Usuarios e qualquer outra aba de registros que a planilha vier a ter.
-   Nada aqui tem nome de coluna fixo: tudo vem de estado.estrutura.
-   ============================================================================ */
-async function renderizarAbaGenerica(raiz, nomeAba){
-  const infoAba = estado.estrutura.abas.find(a => a.nome === nomeAba);
-  if(!infoAba){ raiz.innerHTML = '<div class="ficha vazio">Aba não encontrada.</div>'; return; }
-
-  raiz.innerHTML = `
-    <div class="cabecalho-tela">
-      <div><h1>${escaparHtml(nomeAba)}</h1><p>Registros lidos diretamente da aba "${escaparHtml(nomeAba)}" da planilha.</p></div>
-      <button class="botao botao-primario" id="botao-novo-registro">+ Novo registro</button>
-    </div>
-    <div class="ficha">
-      <div class="barra-ferramentas">
-        <input type="text" id="busca-generica" placeholder="Buscar…" style="max-width:260px; padding:8px 12px; border:1px solid var(--cor-borda); border-radius:8px;">
-        <span class="flex-1"></span>
-        <span id="contador-registros" style="font-size:13px; color:var(--cor-tinta-suave);"></span>
-      </div>
-      <div class="tabela-scroll"><div id="tabela-generica">Carregando…</div></div>
-    </div>`;
-
-  $('#botao-novo-registro').addEventListener('click', () => abrirModalFormulario(nomeAba, infoAba.colunas, null));
-  $('#busca-generica').addEventListener('input', (e) => desenharTabelaGenerica(nomeAba, infoAba.colunas, e.target.value));
-
-  const resp = await api('listar', { aba: nomeAba });
-  if(!resp.ok){ $('#tabela-generica').innerHTML = `<div class="vazio">${escaparHtml(resp.erro)}</div>`; return; }
-  estado.cacheListagens[nomeAba] = resp.registros;
-  desenharTabelaGenerica(nomeAba, infoAba.colunas, '');
-}
-
-function desenharTabelaGenerica(nomeAba, colunas, filtro){
-  const alvo = $('#tabela-generica');
-  let registros = estado.cacheListagens[nomeAba] || [];
-  if(filtro){
-    const f = normalizarTexto(filtro);
-    registros = registros.filter(r => colunas.some(c => normalizarTexto(r[c.nome]).indexOf(f) !== -1));
-  }
-  $('#contador-registros') && ($('#contador-registros').textContent = registros.length + (registros.length===1?' registro':' registros'));
-
-  if(registros.length === 0){ alvo.innerHTML = '<div class="vazio">Nenhum registro encontrado.</div>'; return; }
-
-  const podeEditar = estado.papel === 'Administrador';
-  const colunaEouS = colunas.find(c => normalizarTexto(c.nome) === 'es');
-
-  alvo.innerHTML = `<table><thead><tr>
-      ${colunas.map(c => `<th>${escaparHtml(c.nome)}</th>`).join('')}
-      ${podeEditar ? '<th></th>' : ''}
-    </tr></thead><tbody>
-      ${registros.map(reg => `<tr>
-        ${colunas.map(c => `<td>${formatarCelula(reg[c.nome], c)}</td>`).join('')}
-        ${podeEditar ? `<td class="acoes-linha">
-            <button data-acao="editar" data-id="${escaparHtml(reg.ID)}">Editar</button>
-            <button data-acao="excluir" data-id="${escaparHtml(reg.ID)}">Excluir</button>
-          </td>` : ''}
-      </tr>`).join('')}
-    </tbody></table>`;
-
-  if(podeEditar){
-    $all('button[data-acao="editar"]', alvo).forEach(b => b.addEventListener('click', () => {
-      const registro = registros.find(r => String(r.ID) === b.dataset.id);
-      const infoAba = estado.estrutura.abas.find(a => a.nome === nomeAba);
-      abrirModalFormulario(nomeAba, infoAba.colunas, registro);
-    }));
-    $all('button[data-acao="excluir"]', alvo).forEach(b => b.addEventListener('click', async () => {
-      if(!confirm('Excluir este registro? Essa ação não pode ser desfeita.')) return;
-      const resp = await api('excluir', { aba: nomeAba, id: b.dataset.id });
-      if(!resp.ok){ alert(resp.erro); return; }
-      estado.cacheListagens[nomeAba] = estado.cacheListagens[nomeAba].filter(r => String(r.ID) !== b.dataset.id);
-      desenharTabelaGenerica(nomeAba, colunas, $('#busca-generica') ? $('#busca-generica').value : '');
-    }));
-  }
-}
-
-function formatarCelula(valor, coluna){
-  if(coluna.tipo === 'senha') return '••••••';
-  if(coluna.tipo === 'data') return escaparHtml(formatarData(valor));
-  if(normalizarTexto(coluna.nome) === 'es'){
-    const cls = ehEntradaDemo(valor) ? 'entrada' : (ehSaidaDemo(valor) ? 'saida' : '');
-    return `<span class="rotulo-es ${cls}">${escaparHtml(valor)}</span>`;
-  }
-  return escaparHtml(valor);
-}
-
-/* --- Modal genérico de criar/editar registro --- */
-function abrirModalFormulario(nomeAba, colunas, registroExistente){
-  estado.edicaoModal = { aba: nomeAba, colunas, id: registroExistente ? registroExistente.ID : null };
-  $('#titulo-modal').textContent = registroExistente ? 'Editar registro' : 'Novo registro em "' + nomeAba + '"';
-  $('#erro-modal').textContent = '';
-  $('#form-modal').innerHTML = colunas.map(coluna => {
-    const valor = registroExistente ? registroExistente[coluna.nome] : '';
-    const idCampo = 'campo-modal-' + normalizarTexto(coluna.nome);
-    let campoHtml = '';
-    if(coluna.tipo === 'select'){
-      campoHtml = `<select id="${idCampo}"><option value=""></option>${(coluna.opcoes||[]).map(op =>
-        `<option value="${escaparHtml(op)}" ${String(valor)===String(op)?'selected':''}>${escaparHtml(op)}</option>`).join('')}</select>`;
-    } else if(coluna.tipo === 'numero'){
-      campoHtml = `<input id="${idCampo}" type="number" step="any" value="${escaparHtml(valor)}">`;
-    } else if(coluna.tipo === 'data'){
-      campoHtml = `<input id="${idCampo}" type="date" value="${paraInputData(valor)}">`;
-    } else if(coluna.tipo === 'senha'){
-      campoHtml = `<input id="${idCampo}" type="password" placeholder="${registroExistente ? 'deixe em branco para manter' : ''}">`;
-    } else {
-      campoHtml = `<input id="${idCampo}" type="text" value="${escaparHtml(valor)}">`;
+function mockApi(acao, dados) {
+  switch(acao){
+    case 'login': {
+      const achado = demo.usuarios.find(u => u.usuario===dados.usuario && u.senha===dados.senha);
+      if(!achado) return {ok:false, erro:'Usuário ou senha inválidos.'};
+      return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional};
     }
-    return `<div class="campo"><label for="${idCampo}">${escaparHtml(coluna.nome)}</label>${campoHtml}</div>`;
+    case 'listarListas': return {ok:true, listas:demo.listas};
+    case 'listarProducao': {
+      let registros = demo.producao.slice();
+      if(dados.dataInicio || dados.dataFim){
+        if(dados.dataInicio) registros = registros.filter(r=>r.data >= dados.dataInicio);
+        if(dados.dataFim) registros = registros.filter(r=>r.data <= dados.dataFim);
+      } else {
+        if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+        if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
+      }
+      if(dados.prof) registros = registros.filter(r=>r.prof.toUpperCase()===dados.prof.toUpperCase());
+      return {ok:true, registros};
+    }
+    case 'adicionarProducao': {
+      const d = new Date(dados.data+'T00:00:00');
+      const novo = Object.assign({id:'d'+Math.random().toString(36).slice(2,9)}, dados, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
+      demo.producao.unshift(novo);
+      return {ok:true};
+    }
+    case 'atualizarProducao': {
+      const idx = demo.producao.findIndex(r=>r.id===dados.id);
+      if(idx===-1) return {ok:false, erro:'Não encontrado'};
+      const d = new Date(dados.registro.data+'T00:00:00');
+      demo.producao[idx] = Object.assign({id:dados.id}, dados.registro, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
+      return {ok:true};
+    }
+    case 'excluirProducao': {
+      demo.producao = demo.producao.filter(r=>r.id!==dados.id);
+      return {ok:true};
+    }
+    case 'listarMetas': {
+      let metas = demo.metas.slice();
+      if(dados.mes) metas = metas.filter(m=>m.mes===dados.mes);
+      if(dados.ano) metas = metas.filter(m=>String(m.ano)===String(dados.ano));
+      return {ok:true, metas};
+    }
+    case 'salvarMeta': {
+      const idx = demo.metas.findIndex(m=>m.prof===dados.prof && m.mes===dados.mes && String(m.ano)===String(dados.ano));
+      if(idx>-1) demo.metas[idx] = dados; else demo.metas.push(dados);
+      return {ok:true};
+    }
+    case 'obterNota': {
+      const chave = dados.mes+'-'+dados.ano;
+      return {ok:true, texto: demo.notas[chave] || ''};
+    }
+    case 'salvarNota': {
+      demo.notas[dados.mes+'-'+dados.ano] = dados.texto;
+      return {ok:true};
+    }
+    case 'obterConfiguracoes': {
+      return {ok:true, configuracoes: demo.configuracoes};
+    }
+    case 'salvarConfiguracao': {
+      demo.configuracoes[dados.chave] = dados.valor;
+      return {ok:true};
+    }
+    case 'dashboard': {
+      let registros = demo.producao.slice();
+      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+      if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
+      const porProfissional = {}, porConvenio = {};
+      let totalValor = 0;
+      registros.forEach(r=>{
+        const prof = r.prof || 'Não informado';
+        const conv = r.convenio || 'PARTICULAR';
+        const valor = Number(r.valor)||0;
+        if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
+        porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
+        if(!porConvenio[conv]) porConvenio[conv]=0;
+        porConvenio[conv]+=valor;
+        totalValor+=valor;
+      });
+      let metas = demo.metas.filter(m=>m.mes===dados.mes && String(m.ano)===String(dados.ano));
+      const metaPorProf = {}; metas.forEach(m=>metaPorProf[m.prof]=m);
+      const comparativo = Object.keys(porProfissional).map(prof=>{
+        const m = metaPorProf[prof]||{};
+        return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
+                metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
+      });
+      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, comparativo};
+    }
+    default: return {ok:false, erro:'Ação desconhecida em modo demo: '+acao};
+  }
+}
+
+/* ---------------------------------------------------------------------
+   FORMATAÇÃO
+--------------------------------------------------------------------- */
+const formatarMoeda = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const arredondar1 = v => Math.round((Number(v)||0)*10)/10;
+
+/* =====================================================================
+   MINI-BIBLIOTECA DE GRÁFICOS PRÓPRIA (SVG puro, sem dependência externa)
+   Substitui o Chart.js — assim os gráficos nunca dependem de internet.
+===================================================================== */
+const PALETA_GRAFICOS = ['#5C2350','#146B5D','#B9862E','#8A3D79','#0E5548','#C495B8','#9C6E22','#4A1D45'];
+
+function graficoVazio(idContainer, mensagem){
+  const el = document.getElementById(idContainer);
+  if(el) el.innerHTML = `<p class="vazio" style="padding:20px 0;">${mensagem || 'Sem dados para exibir.'}</p>`;
+}
+
+function truncarRotulo(texto, max=12){
+  texto = String(texto);
+  return texto.length>max ? texto.slice(0,max-1)+'…' : texto;
+}
+
+// ---------- Gráfico de barras (um único valor por rótulo) ----------
+function miniGraficoBarras(idContainer, labels, valores, cor='#5C2350'){
+  const container = document.getElementById(idContainer);
+  if(!container) return;
+  if(!labels.length){ graficoVazio(idContainer); return; }
+
+  const W = 640, H = 260, margemEsq = 44, margemDir = 12, margemTopo = 14, margemBaixo = 46;
+  const areaW = W - margemEsq - margemDir, areaH = H - margemTopo - margemBaixo;
+  const maxValor = Math.max(1, ...valores);
+  const larguraBarra = Math.min(48, areaW/labels.length*0.6);
+  const passo = areaW/labels.length;
+
+  let barras = '', rotulosX = '';
+  labels.forEach((lab,i)=>{
+    const v = valores[i]||0;
+    const alturaBarra = (v/maxValor)*areaH;
+    const x = margemEsq + i*passo + (passo-larguraBarra)/2;
+    const y = margemTopo + areaH - alturaBarra;
+    barras += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larguraBarra.toFixed(1)}" height="${Math.max(1,alturaBarra).toFixed(1)}" rx="4" fill="${cor}"><title>${lab}: ${v}</title></rect>`;
+    barras += `<text class="rotulo-valor" x="${(x+larguraBarra/2).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle">${v}</text>`;
+    rotulosX += `<text class="rotulo-eixo" x="${(x+larguraBarra/2).toFixed(1)}" y="${H-margemBaixo+16}" text-anchor="middle" transform="rotate(-35 ${(x+larguraBarra/2).toFixed(1)} ${H-margemBaixo+16})">${truncarRotulo(lab)}</text>`;
+  });
+
+  const linhasGuia = [0,0.5,1].map(f=>{
+    const y = margemTopo + areaH*(1-f);
+    return `<line x1="${margemEsq}" y1="${y.toFixed(1)}" x2="${W-margemDir}" y2="${y.toFixed(1)}" stroke="#E7DDE4" stroke-width="1"/>`;
   }).join('');
-  $('#sobreposicao-modal').style.display = 'flex';
-}
-$('#botao-cancelar-modal').addEventListener('click', () => $('#sobreposicao-modal').style.display='none');
-$('#sobreposicao-modal').addEventListener('click', (e) => { if(e.target.id==='sobreposicao-modal') $('#sobreposicao-modal').style.display='none'; });
 
-$('#botao-salvar-modal').addEventListener('click', async () => {
-  const { aba, colunas, id } = estado.edicaoModal;
-  const dados = {};
-  colunas.forEach(coluna => {
-    const idCampo = 'campo-modal-' + normalizarTexto(coluna.nome);
-    const el = document.getElementById(idCampo);
-    if(!el) return;
-    if(coluna.tipo === 'senha' && !el.value) return; // não sobrescreve senha se deixado em branco
-    if(coluna.tipo === 'data' && el.value){ dados[coluna.nome] = new Date(el.value + 'T00:00:00').toISOString(); return; }
-    dados[coluna.nome] = el.value;
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${linhasGuia}${barras}${rotulosX}</svg>`;
+}
+
+// ---------- Gráfico de barras empilhadas (2 séries por rótulo) ----------
+function miniGraficoBarrasEmpilhadas(idContainer, labels, series){
+  // series = [{nome, dados:[...], cor}, {nome, dados:[...], cor}]
+  const container = document.getElementById(idContainer);
+  if(!container) return;
+  if(!labels.length){ graficoVazio(idContainer); return; }
+
+  const W = 640, H = 280, margemEsq = 44, margemDir = 12, margemTopo = 14, margemBaixo = 60;
+  const areaW = W - margemEsq - margemDir, areaH = H - margemTopo - margemBaixo;
+  const totais = labels.map((_,i)=> series.reduce((s,serie)=>s+(serie.dados[i]||0),0));
+  const maxValor = Math.max(1, ...totais);
+  const larguraBarra = Math.min(48, areaW/labels.length*0.6);
+  const passo = areaW/labels.length;
+
+  let barras = '', rotulosX = '';
+  labels.forEach((lab,i)=>{
+    const x = margemEsq + i*passo + (passo-larguraBarra)/2;
+    let yAtual = margemTopo + areaH;
+    series.forEach(serie=>{
+      const v = serie.dados[i]||0;
+      const altura = (v/maxValor)*areaH;
+      yAtual -= altura;
+      barras += `<rect x="${x.toFixed(1)}" y="${yAtual.toFixed(1)}" width="${larguraBarra.toFixed(1)}" height="${Math.max(0,altura).toFixed(1)}" fill="${serie.cor}"><title>${serie.nome} — ${lab}: ${v}</title></rect>`;
+    });
+    rotulosX += `<text class="rotulo-eixo" x="${(x+larguraBarra/2).toFixed(1)}" y="${H-margemBaixo+16}" text-anchor="middle" transform="rotate(-35 ${(x+larguraBarra/2).toFixed(1)} ${H-margemBaixo+16})">${truncarRotulo(lab)}</text>`;
   });
 
-  const botao = $('#botao-salvar-modal'); botao.disabled = true; botao.textContent = 'Salvando…';
-  const resp = id ? await api('atualizar', { aba, id, dados }) : await api('criar', { aba, dados });
-  botao.disabled = false; botao.textContent = 'Salvar';
+  const linhasGuia = [0,0.5,1].map(f=>{
+    const y = margemTopo + areaH*(1-f);
+    return `<line x1="${margemEsq}" y1="${y.toFixed(1)}" x2="${W-margemDir}" y2="${y.toFixed(1)}" stroke="#E7DDE4" stroke-width="1"/>`;
+  }).join('');
 
-  if(!resp.ok){ $('#erro-modal').textContent = resp.erro; return; }
-  $('#sobreposicao-modal').style.display = 'none';
+  const legenda = series.map(s=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${s.cor};"></span>${s.nome}</div>`).join('');
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${linhasGuia}${barras}${rotulosX}</svg><div class="mini-legenda">${legenda}</div>`;
+}
 
-  if(id){
-    const lista = estado.cacheListagens[aba] || [];
-    const idx = lista.findIndex(r => String(r.ID) === String(id));
-    if(idx !== -1) lista[idx] = resp.registro;
-  } else {
-    (estado.cacheListagens[aba] || (estado.cacheListagens[aba]=[])).push(resp.registro);
+// ---------- Gráfico de rosca (doughnut) ----------
+function miniGraficoRosca(idContainer, labels, valores, cores=PALETA_GRAFICOS){
+  const container = document.getElementById(idContainer);
+  if(!container) return;
+  if(!labels.length){ graficoVazio(idContainer); return; }
+
+  const total = valores.reduce((a,b)=>a+b,0) || 1;
+  const cx=110, cy=110, rExterno=100, rInterno=58;
+  let anguloAtual = -90;
+  let fatias = '';
+  labels.forEach((lab,i)=>{
+    const valor = valores[i]||0;
+    const angulo = (valor/total)*360;
+    const anguloFim = anguloAtual + angulo;
+    const grandeArco = angulo>180 ? 1 : 0;
+    const rad = a => (a*Math.PI)/180;
+    const x1e = cx + rExterno*Math.cos(rad(anguloAtual)), y1e = cy + rExterno*Math.sin(rad(anguloAtual));
+    const x2e = cx + rExterno*Math.cos(rad(anguloFim)), y2e = cy + rExterno*Math.sin(rad(anguloFim));
+    const x1i = cx + rInterno*Math.cos(rad(anguloFim)), y1i = cy + rInterno*Math.sin(rad(anguloFim));
+    const x2i = cx + rInterno*Math.cos(rad(anguloAtual)), y2i = cy + rInterno*Math.sin(rad(anguloAtual));
+    const cor = cores[i%cores.length];
+    fatias += `<path d="M ${x1e.toFixed(2)} ${y1e.toFixed(2)} A ${rExterno} ${rExterno} 0 ${grandeArco} 1 ${x2e.toFixed(2)} ${y2e.toFixed(2)} L ${x1i.toFixed(2)} ${y1i.toFixed(2)} A ${rInterno} ${rInterno} 0 ${grandeArco} 0 ${x2i.toFixed(2)} ${y2i.toFixed(2)} Z" fill="${cor}"><title>${lab}: ${valor} (${Math.round(valor/total*100)}%)</title></path>`;
+    anguloAtual = anguloFim;
+  });
+
+  const legenda = labels.map((lab,i)=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${cores[i%cores.length]};"></span>${truncarRotulo(lab,18)} (${Math.round((valores[i]||0)/total*100)}%)</div>`).join('');
+  container.innerHTML = `<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" style="max-width:240px;margin:0 auto;display:block;">${fatias}</svg><div class="mini-legenda">${legenda}</div>`;
+}
+
+// ---------- Gráfico de linhas (até 2 séries, comparação) ----------
+function miniGraficoLinhas(idContainer, labels, series){
+  // series = [{nome, dados:[...], cor, tracejado:bool}]
+  const container = document.getElementById(idContainer);
+  if(!container) return;
+  if(!labels.length){ graficoVazio(idContainer); return; }
+
+  const W = 640, H = 260, margemEsq = 52, margemDir = 16, margemTopo = 14, margemBaixo = 40;
+  const areaW = W - margemEsq - margemDir, areaH = H - margemTopo - margemBaixo;
+  const todosValores = series.flatMap(s=>s.dados);
+  const maxValor = Math.max(1, ...todosValores);
+  const passo = labels.length>1 ? areaW/(labels.length-1) : 0;
+
+  const linhasGuia = [0,0.5,1].map(f=>{
+    const y = margemTopo + areaH*(1-f);
+    return `<line x1="${margemEsq}" y1="${y.toFixed(1)}" x2="${W-margemDir}" y2="${y.toFixed(1)}" stroke="#E7DDE4" stroke-width="1"/>`;
+  }).join('');
+
+  const rotulosX = labels.map((lab,i)=>{
+    const x = margemEsq + i*passo;
+    return `<text class="rotulo-eixo" x="${x.toFixed(1)}" y="${H-margemBaixo+18}" text-anchor="middle">${truncarRotulo(lab,6)}</text>`;
+  }).join('');
+
+  let linhas = '';
+  series.forEach(serie=>{
+    const pontos = serie.dados.map((v,i)=>{
+      const x = margemEsq + i*passo;
+      const y = margemTopo + areaH - (v/maxValor)*areaH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const circulos = serie.dados.map((v,i)=>{
+      const x = margemEsq + i*passo;
+      const y = margemTopo + areaH - (v/maxValor)*areaH;
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${serie.cor}"><title>${serie.nome} — ${labels[i]}: ${v}</title></circle>`;
+    }).join('');
+    linhas += `<polyline points="${pontos}" fill="none" stroke="${serie.cor}" stroke-width="2.5" ${serie.tracejado?'stroke-dasharray="6,5"':''}/>${circulos}`;
+  });
+
+  const legenda = series.map(s=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${s.cor};"></span>${s.nome}</div>`).join('');
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${linhasGuia}${linhas}${rotulosX}</svg><div class="mini-legenda">${legenda}</div>`;
+}
+
+/* ---------------------------------------------------------------------
+   LOGIN
+--------------------------------------------------------------------- */
+if(MODO_DEMO){
+  document.getElementById('contas-demo').innerHTML =
+    '<b>Contas de demonstração</b><br>Gerente → usuário <b>gerente</b> / senha <b>gerente123</b><br>Profissional → usuário <b>angelina</b> / senha <b>123</b>';
+}
+
+document.getElementById('form-login').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const usuario = document.getElementById('usuario').value.trim();
+  const senha = document.getElementById('senha').value.trim();
+  const erroEl = document.getElementById('erro-login');
+  erroEl.textContent = 'Entrando...';
+  try{
+    const resp = await api('login', {usuario, senha});
+    if(!resp.ok){ erroEl.textContent = resp.erro || 'Não foi possível entrar.'; return; }
+    estado.usuario = resp.usuario;
+    estado.papel = resp.papel;
+    estado.nomeProfissional = resp.nomeProfissional;
+    await iniciarApp();
+  }catch(e){
+    erroEl.textContent = 'Erro de conexão com o servidor.';
   }
-  if(estado.telaAtual === 'aba:'+aba) desenharTabelaGenerica(aba, colunas, '');
 });
 
-/* ============================================================================
-   DASHBOARD — KPIs, gráfico mensal e atualização (manual e automática)
-   ============================================================================ */
-function renderizarDashboard(raiz){
-  raiz.innerHTML = `
-    <div class="cabecalho-tela">
-      <div><h1>Dashboard</h1><p>Visão geral das entradas e saídas de estoque.</p></div>
-    </div>
-    <div class="ficha">
-      <div class="barra-ferramentas">
-        <button class="botao botao-fantasma" id="botao-atualizar-dashboard">↻ Atualizar dados</button>
-        <span class="badge-atualizacao" id="badge-atualizacao-dashboard"><span class="ponto-status"></span> —</span>
-        <span class="flex-1"></span>
-        <label class="toggle"><input type="checkbox" id="toggle-auto-dashboard"> Atualizar automaticamente</label>
-        <select id="intervalo-auto-dashboard" style="padding:6px 8px; border:1px solid var(--cor-borda); border-radius:6px;">
-          <option value="1">a cada 1 min</option>
-          <option value="5" selected>a cada 5 min</option>
-          <option value="10">a cada 10 min</option>
-        </select>
-      </div>
-      <div class="aviso-discreto" id="aviso-dashboard"></div>
-      <div id="corpo-dashboard">Carregando…</div>
-    </div>`;
+document.getElementById('botao-sair').addEventListener('click', ()=>{
+  location.reload();
+});
 
-  $('#botao-atualizar-dashboard').addEventListener('click', () => buscarDashboard(true));
-  $('#toggle-auto-dashboard').addEventListener('change', (e) => {
-    estado.dashboard.autoAtualizar = e.target.checked;
-    if(estado.dashboard.timer){ clearInterval(estado.dashboard.timer); estado.dashboard.timer=null; }
-    if(e.target.checked){
-      const ms = Number($('#intervalo-auto-dashboard').value) * 60000;
-      estado.dashboard.timer = setInterval(() => buscarDashboard(false), ms);
-    }
-  });
-  $('#intervalo-auto-dashboard').addEventListener('change', (e) => {
-    estado.dashboard.intervaloMinutos = Number(e.target.value);
-    if(estado.dashboard.autoAtualizar){
-      clearInterval(estado.dashboard.timer);
-      estado.dashboard.timer = setInterval(() => buscarDashboard(false), Number(e.target.value)*60000);
-    }
-  });
-
-  if(estado.dashboard.dados) desenharCorpoDashboard(estado.dashboard.dados);
-  buscarDashboard(estado.dashboard.dados === null);
-}
-
-async function buscarDashboard(mostrarCarregando){
-  const badge = $('#badge-atualizacao-dashboard');
-  const aviso = $('#aviso-dashboard');
-  if(!badge) return; // usuário já saiu da tela
-  if(mostrarCarregando){
-    badge.innerHTML = '<span class="ponto-status carregando"></span> Atualizando…';
+/* ---------------------------------------------------------------------
+   NOME DA CLÍNICA — carregado já na tela de login, salvo na planilha
+--------------------------------------------------------------------- */
+let nomeClinicaAtual = 'Clínica';
+async function carregarNomeClinica(){
+  try{
+    const resp = await api('obterConfiguracoes', {});
+    nomeClinicaAtual = (resp.configuracoes && resp.configuracoes.nome_clinica) || 'Clínica';
+  }catch(e){
+    nomeClinicaAtual = 'Clínica';
   }
-  const resp = await api('dashboard', {});
-  if(!$('#badge-atualizacao-dashboard')) return; // saiu da tela enquanto esperava
+  document.getElementById('subtitulo-login').textContent = 'Acesso restrito à equipe — ' + nomeClinicaAtual;
+  document.getElementById('nome-clinica-topo').textContent = nomeClinicaAtual;
+}
+carregarNomeClinica();
 
-  if(!resp.ok){
-    aviso.style.display='block'; aviso.textContent = '⚠ Não foi possível atualizar agora (' + resp.erro + '). Mostrando os últimos dados carregados.';
-    badge.innerHTML = '<span class="ponto-status erro"></span> Falha na última atualização';
-    if(!estado.dashboard.dados) $('#corpo-dashboard').innerHTML = '<div class="vazio">Sem dados ainda.</div>';
+/* ---------------------------------------------------------------------
+   INICIALIZAÇÃO DO APP (pós-login)
+--------------------------------------------------------------------- */
+async function iniciarApp(){
+  document.getElementById('tela-login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('faixa-demo').style.display = MODO_DEMO ? 'block' : 'none';
+  document.getElementById('nome-usuario-topo').textContent = estado.nomeProfissional || estado.usuario;
+
+  try{
+    const listasResp = await api('listarListas');
+    if(!listasResp.ok) throw new Error(listasResp.erro || 'A planilha não respondeu como esperado.');
+    estado.listas = listasResp.listas || {};
+  }catch(e){
+    mostrarErroInicializacao('Não foi possível carregar as listas da planilha (' + (e.message||e) + '). Confira se o Code.gs foi republicado (Implantar → Gerenciar implantações → Nova versão) e se a URL em CONFIG.API_URL está correta.');
     return;
   }
-  aviso.style.display='none';
-  estado.dashboard.dados = resp;
-  estado.dashboard.ultimaAtualizacao = new Date();
-  badge.innerHTML = '<span class="ponto-status"></span> Última atualização às ' +
-    estado.dashboard.ultimaAtualizacao.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  desenharCorpoDashboard(resp);
+
+  try{
+    montarNavegacao();
+    preencherSelectsPeriodo();
+    montarFormularioLancamento();
+    await atualizarPainelAtivo();
+  }catch(e){
+    mostrarErroInicializacao('Algo deu errado ao montar as telas (' + (e.message||e) + '). Tente sair e entrar de novo; se persistir, avise o suporte.');
+  }
 }
 
-function desenharCorpoDashboard(d){
-  const corpo = $('#corpo-dashboard');
-  if(!corpo) return;
-  const max = Math.max(1, ...d.serieMensal.flatMap(m => [m.entradas, m.saidas]));
-
-  corpo.innerHTML = `
-    <div class="grade-kpis">
-      <div class="kpi entrada"><div class="rotulo">Entradas no mês</div><div class="valor">${d.totalEntradasMes.toLocaleString('pt-BR')}</div></div>
-      <div class="kpi saida"><div class="rotulo">Saídas no mês</div><div class="valor">${d.totalSaidasMes.toLocaleString('pt-BR')}</div></div>
-      <div class="kpi"><div class="rotulo">Saldo do mês</div><div class="valor">${d.saldoMes.toLocaleString('pt-BR')}</div></div>
-    </div>
-
-    <h3>Entradas x Saídas por mês</h3>
-    <div class="grafico-mensal">
-      ${d.serieMensal.map(m => `
-        <div class="grafico-coluna">
-          <div class="grafico-barras">
-            <div class="grafico-barra entrada" style="height:${Math.round(m.entradas/max*140)}px" title="Entradas: ${m.entradas}"></div>
-            <div class="grafico-barra saida" style="height:${Math.round(m.saidas/max*140)}px" title="Saídas: ${m.saidas}"></div>
-          </div>
-          <div class="grafico-legenda-mes">${nomeDoMes(m.mes)}</div>
-        </div>`).join('') || '<p class="vazio">Sem movimentações registradas ainda.</p>'}
-    </div>
-    <div class="legenda-inline">
-      <span><i class="ponto-legenda" style="background:var(--cor-entrada)"></i>Entradas</span>
-      <span><i class="ponto-legenda" style="background:var(--cor-saida)"></i>Saídas</span>
-    </div>
-
-    <div class="duas-colunas" style="margin-top:22px;">
-      <div>
-        <h3>Movimentação do mês por destino</h3>
-        <div class="tabela-scroll">${tabelaSimples(['Destino','Entradas','Saídas'], d.porDestino.map(x => [x.destino, x.entradas, x.saidas]))}</div>
-      </div>
-      <div>
-        <h3>Movimentação do mês por material (e saldo atual)</h3>
-        <div class="tabela-scroll">${tabelaSimples(['Material','Entradas no mês','Saídas no mês','Saldo atual'], d.porMaterial.map(x => [x.material, x.entradas, x.saidas, x.saldoAtual]))}</div>
-      </div>
-    </div>`;
+// Mostra um erro visível DENTRO do sistema (não escondido atrás da tela de
+// login, que já foi ocultada nesse ponto) — assim dá pra saber exatamente
+// o que travou, em vez de só uma tela em branco sem explicação.
+function mostrarErroInicializacao(mensagem){
+  const main = document.querySelector('main');
+  if(main) main.innerHTML = `<div class="cartao" style="border:1.5px solid var(--danger);max-width:640px;">
+    <h3 style="color:var(--danger);margin:0 0 10px;">Não foi possível carregar o sistema</h3>
+    <p style="color:var(--ink-600);margin:0 0 14px;">${mensagem}</p>
+    <button class="botao sutil" onclick="location.reload()">Tentar de novo</button>
+  </div>`;
 }
 
-function tabelaSimples(cabecalhos, linhas){
-  if(linhas.length === 0) return '<p class="vazio">Sem dados no período.</p>';
-  return `<table><thead><tr>${cabecalhos.map(c=>`<th>${escaparHtml(c)}</th>`).join('')}</tr></thead>
-    <tbody>${linhas.map(l => `<tr>${l.map(v => `<td>${typeof v==='number' ? v.toLocaleString('pt-BR') : escaparHtml(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-}
-
-/* ============================================================================
-   RELATÓRIO PERIÓDICO — filtra por intervalo de datas, destino e material
-   ============================================================================ */
-function renderizarRelatorio(raiz){
-  const listaDestinos = Object.keys(estado.estrutura.listas).find(n => normalizarTexto(n).indexOf('destino')!==-1);
-  const listaMateriais = Object.keys(estado.estrutura.listas).find(n => normalizarTexto(n).indexOf('material')!==-1 || normalizarTexto(n).indexOf('produto')!==-1);
-  const opcoesDestino = listaDestinos ? estado.estrutura.listas[listaDestinos] : [];
-  const opcoesMaterial = listaMateriais ? estado.estrutura.listas[listaMateriais] : [];
-
-  const hoje = new Date();
-  const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
-  const hojeISO = hoje.toISOString().slice(0,10);
-
-  raiz.innerHTML = `
-    <div class="cabecalho-tela"><div><h1>Relatório periódico</h1><p>Entradas, saídas e saldo em um intervalo de datas, por local e por material.</p></div></div>
-    <div class="ficha">
-      <div class="barra-ferramentas" style="flex-wrap:wrap;">
-        <div class="campo" style="margin:0;"><label>De</label><input type="date" id="rel-data-inicio" value="${primeiroDiaMes}"></div>
-        <div class="campo" style="margin:0;"><label>Até</label><input type="date" id="rel-data-fim" value="${hojeISO}"></div>
-        <div class="campo" style="margin:0; min-width:180px;"><label>Destino</label>
-          <select id="rel-destino"><option value="">Todos</option>${opcoesDestino.map(o=>`<option value="${escaparHtml(o)}">${escaparHtml(o)}</option>`).join('')}</select></div>
-        <div class="campo" style="margin:0; min-width:180px;"><label>Material</label>
-          <select id="rel-material"><option value="">Todos</option>${opcoesMaterial.map(o=>`<option value="${escaparHtml(o)}">${escaparHtml(o)}</option>`).join('')}</select></div>
-        <button class="botao botao-primario" id="rel-buscar" style="align-self:flex-end;">Gerar relatório</button>
-      </div>
-      <div class="aviso-discreto" id="rel-aviso"></div>
-      <div id="rel-corpo">Escolha um período e clique em "Gerar relatório".</div>
-    </div>`;
-
-  $('#rel-buscar').addEventListener('click', buscarRelatorio);
-  buscarRelatorio();
-}
-
-async function buscarRelatorio(){
-  const botao = $('#rel-buscar'); const aviso = $('#rel-aviso'); const corpo = $('#rel-corpo');
-  botao.disabled = true; botao.textContent = 'Gerando…'; aviso.style.display='none';
-  const resp = await api('relatorio', {
-    dataInicio: $('#rel-data-inicio').value, dataFim: $('#rel-data-fim').value,
-    destino: $('#rel-destino').value, material: $('#rel-material').value
+/* ---------------------------------------------------------------------
+   NAVEGAÇÃO ENTRE ABAS
+--------------------------------------------------------------------- */
+function montarNavegacao(){
+  const nav = document.getElementById('nav-abas');
+  const abasDisponiveis = [{id:'lancamento', rotulo:'Lançamento'}, {id:'critica', rotulo:'Crítica'}];
+  if(estado.papel === 'gerente'){
+    abasDisponiveis.splice(1, 0, {id:'editar', rotulo:'Editar'});
+    abasDisponiveis.push({id:'metas', rotulo:'Metas'});
+    abasDisponiveis.push({id:'dashboard', rotulo:'Dashboard'});
+    abasDisponiveis.push({id:'analises', rotulo:'Análises'});
+    abasDisponiveis.push({id:'rmr', rotulo:'RMR'});
+    abasDisponiveis.push({id:'configuracoes', rotulo:'Configurações'});
+  }
+  nav.innerHTML = '';
+  abasDisponiveis.forEach((a,i)=>{
+    const botao = document.createElement('button');
+    botao.className = 'aba' + (i===0 ? ' ativa':'');
+    botao.textContent = a.rotulo;
+    botao.dataset.aba = a.id;
+    botao.addEventListener('click', ()=>trocarAba(a.id));
+    nav.appendChild(botao);
   });
-  botao.disabled = false; botao.textContent = 'Gerar relatório';
-  if(!resp.ok){ aviso.style.display='block'; aviso.textContent = '⚠ ' + resp.erro; return; }
-
-  corpo.innerHTML = `
-    <div class="grade-kpis">
-      <div class="kpi entrada"><div class="rotulo">Entradas no período</div><div class="valor">${resp.resumo.entradas.toLocaleString('pt-BR')}</div></div>
-      <div class="kpi saida"><div class="rotulo">Saídas no período</div><div class="valor">${resp.resumo.saidas.toLocaleString('pt-BR')}</div></div>
-      <div class="kpi"><div class="rotulo">Saldo do período</div><div class="valor">${resp.resumo.saldo.toLocaleString('pt-BR')}</div></div>
-    </div>
-    <div class="duas-colunas">
-      <div><h3>Por local (Destino)</h3><div class="tabela-scroll">${tabelaSimples(['Destino','Entradas','Saídas','Saldo'], resp.porDestino.map(x=>[x.destino,x.entradas,x.saidas,x.saldo]))}</div></div>
-      <div><h3>Por material</h3><div class="tabela-scroll">${tabelaSimples(['Material','Entradas','Saídas','Saldo'], resp.porMaterial.map(x=>[x.material,x.entradas,x.saidas,x.saldo]))}</div></div>
-    </div>
-    <h3 style="margin-top:22px;">Movimentações do período (${resp.movimentos.length})</h3>
-    <div class="tabela-scroll">${resp.movimentos.length === 0 ? '<p class="vazio">Nenhuma movimentação nesse período/filtro.</p>' :
-      `<table><thead><tr>${Object.keys(resp.movimentos[0]).map(c=>`<th>${escaparHtml(c)}</th>`).join('')}</tr></thead>
-        <tbody>${resp.movimentos.map(m => `<tr>${Object.entries(m).map(([chave,valor]) =>
-          `<td>${normalizarTexto(chave).indexOf('data')!==-1 || normalizarTexto(chave).indexOf('validade')!==-1 ? escaparHtml(formatarData(valor)) : escaparHtml(valor)}</td>`).join('')}</tr>`).join('')}</tbody></table>`}
-    </div>`;
+  estado.abaAtiva = abasDisponiveis[0].id;
+  document.getElementById('painel-'+estado.abaAtiva).classList.add('ativo');
 }
 
-/* ============================================================================
-   ADMINISTRAÇÃO DE LISTAS (dropdowns) — só para o papel Administrador
-   ============================================================================ */
-function renderizarListas(raiz){
-  const listas = estado.estrutura.listas;
-  raiz.innerHTML = `
-    <div class="cabecalho-tela"><div><h1>Listas de opções</h1><p>Essas listas alimentam os menus suspensos dos formulários. Peça para o nome da lista bater com o nome da coluna na aba de dados.</p></div></div>
-    <div class="ficha">
-      ${Object.keys(listas).map(nomeLista => `
-        <div style="margin-bottom:20px;">
-          <h3>${escaparHtml(nomeLista)}</h3>
-          <div id="chips-${normalizarTexto(nomeLista)}">${chipsDeLista(nomeLista, listas[nomeLista])}</div>
-          <div style="display:flex; gap:8px; margin-top:8px; max-width:360px;">
-            <input type="text" id="novo-valor-${normalizarTexto(nomeLista)}" placeholder="Nova opção para ${escaparHtml(nomeLista)}" style="flex:1; padding:8px 10px; border:1px solid var(--cor-borda); border-radius:8px;">
-            <button class="botao botao-fantasma" data-adicionar-lista="${escaparHtml(nomeLista)}">Adicionar</button>
-          </div>
-        </div>`).join('')}
-    </div>`;
-
-  $all('button[data-adicionar-lista]').forEach(btn => btn.addEventListener('click', async () => {
-    const nomeLista = btn.dataset.adicionarLista;
-    const input = document.getElementById('novo-valor-' + normalizarTexto(nomeLista));
-    const valor = input.value.trim();
-    if(!valor) return;
-    btn.disabled = true;
-    const resp = await api('listasAdicionar', { lista: nomeLista, valor });
-    btn.disabled = false;
-    if(!resp.ok){ alert(resp.erro); return; }
-    listas[nomeLista] = listas[nomeLista] || []; listas[nomeLista].push(valor);
-    input.value = '';
-    document.getElementById('chips-' + normalizarTexto(nomeLista)).innerHTML = chipsDeLista(nomeLista, listas[nomeLista]);
-    ligarChipsRemover(nomeLista);
-  }));
-  Object.keys(listas).forEach(ligarChipsRemover);
+async function trocarAba(idAba){
+  estado.abaAtiva = idAba;
+  document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b.dataset.aba===idAba));
+  document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativo'));
+  document.getElementById('painel-'+idAba).classList.add('ativo');
+  await atualizarPainelAtivo();
 }
 
-function chipsDeLista(nomeLista, opcoes){
-  if(!opcoes || opcoes.length===0) return '<span class="vazio" style="padding:6px 0;">Nenhuma opção cadastrada ainda.</span>';
-  return opcoes.map(op => `<span class="chip-lista">${escaparHtml(op)}<button data-remover-de="${escaparHtml(nomeLista)}" data-valor="${escaparHtml(op)}" title="Remover">×</button></span>`).join('');
+async function atualizarPainelAtivo(){
+  if(estado.abaAtiva==='lancamento') await atualizarMeusLancamentos();
+  if(estado.abaAtiva==='editar') await atualizarEditar();
+  if(estado.abaAtiva==='critica') await atualizarCritica();
+  if(estado.abaAtiva==='metas') await atualizarMetas();
+  if(estado.abaAtiva==='dashboard') await atualizarDashboard();
+  if(estado.abaAtiva==='analises') await atualizarAnalises();
+  if(estado.abaAtiva==='configuracoes') await atualizarConfiguracoes();
+  if(estado.abaAtiva==='rmr') await atualizarRMR();
 }
 
-function ligarChipsRemover(nomeLista){
-  $all(`button[data-remover-de="${nomeLista}"]`).forEach(btn => btn.addEventListener('click', async () => {
-    if(!confirm('Remover "' + btn.dataset.valor + '" da lista "' + nomeLista + '"?')) return;
-    const resp = await api('listasRemover', { lista: nomeLista, valor: btn.dataset.valor });
-    if(!resp.ok){ alert(resp.erro); return; }
-    const listas = estado.estrutura.listas;
-    listas[nomeLista] = listas[nomeLista].filter(v => v !== btn.dataset.valor);
-    document.getElementById('chips-' + normalizarTexto(nomeLista)).innerHTML = chipsDeLista(nomeLista, listas[nomeLista]);
-    ligarChipsRemover(nomeLista);
-  }));
+/* ---------------------------------------------------------------------
+   SELECTS DE PERÍODO (mês / ano) reaproveitados em gerencial e dashboard
+--------------------------------------------------------------------- */
+const DIMENSOES_ANALISE = [
+  {chave:'prof', rotulo:'Profissional'},
+  {chave:'convenio', rotulo:'Convênio'},
+  {chave:'procedimento', rotulo:'Procedimento'},
+  {chave:'atendente', rotulo:'Atendente'},
+  {chave:'turno', rotulo:'Turno'},
+  {chave:'forma_pagamento', rotulo:'Forma de pagamento'},
+  {chave:'biopsias', rotulo:'Biópsia (frascos)'},
+  {chave:'exames', rotulo:'Exame'}
+];
+
+const CAMPOS_CRITICOS = [
+  {chave:'prof', rotulo:'Profissional'},
+  {chave:'data', rotulo:'Data'},
+  {chave:'turno', rotulo:'Turno'},
+  {chave:'paciente', rotulo:'Paciente'},
+  {chave:'protocolo', rotulo:'Protocolo'},
+  {chave:'procedimento', rotulo:'Procedimento'},
+  {chave:'convenio', rotulo:'Convênio'},
+  {chave:'valor', rotulo:'Valor'},
+  {chave:'forma_pagamento', rotulo:'Forma de pagamento'},
+  {chave:'atendente', rotulo:'Atendente'}
+];
+
+function campoCriticoVazio(registro, chave){
+  const v = registro[chave];
+  if(chave==='valor'){
+    return v===undefined || v===null || v==='' || Number(v)===0 || isNaN(Number(v));
+  }
+  return v===undefined || v===null || String(v).trim()==='';
 }
+
+function preencherSelectsPeriodo(){
+  const hoje = new Date();
+  const mesAtual = MESES[hoje.getMonth()];
+  const anoAtual = hoje.getFullYear();
+  const anos = [anoAtual-1, anoAtual, anoAtual+1];
+
+  // A aba Editar usa só o intervalo de datas — começa preenchida com o mês atual inteiro.
+  const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+  const paraISO = d => d.toISOString().slice(0,10);
+  document.getElementById('filtro-data-inicio').value = paraISO(primeiroDiaMes);
+  document.getElementById('filtro-data-fim').value = paraISO(ultimoDiaMes);
+
+  [['filtro-mes-dashboard'],['filtro-mes-analises'],['filtro-mes-metas'],['filtro-mes-critica']].forEach(([id])=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = MESES.map(m=>`<option value="${m}" ${m===mesAtual?'selected':''}>${m}</option>`).join('');
+    sel.addEventListener('change', atualizarPainelAtivo);
+  });
+  [['filtro-ano-dashboard'],['filtro-ano-analises'],['filtro-ano-metas'],['filtro-ano-critica']].forEach(([id])=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = anos.map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('');
+    sel.addEventListener('change', atualizarPainelAtivo);
+  });
+
+  const filtroProf = document.getElementById('filtro-prof-gerencial');
+  filtroProf.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
+  filtroProf.addEventListener('change', atualizarPainelAtivo);
+
+  const filtroConvenioGerencial = document.getElementById('filtro-convenio-gerencial');
+  filtroConvenioGerencial.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.convenios||[]).map(c=>`<option value="${c}">${c}</option>`).join('');
+  filtroConvenioGerencial.addEventListener('change', atualizarEditar);
+
+  const filtroFormaPagamentoGerencial = document.getElementById('filtro-forma-pagamento-gerencial');
+  filtroFormaPagamentoGerencial.innerHTML = '<option value="">Todas</option>' +
+    (estado.listas.formas_pagamento||[]).map(f=>`<option value="${f}">${f}</option>`).join('');
+  filtroFormaPagamentoGerencial.addEventListener('change', atualizarEditar);
+
+  const filtroProfCritica = document.getElementById('filtro-prof-critica');
+  if(estado.papel==='profissional'){
+    document.getElementById('campo-prof-critica').style.display = 'none';
+  } else {
+    filtroProfCritica.innerHTML = '<option value="">Todos</option>' +
+      (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
+    filtroProfCritica.addEventListener('change', atualizarPainelAtivo);
+  }
+
+  const filtroProfEvolucao = document.getElementById('filtro-prof-evolucao');
+  filtroProfEvolucao.innerHTML = '<option value="">Todos (somado)</option>' +
+    (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
+  filtroProfEvolucao.addEventListener('change', atualizarEvolucaoAno);
+
+  document.getElementById('botao-novo-registro-gerencial').addEventListener('click', ()=>abrirModal(null));
+  document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
+
+  document.getElementById('filtro-data-inicio').addEventListener('change', atualizarEditar);
+  document.getElementById('filtro-data-fim').addEventListener('change', atualizarEditar);
+  document.getElementById('botao-limpar-periodo').addEventListener('click', ()=>{
+    const hoje = new Date();
+    const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+    const paraISO = d => d.toISOString().slice(0,10);
+    document.getElementById('filtro-data-inicio').value = paraISO(primeiroDiaMes);
+    document.getElementById('filtro-data-fim').value = paraISO(ultimoDiaMes);
+    document.getElementById('filtro-prof-gerencial').value = '';
+    document.getElementById('filtro-convenio-gerencial').value = '';
+    document.getElementById('filtro-forma-pagamento-gerencial').value = '';
+    atualizarEditar();
+  });
+}
+
+/* ---------------------------------------------------------------------
+   CAMPOS DO FORMULÁRIO (compartilhados entre Lançamento e Modal)
+--------------------------------------------------------------------- */
+function definicaoCampos(){
+  const L = estado.listas;
+  return [
+    {chave:'prof', rotulo:'Profissional', tipo:'select', opcoes:L.profissionais, obrigatorio:true,
+      travado: estado.papel==='profissional'},
+    {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
+    {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos},
+    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
+    {chave:'protocolo', rotulo:'Protocolo de realização', tipo:'text'},
+    {chave:'procedimento', rotulo:'Procedimento', tipo:'select', opcoes:L.procedimentos},
+    {chave:'exames', rotulo:'Exame', tipo:'select', opcoes:L.exames},
+    {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
+    {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios},
+    {chave:'valor', rotulo:'Valor (R$)', tipo:'number', obrigatorio:true},
+    {chave:'forma_pagamento', rotulo:'Forma de pagamento', tipo:'select', opcoes:L.formas_pagamento},
+    {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes}
+  ];
+}
+
+function renderizarCampo(campo, valorAtual='', prefixo='campo_'){
+  const id = prefixo+campo.chave;
+  let controle;
+  if(campo.tipo==='select'){
+    const opcoes = (campo.opcoes||[]).map(o=>`<option value="${o}" ${o===valorAtual?'selected':''}>${o||'—'}</option>`).join('');
+    controle = `<select id="${id}" ${campo.travado?'disabled':''}><option value="">Selecionar...</option>${opcoes}</select>`;
+  } else {
+    controle = `<input type="${campo.tipo}" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" ${campo.travado?'disabled':''} ${campo.tipo==='number'?'step="0.01"':''}/>`;
+  }
+  return `<div class="campo"><label>${campo.rotulo}${campo.obrigatorio?' *':''}</label>${controle}</div>`;
+}
+
+function lerValoresCampos(prefixo='campo_'){
+  const registro = {};
+  definicaoCampos().forEach(c=>{
+    const el = document.getElementById(prefixo+c.chave);
+    registro[c.chave] = el ? el.value : '';
+  });
+  return registro;
+}
+
+/* ---------------------------------------------------------------------
+   PAINEL: LANÇAMENTO
+--------------------------------------------------------------------- */
+function montarFormularioLancamento(){
+  const grade = document.getElementById('grade-lancamento');
+  grade.innerHTML = definicaoCampos().map(c=>renderizarCampo(c, '', 'campo_')).join('');
+  if(estado.papel==='profissional'){
+    const selProf = document.getElementById('campo_prof');
+    selProf.innerHTML = `<option value="${estado.nomeProfissional}" selected>${estado.nomeProfissional}</option>`;
+  }
+  const hoje = new Date().toISOString().slice(0,10);
+  const campoData = document.getElementById('campo_data');
+  if(campoData) campoData.value = hoje;
+}
+
+document.getElementById('form-lancamento').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const registro = lerValoresCampos('campo_');
+  const confirmacao = document.getElementById('confirmacao-lancamento');
+  const resp = await api('adicionarProducao', registro);
+  if(resp.ok){
+    confirmacao.textContent = 'Atendimento salvo com sucesso.';
+    document.getElementById('form-lancamento').reset();
+    montarFormularioLancamento();
+    await atualizarMeusLancamentos();
+    setTimeout(()=>confirmacao.textContent='', 3500);
+  } else {
+    confirmacao.style.color = 'var(--danger)';
+    confirmacao.textContent = resp.erro || 'Não foi possível salvar.';
+  }
+});
+
+async function atualizarMeusLancamentos(){
+  const filtro = estado.papel==='profissional' ? {prof: estado.nomeProfissional} : {};
+  const resp = await api('listarProducao', filtro);
+  const registros = (resp.registros||[]).slice(-15).reverse();
+  const tabela = document.getElementById('tabela-meus-lancamentos');
+  if(registros.length===0){ tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento ainda.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Data</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Valor</th></tr></thead>
+    <tbody>${registros.map(r=>`
+      <tr>
+        <td>${formatarDataExibicao(r.data)}</td>
+        <td>${r.paciente||''}</td>
+        <td>${r.procedimento||''}</td>
+        <td>${r.convenio? `<span class="tag">${r.convenio}</span>` : '—'}</td>
+        <td class="mono">${formatarMoeda(r.valor)}</td>
+      </tr>`).join('')}</tbody>`;
+}
+
+function formatarDataExibicao(iso){
+  if(!iso) return '—';
+  const [ano,mes,dia] = String(iso).slice(0,10).split('-');
+  return dia && mes ? `${dia}/${mes}` : iso;
+}
+
+/* ---------------------------------------------------------------------
+   PAINEL: EDITAR (lançamentos do período)
+--------------------------------------------------------------------- */
+async function atualizarEditar(){
+  const prof = document.getElementById('filtro-prof-gerencial').value;
+  const convenio = document.getElementById('filtro-convenio-gerencial').value;
+  const formaPagamento = document.getElementById('filtro-forma-pagamento-gerencial').value;
+  const dataInicio = document.getElementById('filtro-data-inicio').value;
+  const dataFim = document.getElementById('filtro-data-fim').value;
+
+  document.getElementById('tabela-gerencial').innerHTML = '<tr><td class="vazio">Carregando lançamentos...</td></tr>';
+  document.getElementById('resumo-financeiro-editar').innerHTML = '';
+
+  const resp = await api('listarProducao', {prof, dataInicio, dataFim});
+  let registros = resp.registros||[];
+  if(convenio){
+    registros = registros.filter(r => String(r.convenio||'').trim().toUpperCase() === convenio.trim().toUpperCase());
+  }
+  if(formaPagamento){
+    registros = registros.filter(r => String(r.forma_pagamento||'').trim().toUpperCase() === formaPagamento.trim().toUpperCase());
+  }
+
+  const porFormaPagamento = { 'CONVÊNIO':0, 'PIX':0, 'ESPÉCIE':0, 'CARTÃO':0 };
+  let totalGeral = 0;
+  registros.forEach(r=>{
+    const forma = String(r.forma_pagamento||'').trim().toUpperCase();
+    const valor = Number(r.valor)||0;
+    if(porFormaPagamento.hasOwnProperty(forma)) porFormaPagamento[forma] += valor;
+    totalGeral += valor;
+  });
+  document.getElementById('resumo-financeiro-editar').innerHTML = `
+    <div class="kpi"><div class="rotulo">Convênio${convenio?` (${convenio})`:''}</div><div class="valor" id="resumo-fp-convenio">${formatarMoeda(porFormaPagamento['CONVÊNIO'])}</div></div>
+    <div class="kpi"><div class="rotulo">Pix</div><div class="valor" id="resumo-fp-pix">${formatarMoeda(porFormaPagamento['PIX'])}</div></div>
+    <div class="kpi"><div class="rotulo">Espécie</div><div class="valor" id="resumo-fp-especie">${formatarMoeda(porFormaPagamento['ESPÉCIE'])}</div></div>
+    <div class="kpi"><div class="rotulo">Cartão</div><div class="valor" id="resumo-fp-cartao">${formatarMoeda(porFormaPagamento['CARTÃO'])}</div></div>
+    <div class="kpi"><div class="rotulo">Total${convenio?' filtrado':''}</div><div class="valor teal" id="resumo-fp-total">${formatarMoeda(totalGeral)}</div></div>
+  `;
+
+  const tabela = document.getElementById('tabela-gerencial');
+  if(registros.length===0){
+    tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
+  } else {
+    tabela.innerHTML = `
+      <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th><th></th></tr></thead>
+      <tbody>${registros.map(r=>`
+        <tr>
+          <td>${formatarDataExibicao(r.data)}</td>
+          <td>${r.prof||''}</td>
+          <td>${r.paciente||''}</td>
+          <td>${r.procedimento||''}</td>
+          <td>${r.convenio||'—'}</td>
+          <td>${r.forma_pagamento||'—'}</td>
+          <td class="mono">${formatarMoeda(r.valor)}</td>
+          <td>${r.atendente||''}</td>
+          <td class="celula-acoes"><button class="botao sutil pequeno" data-id="${r.id}">Editar</button></td>
+        </tr>`).join('')}</tbody>`;
+    tabela.querySelectorAll('button[data-id]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const registro = registros.find(r=>r.id===b.dataset.id);
+        abrirModal(registro);
+      });
+    });
+  }
+}
+
+/* ---------------------------------------------------------------------
+   PAINEL: CRÍTICA (lançamentos com campos obrigatórios em branco)
+--------------------------------------------------------------------- */
+async function atualizarCritica(){
+  const mes = document.getElementById('filtro-mes-critica').value;
+  const ano = document.getElementById('filtro-ano-critica').value;
+  const prof = estado.papel==='profissional' ? estado.nomeProfissional : document.getElementById('filtro-prof-critica').value;
+
+  document.getElementById('tabela-critica').innerHTML = '<tr><td class="vazio">Carregando lançamentos...</td></tr>';
+  ['kpi-critica-total','kpi-critica-incompletos','kpi-critica-pct'].forEach(id=>document.getElementById(id).textContent='…');
+
+  const resp = await api('listarProducao', {mes, ano, prof});
+  const registros = resp.registros || [];
+  const incompletos = registros.filter(r => CAMPOS_CRITICOS.some(c => campoCriticoVazio(r, c.chave)));
+
+  document.getElementById('kpi-critica-total').textContent = registros.length;
+  document.getElementById('kpi-critica-incompletos').textContent = incompletos.length;
+  document.getElementById('kpi-critica-pct').textContent = registros.length ? Math.round((incompletos.length/registros.length)*100)+'%' : '—';
+
+  const tabela = document.getElementById('tabela-critica');
+  if(incompletos.length===0){
+    tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento com campo pendente neste período. 🎉</td></tr>';
+    return;
+  }
+  tabela.innerHTML = `
+    <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Campos pendentes</th><th></th></tr></thead>
+    <tbody>${incompletos.map(r=>{
+      const faltando = CAMPOS_CRITICOS.filter(c=>campoCriticoVazio(r,c.chave));
+      return `<tr>
+        <td>${formatarDataExibicao(r.data)}</td>
+        <td>${r.prof||'—'}</td>
+        <td>${r.paciente||'—'}</td>
+        <td>${faltando.map(c=>`<span class="tag tag-alerta">${c.rotulo}</span>`).join('')}</td>
+        <td class="celula-acoes"><button class="botao secundario pequeno" data-id="${r.id}">Completar</button></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  tabela.querySelectorAll('button[data-id]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const registro = incompletos.find(r=>r.id===b.dataset.id);
+      abrirModal(registro);
+    });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   PAINEL: METAS (metas do período + sugestões de melhoria)
+--------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   PAINEL: CONFIGURAÇÕES
+--------------------------------------------------------------------- */
+async function atualizarConfiguracoes(){
+  document.getElementById('config-nome-clinica').value = nomeClinicaAtual;
+}
+document.getElementById('botao-salvar-config').addEventListener('click', async ()=>{
+  const valor = document.getElementById('config-nome-clinica').value.trim();
+  const botao = document.getElementById('botao-salvar-config');
+  await api('salvarConfiguracao', {chave:'nome_clinica', valor});
+  nomeClinicaAtual = valor || 'Clínica';
+  document.getElementById('nome-clinica-topo').textContent = nomeClinicaAtual;
+  document.getElementById('subtitulo-login').textContent = 'Acesso restrito à equipe — ' + nomeClinicaAtual;
+  const confirmacao = document.getElementById('confirmacao-config');
+  confirmacao.textContent = 'Salvo ✓';
+  setTimeout(()=>confirmacao.textContent='', 2000);
+});
+
+async function atualizarMetas(){
+  const mes = document.getElementById('filtro-mes-metas').value;
+  const ano = document.getElementById('filtro-ano-metas').value;
+  document.getElementById('tabela-metas').innerHTML = '<tr><td class="vazio">Carregando metas...</td></tr>';
+  await atualizarTabelaMetas(mes, ano);
+  await carregarNota(mes, ano);
+}
+
+async function atualizarTabelaMetas(mes, ano){
+  const respMetas = await api('listarMetas', {mes, ano});
+  const metas = respMetas.metas||[];
+  const profissionais = estado.listas.profissionais||[];
+  const tabela = document.getElementById('tabela-metas');
+  tabela.innerHTML = `
+    <thead><tr><th>Profissional</th><th>Turnos disponibilizados</th><th>Meta de valor (R$)</th><th>Meta de qtde</th><th></th></tr></thead>
+    <tbody>${profissionais.map(prof=>{
+      const m = metas.find(x=>x.prof===prof) || {};
+      return `<tr data-prof="${prof}">
+        <td>${prof}</td>
+        <td><input type="number" class="input-turnos" value="${m.turnos_disponibilizados||''}" style="width:90px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td><input type="number" class="input-meta" value="${m.meta_valor||''}" style="width:120px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td><input type="number" class="input-meta-qtd" value="${m.meta_qtd||''}" style="width:100px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td><button class="botao secundario pequeno botao-salvar-meta">Salvar</button></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  tabela.querySelectorAll('.botao-salvar-meta').forEach(botao=>{
+    botao.addEventListener('click', async (ev)=>{
+      const linha = ev.target.closest('tr');
+      await api('salvarMeta', {
+        prof: linha.dataset.prof, mes, ano,
+        turnos_disponibilizados: linha.querySelector('.input-turnos').value,
+        meta_valor: linha.querySelector('.input-meta').value,
+        meta_qtd: linha.querySelector('.input-meta-qtd').value
+      });
+      ev.target.textContent = 'Salvo ✓';
+      setTimeout(()=>ev.target.textContent='Salvar', 1800);
+    });
+  });
+}
+
+async function carregarNota(mes, ano){
+  const resp = await api('obterNota', {mes, ano});
+  document.getElementById('texto-nota').value = resp.texto || '';
+}
+async function salvarNota(){
+  const mes = document.getElementById('filtro-mes-metas').value;
+  const ano = document.getElementById('filtro-ano-metas').value;
+  const texto = document.getElementById('texto-nota').value;
+  const botao = document.getElementById('botao-salvar-nota');
+  await api('salvarNota', {mes, ano, texto});
+  botao.textContent = 'Anotação salva ✓';
+  setTimeout(()=>botao.textContent='Salvar anotação', 1800);
+}
+
+/* ---------------------------------------------------------------------
+   MODAL DE EDIÇÃO / CRIAÇÃO
+--------------------------------------------------------------------- */
+function abrirModal(registro){
+  estado.editandoId = registro ? registro.id : null;
+  estado.editandoMes = registro ? registro.mes : null;
+  estado.editandoAno = registro ? registro.ano : null;
+  document.getElementById('titulo-modal').textContent = registro ? 'Editar registro' : 'Novo registro';
+  document.getElementById('grade-modal').innerHTML = definicaoCampos().map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_')).join('');
+  document.getElementById('botao-excluir-modal').style.display = registro ? 'inline-flex' : 'none';
+  document.getElementById('sobreposicao-modal').classList.add('aberta');
+}
+function fecharModal(){
+  document.getElementById('sobreposicao-modal').classList.remove('aberta');
+}
+document.getElementById('botao-cancelar-modal').addEventListener('click', fecharModal);
+document.getElementById('sobreposicao-modal').addEventListener('click', (ev)=>{ if(ev.target.id==='sobreposicao-modal') fecharModal(); });
+
+document.getElementById('form-modal').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const registro = lerValoresCampos('modal_');
+  if(estado.editandoId){
+    // mesOriginal/anoOriginal dizem em qual aba mensal (Producao_AAAA_MM) o
+    // registro está guardado hoje — se a data mudar de mês, o backend move
+    // a linha para a aba certa sozinho.
+    await api('atualizarProducao', {id:estado.editandoId, registro, mesOriginal:estado.editandoMes, anoOriginal:estado.editandoAno});
+  } else {
+    await api('adicionarProducao', registro);
+  }
+  fecharModal();
+  await atualizarPainelAtivo();
+});
+
+document.getElementById('botao-excluir-modal').addEventListener('click', async ()=>{
+  if(!estado.editandoId) return;
+  if(!confirm('Excluir este registro definitivamente?')) return;
+  await api('excluirProducao', {id: estado.editandoId, mes: estado.editandoMes, ano: estado.editandoAno});
+  fecharModal();
+  await atualizarPainelAtivo();
+});
+
+/* ---------------------------------------------------------------------
+   PAINEL: DASHBOARD
+--------------------------------------------------------------------- */
+async function atualizarDashboard(){
+  const mes = document.getElementById('filtro-mes-dashboard').value;
+  const ano = document.getElementById('filtro-ano-dashboard').value;
+  ['kpi-atendimentos','kpi-valor','kpi-ticket','kpi-meta'].forEach(id=>document.getElementById(id).textContent='…');
+  document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
+  let resp;
+  try{
+    resp = await api('dashboard', {mes, ano});
+  }catch(e){
+    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o servidor. Confira a CONFIG.API_URL.</td></tr>';
+    return;
+  }
+  if(!resp.ok){
+    document.getElementById('tabela-comparativo').innerHTML = `<tr><td class="vazio">${resp.erro || 'Não foi possível carregar o dashboard.'}</td></tr>`;
+    return;
+  }
+
+  document.getElementById('kpi-atendimentos').textContent = resp.totalAtendimentos;
+  document.getElementById('kpi-valor').textContent = formatarMoeda(resp.totalValor);
+  const ticket = resp.totalAtendimentos ? resp.totalValor/resp.totalAtendimentos : 0;
+  document.getElementById('kpi-ticket').textContent = formatarMoeda(ticket);
+  const metaTotal = resp.comparativo.reduce((s,c)=>s+c.metaValor,0);
+  const pctMeta = metaTotal ? ((resp.totalValor/metaTotal)*100).toFixed(0)+'%' : '—';
+  document.getElementById('kpi-meta').textContent = pctMeta;
+
+  desenharGraficoProfissional(resp.porProfissional);
+  desenharGraficoConvenio(resp.porConvenio);
+  desenharTabelaComparativo(resp.comparativo);
+  await atualizarEvolucaoAno();
+}
+
+function desenharGraficoProfissional(porProfissional){
+  const rotulos = Object.keys(porProfissional);
+  const valores = rotulos.map(r=>porProfissional[r].quantidade);
+  miniGraficoBarras('grafico-profissional', rotulos, valores, '#5C2350');
+}
+
+function desenharGraficoConvenio(porConvenio){
+  const rotulos = Object.keys(porConvenio);
+  const valores = rotulos.map(r=>porConvenio[r]);
+  miniGraficoRosca('grafico-convenio', rotulos, valores);
+}
+
+function desenharTabelaComparativo(comparativo){
+  const tabela = document.getElementById('tabela-comparativo');
+  if(comparativo.length===0){ tabela.innerHTML = '<tr><td class="vazio">Sem dados para o período.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Qtd. atendimentos</th><th>Meta (R$)</th><th>Realizado (R$)</th><th>% atingido</th></tr></thead>
+    <tbody>${comparativo.map(c=>{
+      const pct = c.metaValor ? Math.min(100, (c.valorRealizado/c.metaValor)*100) : (c.valorRealizado>0?100:0);
+      const cor = pct>=100 ? 'var(--teal-600)' : (pct>=70 ? 'var(--gold-500)' : 'var(--plum-500)');
+      return `<tr>
+        <td>${c.prof}</td>
+        <td>${c.turnosDisponibilizados||'—'}</td>
+        <td>${c.quantidade}</td>
+        <td class="mono">${c.metaValor?formatarMoeda(c.metaValor):'—'}</td>
+        <td class="mono">${formatarMoeda(c.valorRealizado)}</td>
+        <td style="min-width:120px;">
+          <div class="mono" style="font-size:12px;">${pct.toFixed(0)}%</div>
+          <div class="barra-meta"><div style="width:${pct}%;background:${cor};"></div></div>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>`;
+}
+
+/* ---------------------------------------------------------------------
+   EVOLUÇÃO DO ANO — matriz Jan..mês selecionado + gráficos comparativos
+--------------------------------------------------------------------- */
+let evolucaoAnoInicializado = true;
+
+async function atualizarEvolucaoAno(){
+  const mesSelecionado = document.getElementById('filtro-mes-dashboard').value;
+  const ano = document.getElementById('filtro-ano-dashboard').value;
+  const prof = document.getElementById('filtro-prof-evolucao').value;
+  const idxMes = MESES.indexOf(mesSelecionado);
+  const mesesConsiderados = MESES.slice(0, idxMes+1);
+
+  document.getElementById('titulo-evolucao-ano').textContent = `Janeiro até ${mesSelecionado} — ${ano}`;
+  document.getElementById('tabela-evolucao-ano').innerHTML = '<tr><td class="vazio">Carregando...</td></tr>';
+
+  let respProd, respMetas;
+  try{
+    [respProd, respMetas] = await Promise.all([
+      api('listarProducao', {ano, prof}),
+      api('listarMetas', {ano})
+    ]);
+  }catch(e){
+    document.getElementById('tabela-evolucao-ano').innerHTML = '<tr><td class="vazio">Erro de conexão com o servidor.</td></tr>';
+    return;
+  }
+
+  const registros = respProd.registros || [];
+  const metas = (respMetas.metas || []).filter(m => !prof || m.prof===prof);
+
+  const linhas = mesesConsiderados.map(mes=>{
+    const doMes = registros.filter(r=>r.mes===mes);
+    const metasDoMes = metas.filter(m=>m.mes===mes);
+    const qtdeRealizada = doMes.length;
+    const valorRealizado = doMes.reduce((s,r)=>s+(Number(r.valor)||0),0);
+    const turnosDisp = metasDoMes.reduce((s,m)=>s+(Number(m.turnos_disponibilizados)||0),0);
+    const qtdePrevista = arredondar1(metasDoMes.reduce((s,m)=>s+(Number(m.meta_qtd)||0),0));
+    const valorPrevisto = metasDoMes.reduce((s,m)=>s+(Number(m.meta_valor)||0),0);
+    const turnosUsados = new Set(doMes.map(r=>r.data+'_'+r.turno)).size;
+    const mediaPeriodo = turnosUsados ? valorRealizado/turnosUsados : 0;
+    const pctEficiencia = turnosDisp ? Math.round((turnosUsados/turnosDisp)*100) : null;
+    const pctMetaValor = valorPrevisto ? Math.round((valorRealizado/valorPrevisto)*100) : null;
+    const pctMetaQtde = qtdePrevista ? Math.round((qtdeRealizada/qtdePrevista)*100) : null;
+    return {mes, turnosDisp, turnosUsados, qtdePrevista, qtdeRealizada, valorPrevisto, valorRealizado, mediaPeriodo, pctEficiencia, pctMetaValor, pctMetaQtde};
+  });
+
+  const tabela = document.getElementById('tabela-evolucao-ano');
+  tabela.innerHTML = `
+    <thead><tr>
+      <th>Mês</th><th>Turnos disp.</th><th>Turnos usados</th><th>% eficiência</th>
+      <th>Qtde prevista</th><th>Qtde realizada</th><th>% meta qtde</th>
+      <th>Valor previsto</th><th>Valor realizado</th><th>% meta valor</th><th>Média período</th>
+    </tr></thead>
+    <tbody>${linhas.map(l=>`
+      <tr>
+        <td>${l.mes}</td>
+        <td>${l.turnosDisp||'—'}</td>
+        <td>${l.turnosUsados||'—'}</td>
+        <td>${l.pctEficiencia!==null? l.pctEficiencia+'%' : '—'}</td>
+        <td>${l.qtdePrevista||'—'}</td>
+        <td>${l.qtdeRealizada}</td>
+        <td>${l.pctMetaQtde!==null? l.pctMetaQtde+'%' : '—'}</td>
+        <td class="mono">${l.valorPrevisto?formatarMoeda(l.valorPrevisto):'—'}</td>
+        <td class="mono">${formatarMoeda(l.valorRealizado)}</td>
+        <td>${l.pctMetaValor!==null? l.pctMetaValor+'%' : '—'}</td>
+        <td class="mono">${formatarMoeda(l.mediaPeriodo)}</td>
+      </tr>`).join('')}
+    <tr class="linha-total">
+      <td>Total</td>
+      <td>${arredondar1(linhas.reduce((s,l)=>s+l.turnosDisp,0))}</td>
+      <td>${arredondar1(linhas.reduce((s,l)=>s+l.turnosUsados,0))}</td>
+      <td></td>
+      <td>${arredondar1(linhas.reduce((s,l)=>s+l.qtdePrevista,0))}</td>
+      <td>${arredondar1(linhas.reduce((s,l)=>s+l.qtdeRealizada,0))}</td>
+      <td></td>
+      <td class="mono">${formatarMoeda(linhas.reduce((s,l)=>s+l.valorPrevisto,0))}</td>
+      <td class="mono">${formatarMoeda(linhas.reduce((s,l)=>s+l.valorRealizado,0))}</td>
+      <td></td>
+      <td></td>
+    </tr>
+    </tbody>`;
+
+  miniGraficoLinhas('grafico-evolucao-valor', mesesConsiderados, [
+    {nome:'Previsto', dados: linhas.map(l=>l.valorPrevisto), cor:'#C495B8', tracejado:true},
+    {nome:'Realizado', dados: linhas.map(l=>l.valorRealizado), cor:'#5C2350'}
+  ]);
+  miniGraficoLinhas('grafico-evolucao-qtd', mesesConsiderados, [
+    {nome:'Prevista', dados: linhas.map(l=>l.qtdePrevista), cor:'#9FD6C8', tracejado:true},
+    {nome:'Realizada', dados: linhas.map(l=>l.qtdeRealizada), cor:'#146B5D'}
+  ]);
+}
+
+/* ---------------------------------------------------------------------
+   ANÁLISES CRUZADAS — aba própria, carregada sob demanda (só busca os
+   dados quando o usuário realmente abre essa aba, não junto do Dashboard).
+--------------------------------------------------------------------- */
+let selectsAnaliseProntos = false;
+
+function prepararSelectsAnalise(){
+  if(selectsAnaliseProntos) return;
+  const opcoesDimensao = DIMENSOES_ANALISE.map(d=>`<option value="${d.chave}">${d.rotulo}</option>`).join('');
+  document.getElementById('filtro-dimensao-analise').innerHTML = opcoesDimensao;
+  document.getElementById('filtro-correlacao-a').innerHTML = opcoesDimensao;
+  document.getElementById('filtro-correlacao-b').innerHTML = opcoesDimensao;
+  document.getElementById('filtro-correlacao-a').value = 'convenio';
+  document.getElementById('filtro-correlacao-b').value = 'procedimento';
+  document.getElementById('filtro-dimensao-analise').addEventListener('change', atualizarAnaliseDimensao);
+  document.getElementById('filtro-correlacao-a').addEventListener('change', atualizarCorrelacao);
+  document.getElementById('filtro-correlacao-b').addEventListener('change', atualizarCorrelacao);
+  document.getElementById('filtro-correlacao-metrica').addEventListener('change', atualizarCorrelacao);
+  selectsAnaliseProntos = true;
+}
+
+async function atualizarAnalises(){
+  prepararSelectsAnalise();
+  document.getElementById('tabela-analise-dimensao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
+  document.getElementById('tabela-correlacao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
+  const mes = document.getElementById('filtro-mes-analises').value;
+  const ano = document.getElementById('filtro-ano-analises').value;
+  const resp = await api('listarProducao', {mes, ano});
+  estado.registrosDashboard = resp.registros || [];
+  atualizarAnaliseDimensao();
+  atualizarCorrelacao();
+}
+function rotuloValorAnalise(v){
+  if(v===undefined || v===null || v==='') return 'Não informado';
+  return String(v);
+}
+
+function atualizarAnaliseDimensao(){
+  const campo = document.getElementById('filtro-dimensao-analise').value;
+  const registros = estado.registrosDashboard || [];
+  const grupos = {};
+  registros.forEach(r=>{
+    const chave = rotuloValorAnalise(r[campo]);
+    if(!grupos[chave]) grupos[chave] = {quantidade:0, valor:0};
+    grupos[chave].quantidade += 1;
+    grupos[chave].valor += Number(r.valor)||0;
+  });
+  const chaves = Object.keys(grupos).sort((a,b)=>grupos[b].valor-grupos[a].valor);
+  const rotuloCampo = DIMENSOES_ANALISE.find(d=>d.chave===campo).rotulo;
+
+  const tabela = document.getElementById('tabela-analise-dimensao');
+  tabela.innerHTML = chaves.length===0 ? '<tr><td class="vazio">Sem dados para o período.</td></tr>' : `
+    <thead><tr><th>${rotuloCampo}</th><th>Qtd.</th><th>Valor total</th><th>Valor médio</th></tr></thead>
+    <tbody>${chaves.map(c=>`<tr><td>${c}</td><td>${grupos[c].quantidade}</td><td class="mono">${formatarMoeda(grupos[c].valor)}</td><td class="mono">${formatarMoeda(grupos[c].valor/grupos[c].quantidade)}</td></tr>`).join('')}
+    <tr class="linha-total"><td>Total</td><td>${chaves.reduce((s,c)=>s+grupos[c].quantidade,0)}</td><td class="mono">${formatarMoeda(chaves.reduce((s,c)=>s+grupos[c].valor,0))}</td><td></td></tr>
+    </tbody>`;
+
+  miniGraficoBarras('grafico-analise-dimensao', chaves, chaves.map(c=>grupos[c].quantidade), '#5C2350');
+}
+
+function atualizarCorrelacao(){
+  const campoA = document.getElementById('filtro-correlacao-a').value;
+  const campoB = document.getElementById('filtro-correlacao-b').value;
+  const metrica = document.getElementById('filtro-correlacao-metrica').value;
+  const registros = estado.registrosDashboard || [];
+  const tabela = document.getElementById('tabela-correlacao');
+
+  const valoresA = Array.from(new Set(registros.map(r=>rotuloValorAnalise(r[campoA])))).sort();
+  const valoresB = Array.from(new Set(registros.map(r=>rotuloValorAnalise(r[campoB])))).sort();
+
+  if(valoresA.length===0 || valoresB.length===0){
+    tabela.innerHTML = '<tr><td class="vazio">Sem dados suficientes para correlação neste período.</td></tr>';
+    return;
+  }
+
+  const matriz = {};
+  registros.forEach(r=>{
+    const a = rotuloValorAnalise(r[campoA]), b = rotuloValorAnalise(r[campoB]);
+    matriz[a] = matriz[a] || {};
+    matriz[a][b] = matriz[a][b] || {quantidade:0, valor:0};
+    matriz[a][b].quantidade += 1;
+    matriz[a][b].valor += Number(r.valor)||0;
+  });
+
+  const formatarCelula = v => metrica==='valor' ? formatarMoeda(v) : v;
+  const rotuloA = DIMENSOES_ANALISE.find(d=>d.chave===campoA).rotulo;
+  const rotuloB = DIMENSOES_ANALISE.find(d=>d.chave===campoB).rotulo;
+
+  tabela.innerHTML = `
+    <thead><tr><th>${rotuloA} \\ ${rotuloB}</th>${valoresB.map(b=>`<th>${b}</th>`).join('')}<th>Total</th></tr></thead>
+    <tbody>${valoresA.map(a=>{
+      const totalLinha = valoresB.reduce((s,b)=> s + ((matriz[a] && matriz[a][b]) ? matriz[a][b][metrica] : 0), 0);
+      return `<tr><td>${a}</td>${valoresB.map(b=>{
+        const celula = matriz[a] && matriz[a][b];
+        return `<td class="mono">${celula ? formatarCelula(celula[metrica]) : '—'}</td>`;
+      }).join('')}<td class="mono"><b>${formatarCelula(totalLinha)}</b></td></tr>`;
+    }).join('')}
+    <tr class="linha-total"><td>Total</td>${valoresB.map(b=>{
+      const totalColuna = valoresA.reduce((s,a)=> s + ((matriz[a] && matriz[a][b]) ? matriz[a][b][metrica] : 0), 0);
+      return `<td class="mono">${formatarCelula(totalColuna)}</td>`;
+    }).join('')}<td></td></tr>
+    </tbody>`;
+}
+
+/* =====================================================================
+   ABA RMR — indicadores completos, nativos (sem depender de iframe)
+===================================================================== */
+let rmrSelectsProntos = false;
+let rmrCache = {};
+
+function rmrPrepararSelects(){
+  if(rmrSelectsProntos) return;
+  const hoje = new Date();
+  const anos = [hoje.getFullYear()-1, hoje.getFullYear()];
+  const selAno = document.getElementById('rmr-ano');
+  selAno.innerHTML = anos.map(a=>`<option value="${a}" ${a===hoje.getFullYear()?'selected':''}>${a}</option>`).join('');
+  const selMes = document.getElementById('rmr-mes');
+  selMes.innerHTML = MESES.map((m,i)=>`<option value="${m}" ${i===hoje.getMonth()?'selected':''}>${m}</option>`).join('');
+  selAno.addEventListener('change', atualizarRMR);
+  selMes.addEventListener('change', atualizarRMR);
+  document.getElementById('rmr-busca-detalhe').addEventListener('input', rmrFiltrarTabelaDetalhe);
+  document.getElementById('rmr-botao-salvar-nota').addEventListener('click', rmrSalvarNota);
+  document.getElementById('rmr-botao-imprimir').addEventListener('click', ()=>window.print());
+  rmrSelectsProntos = true;
+}
+
+async function atualizarRMR(){
+  rmrPrepararSelects();
+  const mes = document.getElementById('rmr-mes').value;
+  const ano = Number(document.getElementById('rmr-ano').value);
+  const anoAnterior = ano - 1;
+  document.getElementById('rmr-legenda-periodo').textContent = `Referência: ${mes} de ${ano} · comparativo com ${mes} de ${anoAnterior}`;
+
+  let prodAno, prodAnoAnterior, metasAno, metasAnoAnterior, nota;
+  try{
+    [prodAno, prodAnoAnterior, metasAno, metasAnoAnterior, nota] = await Promise.all([
+      api('listarProducao', {ano}),
+      api('listarProducao', {ano:anoAnterior}),
+      api('listarMetas', {ano}),
+      api('listarMetas', {ano:anoAnterior}),
+      api('obterNota', {mes, ano})
+    ]);
+  }catch(e){
+    document.getElementById('rmr-legenda-periodo').textContent = 'Erro de conexão com o servidor.';
+    return;
+  }
+
+  rmrCache = {
+    mes, ano, anoAnterior,
+    registrosAno: prodAno.registros||[],
+    registrosAnoAnterior: prodAnoAnterior.registros||[],
+    metasAno: metasAno.metas||[],
+    metasAnoAnterior: metasAnoAnterior.metas||[]
+  };
+
+  document.getElementById('rmr-texto-nota').value = (nota && nota.texto) || '';
+
+  const doMesAtual = rmrCache.registrosAno.filter(r=>r.mes===mes);
+  const doMesAnterior = rmrCache.registrosAnoAnterior.filter(r=>r.mes===mes);
+  const metasDoMes = rmrCache.metasAno.filter(m=>m.mes===mes);
+
+  rmrRenderResumo(doMesAtual, doMesAnterior, metasDoMes);
+  rmrRenderProfissionais(mes, ano, anoAnterior);
+  rmrRenderExames(doMesAtual);
+  rmrRenderProcedimentosBiopsias(doMesAtual);
+  rmrRenderDetalheNominal(doMesAtual);
+  rmrRenderTurnos(doMesAtual, metasDoMes);
+  rmrRenderFaturamentoParticular(doMesAtual);
+  rmrRenderMatrizConvenio(doMesAtual);
+  rmrRenderEficiencia(doMesAtual, metasDoMes);
+  rmrRenderEvolucaoAnual();
+}
+
+function rmrOrigemPagamento(r){
+  return r.forma_pagamento === 'CONVÊNIO' ? (r.convenio || 'CONVÊNIO (não especificado)') : (r.forma_pagamento || 'PARTICULAR');
+}
+
+function rmrRenderResumo(doMesAtual, doMesAnterior, metasDoMes){
+  const totalAtual = doMesAtual.length;
+  const totalAnterior = doMesAnterior.length;
+  const valorAtual = doMesAtual.reduce((s,r)=>s+(Number(r.valor)||0),0);
+  const valorAnterior = doMesAnterior.reduce((s,r)=>s+(Number(r.valor)||0),0);
+  const metaTotal = metasDoMes.reduce((s,m)=>s+(Number(m.meta_valor)||0),0);
+  const profissionaisAtivos = new Set(doMesAtual.map(r=>r.prof)).size;
+
+  document.getElementById('rmr-kpi-atendimentos').textContent = totalAtual;
+  document.getElementById('rmr-kpi-valor').textContent = formatarMoeda(valorAtual);
+  document.getElementById('rmr-kpi-ticket').textContent = formatarMoeda(totalAtual ? valorAtual/totalAtual : 0);
+  document.getElementById('rmr-kpi-meta').textContent = metaTotal ? Math.round((valorAtual/metaTotal)*100)+'%' : '—';
+  document.getElementById('rmr-kpi-profissionais').textContent = profissionaisAtivos;
+
+  rmrCompararEExibir('rmr-kpi-atendimentos-comp', totalAtual, totalAnterior);
+  rmrCompararEExibir('rmr-kpi-valor-comp', valorAtual, valorAnterior);
+}
+function rmrCompararEExibir(idEl, atual, anterior){
+  const el = document.getElementById(idEl);
+  if(!anterior){ el.textContent = ''; return; }
+  const variacao = ((atual-anterior)/anterior)*100;
+  const seta = variacao>=0 ? '▲' : '▼';
+  el.style.color = variacao>=0 ? 'var(--teal-700)' : 'var(--danger)';
+  el.textContent = `${seta} ${Math.abs(variacao).toFixed(0)}% vs. ano anterior`;
+}
+
+function rmrRenderProfissionais(mesRef, ano, anoAnterior){
+  const profissionais = Array.from(new Set(rmrCache.registrosAno.map(r=>r.prof))).sort();
+  const seletor = document.getElementById('rmr-seletor-profissional');
+  const valorSelecionado = seletor.value;
+  seletor.innerHTML = profissionais.map(p=>`<option value="${p}">${p}</option>`).join('');
+  if(profissionais.includes(valorSelecionado)) seletor.value = valorSelecionado;
+  seletor.onchange = () => rmrRenderTabelaProfissionalDetalhe(seletor.value, mesRef, ano, anoAnterior);
+  rmrRenderTabelaProfissionalDetalhe(seletor.value || profissionais[0], mesRef, ano, anoAnterior);
+
+  const doMes = rmrCache.registrosAno.filter(r=>r.mes===mesRef);
+  const metasDoMes = rmrCache.metasAno.filter(m=>m.mes===mesRef);
+  const porProf = {};
+  doMes.forEach(r=>{
+    if(!porProf[r.prof]) porProf[r.prof] = {quantidade:0, valor:0};
+    porProf[r.prof].quantidade++; porProf[r.prof].valor += Number(r.valor)||0;
+  });
+  const metaPorProf = {}; metasDoMes.forEach(m=>metaPorProf[m.prof]=m);
+  const linhas = Object.keys(porProf).sort().map(prof=>{
+    const meta = metaPorProf[prof]||{};
+    const pct = meta.meta_valor ? Math.min(150,(porProf[prof].valor/meta.meta_valor)*100) : 0;
+    return {prof, ...porProf[prof], turnos:meta.turnos_disponibilizados||'—', meta:meta.meta_valor||0, pct};
+  });
+  const tabela = document.getElementById('rmr-tabela-profissionais-mes');
+  if(linhas.length===0){ tabela.innerHTML='<tr><td class="vazio">Sem dados no período.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Atendimentos</th><th>Valor realizado</th><th>Meta (R$)</th><th>% atingido</th></tr></thead>
+    <tbody>${linhas.map(l=>`
+      <tr><td>${l.prof}</td><td>${l.turnos}</td><td>${l.quantidade}</td><td class="mono">${formatarMoeda(l.valor)}</td>
+      <td class="mono">${l.meta?formatarMoeda(l.meta):'—'}</td>
+      <td><div class="mono" style="font-size:11.5px;">${l.pct.toFixed(0)}%</div><div class="barra-meta"><div style="width:${Math.min(100,l.pct)}%;"></div></div></td></tr>`).join('')}
+    </tbody>`;
+}
+
+function rmrRenderTabelaProfissionalDetalhe(prof, mesRef, ano, anoAnterior){
+  if(!prof) return;
+  const idxMesRef = MESES.indexOf(mesRef);
+  const mesesAteRef = MESES.slice(0, idxMesRef+1);
+  const metaMap = {}; rmrCache.metasAno.filter(m=>m.prof===prof).forEach(m=>metaMap[m.mes]=m);
+
+  const linhas = mesesAteRef.map(mes=>{
+    const doMesAtual = rmrCache.registrosAno.filter(r=>r.prof===prof && r.mes===mes);
+    const doMesAnterior = rmrCache.registrosAnoAnterior.filter(r=>r.prof===prof && r.mes===mes);
+    const valorAtual = doMesAtual.reduce((s,r)=>s+(Number(r.valor)||0),0);
+    const valorAnterior = doMesAnterior.reduce((s,r)=>s+(Number(r.valor)||0),0);
+    const meta = metaMap[mes]||{};
+    const turnosUsados = new Set(doMesAtual.map(r=>r.data+'_'+r.turno)).size;
+    const media = turnosUsados ? valorAtual/turnosUsados : 0;
+    return {mes, turnos:meta.turnos_disponibilizados||'—', metaValor:meta.meta_valor||0, valorAtual, valorAnterior, media};
+  });
+
+  const tabela = document.getElementById('rmr-tabela-profissional-detalhe');
+  tabela.innerHTML = `
+    <thead><tr><th>Mês</th><th>Turnos disp.</th><th>Meta (R$)</th><th>Realizado ${ano}</th><th>Realizado ${anoAnterior}</th><th>Média/turno</th></tr></thead>
+    <tbody>${linhas.map(l=>`
+      <tr><td>${l.mes}</td><td>${l.turnos}</td><td class="mono">${l.metaValor?formatarMoeda(l.metaValor):'—'}</td>
+      <td class="mono">${formatarMoeda(l.valorAtual)}</td><td class="mono">${formatarMoeda(l.valorAnterior)}</td>
+      <td class="mono">${formatarMoeda(l.media)}</td></tr>`).join('')}
+    </tbody>`;
+}
+
+function rmrRenderExames(doMesAtual){
+  const exames = doMesAtual.filter(r=>r.exames);
+  const linhas = {};
+  exames.forEach(r=>{
+    const tipo = r.exames;
+    const origem = rmrOrigemPagamento(r);
+    linhas[tipo] = linhas[tipo] || {};
+    linhas[tipo][origem] = (linhas[tipo][origem]||0)+1;
+  });
+  const origens = Array.from(new Set(exames.map(rmrOrigemPagamento))).sort();
+  const tabela = document.getElementById('rmr-tabela-exames');
+  const tipos = Object.keys(linhas).sort();
+  if(tipos.length===0){ tabela.innerHTML='<tr><td class="vazio">Nenhum exame registrado no período.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Tipo de exame</th>${origens.map(o=>`<th>${o}</th>`).join('')}<th>Total</th></tr></thead>
+    <tbody>${tipos.map(tipo=>{
+      const total = origens.reduce((s,o)=>s+(linhas[tipo][o]||0),0);
+      return `<tr><td>${tipo}</td>${origens.map(o=>`<td>${linhas[tipo][o]||0}</td>`).join('')}<td><b>${total}</b></td></tr>`;
+    }).join('')}
+    <tr class="linha-total"><td>Total</td>${origens.map(o=>`<td>${tipos.reduce((s,t)=>s+(linhas[t][o]||0),0)}</td>`).join('')}<td>${exames.length}</td></tr>
+    </tbody>`;
+}
+
+function rmrRenderProcedimentosBiopsias(doMesAtual){
+  const porProcedimento = {};
+  doMesAtual.forEach(r=>{ const p=r.procedimento||'Não informado'; porProcedimento[p]=(porProcedimento[p]||0)+1; });
+  const tProc = document.getElementById('rmr-tabela-procedimentos');
+  const chavesProc = Object.keys(porProcedimento).sort((a,b)=>porProcedimento[b]-porProcedimento[a]);
+  tProc.innerHTML = chavesProc.length===0 ? '<tr><td class="vazio">Sem dados.</td></tr>' : `
+    <thead><tr><th>Procedimento</th><th>Quantidade</th></tr></thead>
+    <tbody>${chavesProc.map(p=>`<tr><td>${p}</td><td>${porProcedimento[p]}</td></tr>`).join('')}</tbody>`;
+
+  const comBiopsia = doMesAtual.filter(r=>r.biopsias);
+  const porFrasco = {};
+  comBiopsia.forEach(r=>{ porFrasco[r.biopsias]=(porFrasco[r.biopsias]||0)+1; });
+  const tBio = document.getElementById('rmr-tabela-biopsias');
+  const chavesBio = Object.keys(porFrasco).sort();
+  tBio.innerHTML = chavesBio.length===0 ? '<tr><td class="vazio">Nenhuma biópsia registrada no período.</td></tr>' : `
+    <thead><tr><th>Frascos</th><th>Quantidade</th></tr></thead>
+    <tbody>${chavesBio.map(f=>`<tr><td>${f}</td><td>${porFrasco[f]}</td></tr>`).join('')}
+    <tr class="linha-total"><td>Total</td><td>${comBiopsia.length}</td></tr></tbody>`;
+}
+
+function rmrRenderDetalheNominal(doMesAtual){
+  window.__rmrRegistrosDetalhe = doMesAtual.slice().sort((a,b)=>a.data.localeCompare(b.data));
+  rmrDesenharTabelaDetalhe(window.__rmrRegistrosDetalhe);
+}
+function rmrDesenharTabelaDetalhe(registros){
+  const tabela = document.getElementById('rmr-tabela-detalhe-nominal');
+  if(registros.length===0){ tabela.innerHTML='<tr><td class="vazio">Nenhum atendimento no período.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Convênio/Forma</th><th>Procedimento</th><th>Atendente</th><th>Valor</th></tr></thead>
+    <tbody>${registros.map(r=>`
+      <tr><td>${formatarDataExibicao(r.data)}</td><td>${r.prof}</td><td>${r.paciente||''}</td>
+      <td>${r.convenio || r.forma_pagamento || '—'}</td><td>${r.procedimento||''}</td><td>${r.atendente||''}</td>
+      <td class="mono">${formatarMoeda(r.valor)}</td></tr>`).join('')}</tbody>`;
+}
+function rmrFiltrarTabelaDetalhe(){
+  const termo = document.getElementById('rmr-busca-detalhe').value.trim().toUpperCase();
+  const base = window.__rmrRegistrosDetalhe || [];
+  if(!termo){ rmrDesenharTabelaDetalhe(base); return; }
+  const filtrados = base.filter(r =>
+    (r.paciente||'').toUpperCase().includes(termo) ||
+    (r.prof||'').toUpperCase().includes(termo) ||
+    (r.convenio||'').toUpperCase().includes(termo) ||
+    (r.procedimento||'').toUpperCase().includes(termo)
+  );
+  rmrDesenharTabelaDetalhe(filtrados);
+}
+
+function rmrRenderTurnos(doMesAtual, metasDoMes){
+  const usoPorProf = {};
+  doMesAtual.forEach(r=>{
+    usoPorProf[r.prof] = usoPorProf[r.prof] || new Set();
+    usoPorProf[r.prof].add(r.data+'_'+r.turno);
+  });
+  const linhas = metasDoMes.map(m=>{
+    const usados = usoPorProf[m.prof] ? usoPorProf[m.prof].size : 0;
+    const disp = Number(m.turnos_disponibilizados)||0;
+    const ociosos = Math.max(0, disp-usados);
+    const pct = disp ? Math.round((usados/disp)*100) : 0;
+    return {prof:m.prof, disp, usados, ociosos, pct};
+  }).sort((a,b)=>b.disp-a.disp);
+
+  const tabela = document.getElementById('rmr-tabela-turnos');
+  tabela.innerHTML = linhas.length===0 ? '<tr><td class="vazio">Cadastre metas de turnos disponibilizados para ver esta tabela.</td></tr>' : `
+    <thead><tr><th>Profissional</th><th>Disponibilizados</th><th>Vendidos</th><th>Ociosos</th><th>% eficiência</th></tr></thead>
+    <tbody>${linhas.map(l=>`<tr><td>${l.prof}</td><td>${l.disp}</td><td>${l.usados}</td><td>${l.ociosos}</td><td>${l.pct}%</td></tr>`).join('')}</tbody>`;
+
+  miniGraficoBarrasEmpilhadas('rmr-grafico-turnos', linhas.map(l=>l.prof), [
+    {nome:'Vendidos', dados: linhas.map(l=>l.usados), cor:'#146B5D'},
+    {nome:'Ociosos', dados: linhas.map(l=>l.ociosos), cor:'#C495B8'}
+  ]);
+}
+
+function rmrRenderFaturamentoParticular(doMesAtual){
+  const particular = doMesAtual.filter(r=>r.forma_pagamento && r.forma_pagamento!=='CONVÊNIO');
+  const porProf = {};
+  particular.forEach(r=>{ porProf[r.prof]=(porProf[r.prof]||0)+(Number(r.valor)||0); });
+  const rotulos = Object.keys(porProf).sort((a,b)=>porProf[b]-porProf[a]);
+  miniGraficoBarras('rmr-grafico-particular', rotulos, rotulos.map(r=>porProf[r]), '#8A3D79');
+}
+
+function rmrRenderMatrizConvenio(doMesAtual){
+  const comConvenio = doMesAtual.filter(r=>r.forma_pagamento==='CONVÊNIO' && r.convenio);
+  const profissionais = Array.from(new Set(comConvenio.map(r=>r.prof))).sort();
+  const convenios = Array.from(new Set(comConvenio.map(r=>r.convenio))).sort();
+  const matriz = {};
+  comConvenio.forEach(r=>{
+    matriz[r.prof] = matriz[r.prof] || {};
+    matriz[r.prof][r.convenio] = (matriz[r.prof][r.convenio]||0) + (Number(r.valor)||0);
+  });
+  const tabela = document.getElementById('rmr-tabela-matriz-convenio');
+  if(profissionais.length===0){ tabela.innerHTML='<tr><td class="vazio">Nenhum atendimento por convênio no período.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Profissional</th>${convenios.map(c=>`<th>${c}</th>`).join('')}<th>Total</th></tr></thead>
+    <tbody>${profissionais.map(p=>{
+      const total = convenios.reduce((s,c)=>s+((matriz[p]&&matriz[p][c])||0),0);
+      return `<tr><td>${p}</td>${convenios.map(c=>`<td class="mono">${formatarMoeda((matriz[p]&&matriz[p][c])||0)}</td>`).join('')}<td class="mono"><b>${formatarMoeda(total)}</b></td></tr>`;
+    }).join('')}
+    <tr class="linha-total"><td>Total</td>${convenios.map(c=>`<td class="mono">${formatarMoeda(profissionais.reduce((s,p)=>s+((matriz[p]&&matriz[p][c])||0),0))}</td>`).join('')}<td></td></tr>
+    </tbody>`;
+}
+
+function rmrRenderEficiencia(doMesAtual, metasDoMes){
+  const porProf = {};
+  doMesAtual.forEach(r=>{
+    porProf[r.prof] = porProf[r.prof] || {quantidade:0, valor:0, turnos:new Set()};
+    porProf[r.prof].quantidade++;
+    porProf[r.prof].valor += Number(r.valor)||0;
+    porProf[r.prof].turnos.add(r.data+'_'+r.turno);
+  });
+  const metaMap = {}; metasDoMes.forEach(m=>metaMap[m.prof]=m);
+  const todosProf = Array.from(new Set([...Object.keys(porProf), ...metasDoMes.map(m=>m.prof)])).sort();
+
+  const tabela = document.getElementById('rmr-tabela-eficiencia');
+  if(todosProf.length===0){ tabela.innerHTML='<tr><td class="vazio">Sem dados no período.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Turnos vendidos</th><th>% eficiência turnos</th><th>Meta (R$)</th><th>Realizado (R$)</th><th>% meta atingida</th><th>Média/turno</th></tr></thead>
+    <tbody>${todosProf.map(prof=>{
+      const dados = porProf[prof] || {quantidade:0, valor:0, turnos:new Set()};
+      const meta = metaMap[prof] || {};
+      const disp = Number(meta.turnos_disponibilizados)||0;
+      const vendidos = dados.turnos.size;
+      const pctTurnos = disp ? Math.round((vendidos/disp)*100) : 0;
+      const pctMeta = meta.meta_valor ? Math.round((dados.valor/meta.meta_valor)*100) : 0;
+      const media = vendidos ? dados.valor/vendidos : 0;
+      return `<tr><td>${prof}</td><td>${disp||'—'}</td><td>${vendidos}</td><td>${pctTurnos}%</td>
+        <td class="mono">${meta.meta_valor?formatarMoeda(meta.meta_valor):'—'}</td><td class="mono">${formatarMoeda(dados.valor)}</td>
+        <td><div class="mono" style="font-size:11.5px;">${pctMeta}%</div><div class="barra-meta"><div style="width:${Math.min(100,pctMeta)}%;"></div></div></td>
+        <td class="mono">${formatarMoeda(media)}</td></tr>`;
+    }).join('')}</tbody>`;
+}
+
+function rmrRenderEvolucaoAnual(){
+  const idxMesRef = MESES.indexOf(rmrCache.mes);
+  const mesesAteRef = MESES.slice(0, idxMesRef+1);
+
+  const valorAtual = mesesAteRef.map(m=>rmrCache.registrosAno.filter(r=>r.mes===m).reduce((s,r)=>s+(Number(r.valor)||0),0));
+  const valorAnterior = mesesAteRef.map(m=>rmrCache.registrosAnoAnterior.filter(r=>r.mes===m).reduce((s,r)=>s+(Number(r.valor)||0),0));
+  const qtdAtual = mesesAteRef.map(m=>rmrCache.registrosAno.filter(r=>r.mes===m).length);
+  const qtdAnterior = mesesAteRef.map(m=>rmrCache.registrosAnoAnterior.filter(r=>r.mes===m).length);
+
+  miniGraficoLinhas('rmr-grafico-evolucao-valor', mesesAteRef, [
+    {nome:String(rmrCache.ano), dados:valorAtual, cor:'#5C2350'},
+    {nome:String(rmrCache.anoAnterior), dados:valorAnterior, cor:'#C495B8', tracejado:true}
+  ]);
+  miniGraficoLinhas('rmr-grafico-evolucao-qtd', mesesAteRef, [
+    {nome:String(rmrCache.ano), dados:qtdAtual, cor:'#146B5D'},
+    {nome:String(rmrCache.anoAnterior), dados:qtdAnterior, cor:'#9FD6C8', tracejado:true}
+  ]);
+}
+
+async function rmrSalvarNota(){
+  const mes = document.getElementById('rmr-mes').value;
+  const ano = document.getElementById('rmr-ano').value;
+  const texto = document.getElementById('rmr-texto-nota').value;
+  const botao = document.getElementById('rmr-botao-salvar-nota');
+  await api('salvarNota', {mes, ano, texto});
+  botao.textContent = 'Salvo ✓';
+  setTimeout(()=>botao.textContent='Salvar anotação', 1800);
+}
+
 </script>
 </body>
 </html>
