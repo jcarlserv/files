@@ -167,6 +167,30 @@
   .filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
   .filtros .campo{margin-bottom:0;min-width:140px;}
 
+  .campo-multiselect{position:relative;}
+  .botao-multiselect{
+    width:100%;text-align:left;padding:11px 13px;border-radius:9px;border:1.5px solid var(--line);
+    font-size:15px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink-900);cursor:pointer;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap;
+  }
+  .botao-multiselect:after{content:'▾';color:var(--ink-400);font-size:12px;}
+  .botao-multiselect:hover{border-color:var(--plum-500);}
+  .botao-multiselect.ativo{border-color:var(--plum-500);}
+  .painel-multiselect{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:30;
+    background:#fff;border:1.5px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
+    padding:8px;min-width:240px;max-height:260px;overflow-y:auto;
+  }
+  .painel-multiselect.aberto{display:block;}
+  .painel-multiselect .acoes-multiselect{display:flex;gap:8px;padding:2px 6px 8px;border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .painel-multiselect .acoes-multiselect button{
+    background:none;border:none;color:var(--plum-700);font-size:12px;font-weight:600;cursor:pointer;padding:2px 4px;
+  }
+  .painel-multiselect .acoes-multiselect button:hover{text-decoration:underline;}
+  .item-multiselect{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:6px;cursor:pointer;font-size:13.5px;}
+  .item-multiselect:hover{background:var(--rose-100);}
+  .item-multiselect input{cursor:pointer;}
+
   .cartao{
     background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
     padding:24px;margin-bottom:20px;
@@ -313,7 +337,7 @@
     <section class="painel" id="painel-lancamento">
       <div class="cabecalho-painel">
         <div>
-          <h2>Lançamento de atendimento</h2>
+          <h2>Lançamento</h2>
           <p>Registre um atendimento realizado. Os campos com seta são padronizados por lista.</p>
         </div>
       </div>
@@ -356,9 +380,10 @@
               <label>Profissional</label>
               <select id="filtro-prof-gerencial"><option value="">Todos</option></select>
             </div>
-            <div class="campo">
+            <div class="campo campo-multiselect">
               <label>Convênio</label>
-              <select id="filtro-convenio-gerencial"><option value="">Todos</option></select>
+              <button type="button" class="botao-multiselect" id="botao-filtro-convenio">Todos</button>
+              <div class="painel-multiselect" id="painel-filtro-convenio"></div>
             </div>
             <div class="campo">
               <label>Forma de pagamento</label>
@@ -705,7 +730,8 @@ const MODO_DEMO = !CONFIG.API_URL;
 const estado = {
   usuario:null, papel:null, nomeProfissional:null,
   listas:{}, abaAtiva:'lancamento',
-  editandoId:null, editandoMes:null, editandoAno:null
+  editandoId:null, editandoMes:null, editandoAno:null,
+  conveniosSelecionados:[]
 };
 
 /* ---------------------------------------------------------------------
@@ -1231,10 +1257,7 @@ function preencherSelectsPeriodo(){
     (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
   filtroProf.addEventListener('change', atualizarPainelAtivo);
 
-  const filtroConvenioGerencial = document.getElementById('filtro-convenio-gerencial');
-  filtroConvenioGerencial.innerHTML = '<option value="">Todos</option>' +
-    (estado.listas.convenios||[]).map(c=>`<option value="${c}">${c}</option>`).join('');
-  filtroConvenioGerencial.addEventListener('change', atualizarEditar);
+  montarMultiselectConvenio();
 
   const filtroFormaPagamentoGerencial = document.getElementById('filtro-forma-pagamento-gerencial');
   filtroFormaPagamentoGerencial.innerHTML = '<option value="">Todas</option>' +
@@ -1268,7 +1291,9 @@ function preencherSelectsPeriodo(){
     document.getElementById('filtro-data-inicio').value = paraISO(primeiroDiaMes);
     document.getElementById('filtro-data-fim').value = paraISO(ultimoDiaMes);
     document.getElementById('filtro-prof-gerencial').value = '';
-    document.getElementById('filtro-convenio-gerencial').value = '';
+    estado.conveniosSelecionados = [];
+    document.querySelectorAll('#painel-filtro-convenio input[type="checkbox"]').forEach(chk=>chk.checked=false);
+    document.getElementById('botao-filtro-convenio').textContent = 'Todos';
     document.getElementById('filtro-forma-pagamento-gerencial').value = '';
     atualizarEditar();
   });
@@ -1376,9 +1401,72 @@ function formatarDataExibicao(iso){
 /* ---------------------------------------------------------------------
    PAINEL: EDITAR (lançamentos do período)
 --------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   MULTI-SELETOR DE CONVÊNIO — clicar em vários convênios ao mesmo tempo
+--------------------------------------------------------------------- */
+function montarMultiselectConvenio(){
+  const botao = document.getElementById('botao-filtro-convenio');
+  const painel = document.getElementById('painel-filtro-convenio');
+  const convenios = estado.listas.convenios||[];
+
+  painel.innerHTML = `
+    <div class="acoes-multiselect">
+      <button type="button" id="ms-convenio-marcar-todos">Marcar todos</button>
+      <button type="button" id="ms-convenio-limpar">Limpar</button>
+    </div>
+    ${convenios.map((c,i)=>`
+      <label class="item-multiselect">
+        <input type="checkbox" value="${c}" id="ms-convenio-${i}"> ${c}
+      </label>`).join('')}
+  `;
+
+  function atualizarRotuloBotao(){
+    const n = estado.conveniosSelecionados.length;
+    botao.textContent = n===0 ? 'Todos' : (n===1 ? estado.conveniosSelecionados[0] : `${n} selecionados`);
+  }
+  atualizarRotuloBotao();
+
+  painel.querySelectorAll('input[type="checkbox"]').forEach(chk=>{
+    chk.checked = estado.conveniosSelecionados.includes(chk.value);
+    chk.addEventListener('change', ()=>{
+      if(chk.checked) estado.conveniosSelecionados.push(chk.value);
+      else estado.conveniosSelecionados = estado.conveniosSelecionados.filter(v=>v!==chk.value);
+      atualizarRotuloBotao();
+      atualizarEditar();
+    });
+  });
+
+  document.getElementById('ms-convenio-marcar-todos').addEventListener('click', ()=>{
+    estado.conveniosSelecionados = convenios.slice();
+    painel.querySelectorAll('input[type="checkbox"]').forEach(chk=>chk.checked=true);
+    atualizarRotuloBotao();
+    atualizarEditar();
+  });
+  document.getElementById('ms-convenio-limpar').addEventListener('click', ()=>{
+    estado.conveniosSelecionados = [];
+    painel.querySelectorAll('input[type="checkbox"]').forEach(chk=>chk.checked=false);
+    atualizarRotuloBotao();
+    atualizarEditar();
+  });
+
+  botao.addEventListener('click', (ev)=>{
+    ev.stopPropagation();
+    painel.classList.toggle('aberto');
+    botao.classList.toggle('ativo', painel.classList.contains('aberto'));
+  });
+  document.addEventListener('click', (ev)=>{
+    if(!painel.contains(ev.target) && ev.target!==botao){
+      painel.classList.remove('aberto');
+      botao.classList.remove('ativo');
+    }
+  });
+}
+
+/* ---------------------------------------------------------------------
+   PAINEL: EDITAR (lançamentos do período)
+--------------------------------------------------------------------- */
 async function atualizarEditar(){
   const prof = document.getElementById('filtro-prof-gerencial').value;
-  const convenio = document.getElementById('filtro-convenio-gerencial').value;
   const formaPagamento = document.getElementById('filtro-forma-pagamento-gerencial').value;
   const dataInicio = document.getElementById('filtro-data-inicio').value;
   const dataFim = document.getElementById('filtro-data-fim').value;
@@ -1388,8 +1476,9 @@ async function atualizarEditar(){
 
   const resp = await api('listarProducao', {prof, dataInicio, dataFim});
   let registros = resp.registros||[];
-  if(convenio){
-    registros = registros.filter(r => String(r.convenio||'').trim().toUpperCase() === convenio.trim().toUpperCase());
+  if(estado.conveniosSelecionados.length){
+    const selecionadosUpper = estado.conveniosSelecionados.map(c=>c.trim().toUpperCase());
+    registros = registros.filter(r => selecionadosUpper.includes(String(r.convenio||'').trim().toUpperCase()));
   }
   if(formaPagamento){
     registros = registros.filter(r => String(r.forma_pagamento||'').trim().toUpperCase() === formaPagamento.trim().toUpperCase());
@@ -1403,12 +1492,14 @@ async function atualizarEditar(){
     if(porFormaPagamento.hasOwnProperty(forma)) porFormaPagamento[forma] += valor;
     totalGeral += valor;
   });
+  const rotuloConvenios = estado.conveniosSelecionados.length===1 ? ` (${estado.conveniosSelecionados[0]})`
+    : estado.conveniosSelecionados.length>1 ? ` (${estado.conveniosSelecionados.length} convênios)` : '';
   document.getElementById('resumo-financeiro-editar').innerHTML = `
-    <div class="kpi"><div class="rotulo">Convênio${convenio?` (${convenio})`:''}</div><div class="valor" id="resumo-fp-convenio">${formatarMoeda(porFormaPagamento['CONVÊNIO'])}</div></div>
+    <div class="kpi"><div class="rotulo">Convênio${rotuloConvenios}</div><div class="valor" id="resumo-fp-convenio">${formatarMoeda(porFormaPagamento['CONVÊNIO'])}</div></div>
     <div class="kpi"><div class="rotulo">Pix</div><div class="valor" id="resumo-fp-pix">${formatarMoeda(porFormaPagamento['PIX'])}</div></div>
     <div class="kpi"><div class="rotulo">Espécie</div><div class="valor" id="resumo-fp-especie">${formatarMoeda(porFormaPagamento['ESPÉCIE'])}</div></div>
     <div class="kpi"><div class="rotulo">Cartão</div><div class="valor" id="resumo-fp-cartao">${formatarMoeda(porFormaPagamento['CARTÃO'])}</div></div>
-    <div class="kpi"><div class="rotulo">Total${convenio?' filtrado':''}</div><div class="valor teal" id="resumo-fp-total">${formatarMoeda(totalGeral)}</div></div>
+    <div class="kpi"><div class="rotulo">Total${estado.conveniosSelecionados.length?' filtrado':''}</div><div class="valor teal" id="resumo-fp-total">${formatarMoeda(totalGeral)}</div></div>
   `;
 
   const tabela = document.getElementById('tabela-gerencial');
