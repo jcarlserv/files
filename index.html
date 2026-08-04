@@ -328,6 +328,7 @@
     <nav class="abas" id="nav-abas"></nav>
     <div class="info-usuario">
       <span>Logado como <b id="nome-usuario-topo"></b></span>
+      <button class="botao sutil pequeno" id="botao-minha-conta">Minha conta</button>
       <button class="botao sutil pequeno" id="botao-sair">Sair</button>
     </div>
   </header>
@@ -710,6 +711,36 @@
   </div>
 </div>
 
+<!-- ===================== MODAL MINHA CONTA ===================== -->
+<div class="sobreposicao" id="sobreposicao-conta">
+  <div class="modal" style="max-width:420px;">
+    <h3>Minha conta</h3>
+    <form id="form-conta">
+      <div class="campo">
+        <label>Nome exibido</label>
+        <input type="text" id="conta-nome" required />
+      </div>
+      <div class="campo">
+        <label>Senha atual</label>
+        <input type="password" id="conta-senha-atual" autocomplete="current-password" required />
+      </div>
+      <div class="campo">
+        <label>Nova senha (deixe em branco para não trocar)</label>
+        <input type="password" id="conta-nova-senha" autocomplete="new-password" />
+      </div>
+      <div class="campo">
+        <label>Confirmar nova senha</label>
+        <input type="password" id="conta-confirmar-senha" autocomplete="new-password" />
+      </div>
+      <div id="conta-mensagem" style="font-size:13px;min-height:18px;margin-bottom:6px;"></div>
+      <div class="modal-acoes">
+        <button type="button" class="botao sutil" id="botao-cancelar-conta">Cancelar</button>
+        <button type="submit" class="botao">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 /* =====================================================================
    CONFIGURAÇÃO
@@ -718,7 +749,7 @@
    MODO DEMONSTRAÇÃO com dados de exemplo guardados só nesta sessão.
 ===================================================================== */
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbwyNGjuJa18Sfd8aQ09shN7kDaVzh5zul3MkWvzw2WoTY-1k6EdhS9tX4Dn2xxHJ4lR/exec" // <-- cole aqui a URL do seu Web App do Apps Script
+  API_URL: "https://script.google.com/macros/s/AKfycby-7GHSoZRtIMeBRQg20Xp3TA-X7z8SzhAA7M1867Kjv9jqCrxi0mAV5mqFRsmoNUBr/exec" // <-- cole aqui a URL do seu Web App do Apps Script
 };
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -871,6 +902,14 @@ function mockApi(acao, dados) {
     case 'salvarConfiguracao': {
       demo.configuracoes[dados.chave] = dados.valor;
       return {ok:true};
+    }
+    case 'alterarConta': {
+      const usuario = demo.usuarios.find(u=>u.usuario===dados.usuario);
+      if(!usuario) return {ok:false, erro:'Usuário não encontrado.'};
+      if(usuario.senha !== dados.senhaAtual) return {ok:false, erro:'Senha atual incorreta.'};
+      if(dados.novoNome) usuario.nome_profissional = dados.novoNome;
+      if(dados.novaSenha) usuario.senha = dados.novaSenha;
+      return {ok:true, nomeProfissional: usuario.nome_profissional};
     }
     case 'dashboard': {
       let registros = demo.producao.slice();
@@ -1089,6 +1128,55 @@ document.getElementById('form-login').addEventListener('submit', async (ev)=>{
 
 document.getElementById('botao-sair').addEventListener('click', ()=>{
   location.reload();
+});
+
+/* ---------------------------------------------------------------------
+   MINHA CONTA — trocar nome exibido e/ou senha (qualquer usuário)
+--------------------------------------------------------------------- */
+document.getElementById('botao-minha-conta').addEventListener('click', ()=>{
+  document.getElementById('conta-nome').value = estado.nomeProfissional || '';
+  document.getElementById('conta-senha-atual').value = '';
+  document.getElementById('conta-nova-senha').value = '';
+  document.getElementById('conta-confirmar-senha').value = '';
+  document.getElementById('conta-mensagem').textContent = '';
+  document.getElementById('sobreposicao-conta').classList.add('aberta');
+});
+document.getElementById('botao-cancelar-conta').addEventListener('click', ()=>{
+  document.getElementById('sobreposicao-conta').classList.remove('aberta');
+});
+document.getElementById('sobreposicao-conta').addEventListener('click', (ev)=>{
+  if(ev.target.id==='sobreposicao-conta') document.getElementById('sobreposicao-conta').classList.remove('aberta');
+});
+
+document.getElementById('form-conta').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const mensagemEl = document.getElementById('conta-mensagem');
+  const novoNome = document.getElementById('conta-nome').value.trim();
+  const senhaAtual = document.getElementById('conta-senha-atual').value;
+  const novaSenha = document.getElementById('conta-nova-senha').value;
+  const confirmarSenha = document.getElementById('conta-confirmar-senha').value;
+
+  if(!novoNome){ mensagemEl.style.color='var(--danger)'; mensagemEl.textContent='O nome não pode ficar em branco.'; return; }
+  if(novaSenha && novaSenha !== confirmarSenha){
+    mensagemEl.style.color = 'var(--danger)';
+    mensagemEl.textContent = 'A nova senha e a confirmação não são iguais.';
+    return;
+  }
+
+  mensagemEl.style.color = 'var(--ink-400)';
+  mensagemEl.textContent = 'Salvando...';
+  const resp = await api('alterarConta', {usuario: estado.usuario, senhaAtual, novoNome, novaSenha});
+  if(!resp.ok){
+    mensagemEl.style.color = 'var(--danger)';
+    mensagemEl.textContent = resp.erro || 'Não foi possível salvar.';
+    return;
+  }
+
+  estado.nomeProfissional = novoNome;
+  document.getElementById('nome-usuario-topo').textContent = novoNome;
+  mensagemEl.style.color = 'var(--teal-700)';
+  mensagemEl.textContent = 'Salvo com sucesso!';
+  setTimeout(()=>document.getElementById('sobreposicao-conta').classList.remove('aberta'), 900);
 });
 
 /* ---------------------------------------------------------------------
