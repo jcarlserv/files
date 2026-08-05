@@ -1639,7 +1639,17 @@ const CAMPOS_CRITICOS = [
   {chave:'atendente', rotulo:'Atendente'}
 ];
 
+// Retorno não é cobrado — então Valor e Forma de pagamento não contam como pendência
+// (nem como obrigatórios no formulário) quando o procedimento for "RETORNO".
+const CAMPOS_DISPENSADOS_NO_RETORNO = ['valor','forma_pagamento'];
+function ehProcedimentoRetorno(valorProcedimento){
+  return String(valorProcedimento||'').trim().toUpperCase() === 'RETORNO';
+}
+
 function campoCriticoVazio(registro, chave){
+  if(CAMPOS_DISPENSADOS_NO_RETORNO.includes(chave) && ehProcedimentoRetorno(registro.procedimento)){
+    return false;
+  }
   const v = registro[chave];
   if(chave==='valor'){
     return v===undefined || v===null || v==='' || Number(v)===0 || isNaN(Number(v));
@@ -1751,8 +1761,12 @@ function definicaoCampos(){
    devolve a lista de rótulos que estão vazios — usada para bloquear o salvamento de
    verdade (o "*" no rótulo, sozinho, era só visual e não impedia salvar em branco). */
 function camposObrigatoriosFaltando(prefixo){
+  const elProcedimento = document.getElementById(prefixo+'procedimento');
+  const dispensarCobranca = ehProcedimentoRetorno(elProcedimento ? elProcedimento.value : '');
+
   return definicaoCampos()
     .filter(c => c.obrigatorio)
+    .filter(c => !(dispensarCobranca && CAMPOS_DISPENSADOS_NO_RETORNO.includes(c.chave)))
     .filter(c => {
       const el = document.getElementById(prefixo+c.chave);
       return !el || String(el.value||'').trim()==='';
