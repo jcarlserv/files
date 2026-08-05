@@ -518,6 +518,10 @@
             <label>Ano</label>
             <select id="filtro-ano-dashboard"></select>
           </div>
+          <div class="campo">
+            <label>Andar</label>
+            <select id="filtro-andar-dashboard"><option value="">Todos</option></select>
+          </div>
         </div>
       </div>
 
@@ -584,6 +588,10 @@
             <label>Ano</label>
             <select id="filtro-ano-analises"></select>
           </div>
+          <div class="campo">
+            <label>Andar</label>
+            <select id="filtro-andar-analises"><option value="">Todos</option></select>
+          </div>
         </div>
       </div>
 
@@ -633,6 +641,7 @@
         <div class="filtros">
           <div class="campo"><label>Mês</label><select id="rmr-mes"></select></div>
           <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
+          <div class="campo"><label>Andar</label><select id="rmr-andar"><option value="">Todos</option></select></div>
           <button class="botao sutil pequeno" id="rmr-botao-imprimir">Imprimir / PDF</button>
         </div>
       </div>
@@ -768,7 +777,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v1.5.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v1.6.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1089,7 +1098,8 @@ async function supabaseApi(acao, dados) {
     case 'dashboard': {
       const respProd = await supabaseApi('listarProducao', {mes:dados.mes, ano:dados.ano});
       if(!respProd.ok) return respProd;
-      const registros = respProd.registros;
+      let registros = respProd.registros;
+      if(dados.andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===String(dados.andar).trim().toUpperCase());
       const porProfissional = {}, porConvenio = {}, porAndar = {};
       let totalValor = 0;
       registros.forEach(r=>{
@@ -1213,6 +1223,7 @@ function mockApi(acao, dados) {
       let registros = demo.producao.slice();
       if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
       if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
+      if(dados.andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===String(dados.andar).trim().toUpperCase());
       const porProfissional = {}, porConvenio = {}, porAndar = {};
       let totalValor = 0;
       registros.forEach(r=>{
@@ -1587,7 +1598,7 @@ function montarNavegacao(){
   if(estado.papel === 'gerente' || estado.papel === 'atendente'){
     // Atendente vê a aba Editar em modo só-consulta (sem "+ Novo registro" e sem
     // o botão "Editar" por linha) — ver toggle de visibilidade em preencherSelectsPeriodo().
-    abasDisponiveis.splice(1, 0, {id:'editar', rotulo:'Editar'});
+    abasDisponiveis.splice(1, 0, {id:'editar', rotulo:'Verificar'});
   }
   if(estado.papel === 'gerente'){
     abasDisponiveis.push({id:'metas', rotulo:'Metas'});
@@ -1707,6 +1718,16 @@ function preencherSelectsPeriodo(){
   filtroAndarGerencial.innerHTML = '<option value="">Todos</option>' +
     (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
   filtroAndarGerencial.addEventListener('change', atualizarEditar);
+
+  const filtroAndarDashboard = document.getElementById('filtro-andar-dashboard');
+  filtroAndarDashboard.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
+  filtroAndarDashboard.addEventListener('change', atualizarPainelAtivo);
+
+  const filtroAndarAnalises = document.getElementById('filtro-andar-analises');
+  filtroAndarAnalises.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
+  filtroAndarAnalises.addEventListener('change', atualizarPainelAtivo);
 
   montarMultiselectConvenio();
 
@@ -2502,11 +2523,12 @@ document.getElementById('botao-excluir-modal').addEventListener('click', async (
 async function atualizarDashboard(){
   const mes = document.getElementById('filtro-mes-dashboard').value;
   const ano = document.getElementById('filtro-ano-dashboard').value;
+  const andar = document.getElementById('filtro-andar-dashboard').value;
   ['kpi-atendimentos','kpi-valor','kpi-ticket','kpi-meta'].forEach(id=>document.getElementById(id).textContent='…');
   document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
   let resp;
   try{
-    resp = await api('dashboard', {mes, ano});
+    resp = await api('dashboard', {mes, ano, andar});
   }catch(e){
     document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o Supabase. Confira SUPABASE_URL e SUPABASE_ANON_KEY.</td></tr>';
     return;
@@ -2580,6 +2602,7 @@ async function atualizarEvolucaoAno(){
   const mesSelecionado = document.getElementById('filtro-mes-dashboard').value;
   const ano = document.getElementById('filtro-ano-dashboard').value;
   const prof = document.getElementById('filtro-prof-evolucao').value;
+  const andar = document.getElementById('filtro-andar-dashboard').value;
   const idxMes = MESES.indexOf(mesSelecionado);
   const mesesConsiderados = MESES.slice(0, idxMes+1);
 
@@ -2597,7 +2620,8 @@ async function atualizarEvolucaoAno(){
     return;
   }
 
-  const registros = respProd.registros || [];
+  let registros = respProd.registros || [];
+  if(andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===andar.trim().toUpperCase());
   const metas = (respMetas.metas || []).filter(m => !prof || m.prof===prof);
 
   const linhas = mesesConsiderados.map(mes=>{
@@ -2689,8 +2713,11 @@ async function atualizarAnalises(){
   document.getElementById('tabela-correlacao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
   const mes = document.getElementById('filtro-mes-analises').value;
   const ano = document.getElementById('filtro-ano-analises').value;
+  const andar = document.getElementById('filtro-andar-analises').value;
   const resp = await api('listarProducao', {mes, ano});
-  estado.registrosDashboard = resp.registros || [];
+  let registros = resp.registros || [];
+  if(andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===andar.trim().toUpperCase());
+  estado.registrosDashboard = registros;
   atualizarAnaliseDimensao();
   atualizarCorrelacao();
 }
@@ -2782,6 +2809,10 @@ function rmrPrepararSelects(){
   selMes.innerHTML = MESES.map((m,i)=>`<option value="${m}" ${i===hoje.getMonth()?'selected':''}>${m}</option>`).join('');
   selAno.addEventListener('change', atualizarRMR);
   selMes.addEventListener('change', atualizarRMR);
+  const selAndar = document.getElementById('rmr-andar');
+  selAndar.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
+  selAndar.addEventListener('change', atualizarRMR);
   document.getElementById('rmr-busca-detalhe').addEventListener('input', rmrFiltrarTabelaDetalhe);
   document.getElementById('rmr-botao-salvar-nota').addEventListener('click', rmrSalvarNota);
   document.getElementById('rmr-botao-imprimir').addEventListener('click', ()=>window.print());
@@ -2793,7 +2824,8 @@ async function atualizarRMR(){
   const mes = document.getElementById('rmr-mes').value;
   const ano = Number(document.getElementById('rmr-ano').value);
   const anoAnterior = ano - 1;
-  document.getElementById('rmr-legenda-periodo').textContent = `Referência: ${mes} de ${ano} · comparativo com ${mes} de ${anoAnterior}`;
+  const andar = document.getElementById('rmr-andar').value;
+  document.getElementById('rmr-legenda-periodo').textContent = `Referência: ${mes} de ${ano} · comparativo com ${mes} de ${anoAnterior}` + (andar ? ` · Andar: ${andar}` : '');
 
   let prodAno, prodAnoAnterior, metasAno, metasAnoAnterior, nota;
   try{
@@ -2809,10 +2841,14 @@ async function atualizarRMR(){
     return;
   }
 
+  const filtrarPorAndar = registros => andar
+    ? registros.filter(r=>String(r.andar||'').trim().toUpperCase()===andar.trim().toUpperCase())
+    : registros;
+
   rmrCache = {
     mes, ano, anoAnterior,
-    registrosAno: prodAno.registros||[],
-    registrosAnoAnterior: prodAnoAnterior.registros||[],
+    registrosAno: filtrarPorAndar(prodAno.registros||[]),
+    registrosAnoAnterior: filtrarPorAndar(prodAnoAnterior.registros||[]),
     metasAno: metasAno.metas||[],
     metasAnoAnterior: metasAnoAnterior.metas||[]
   };
