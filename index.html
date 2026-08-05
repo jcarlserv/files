@@ -768,7 +768,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v1.4.3</b></span>
+    <span>ProdClin <b id="versao-sistema">v1.5.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -857,7 +857,8 @@ const demo = {
     {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação'},
     {usuario:'angelina', senha:'123', papel:'profissional', nome_profissional:'ANGELINA'},
     {usuario:'lisiene', senha:'123', papel:'profissional', nome_profissional:'LISIENE'},
-    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA'}
+    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA'},
+    {usuario:'kaillany', senha:'123', papel:'atendente', nome_profissional:'KAILLANY'}
   ],
   listas:{
     profissionais:['ANGELINA','AYANE CARNEIRO','CARLOTA','CLEIA','DANIELE ERTHAL','DR CARLOS AUGUSTO','DR CHARLES USG','DR MARCELO','DR MARCELO USG','DR MAURICIO','DR MAURICIO EXAMES','DR OSMAR','DRA AMANDA USG','DRA IVNA','DRA RICARLA USG','GABRIELE','ISABELLE','IZADORA ZARA','JAQUELANE PONTE','JOSEANE','KÁTIA RODRIGUES','KIMBERLY','LIA BRITO','LISIENE','MARILIA','RAFAELA MORAIS','RENATA','RONALDO GILDO','VALERIA','VICTOR MOREIRA'],
@@ -1433,7 +1434,7 @@ function carregarSessaoSalva(){
 --------------------------------------------------------------------- */
 if(MODO_DEMO){
   document.getElementById('contas-demo').innerHTML =
-    '<b>Contas de demonstração</b><br>Gerente → usuário <b>gerente</b> / senha <b>gerente123</b><br>Profissional → usuário <b>angelina</b> / senha <b>123</b>';
+    '<b>Contas de demonstração</b><br>Gerente → usuário <b>gerente</b> / senha <b>gerente123</b><br>Profissional → usuário <b>angelina</b> / senha <b>123</b><br>Atendente → usuário <b>kaillany</b> / senha <b>123</b>';
 }
 
 // Se já existir uma sessão salva de uma visita anterior, entra direto —
@@ -1583,8 +1584,12 @@ function mostrarErroInicializacao(mensagem){
 function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
   const abasDisponiveis = [{id:'lancamento', rotulo:'Lançamento'}, {id:'critica', rotulo:'Crítica'}];
-  if(estado.papel === 'gerente'){
+  if(estado.papel === 'gerente' || estado.papel === 'atendente'){
+    // Atendente vê a aba Editar em modo só-consulta (sem "+ Novo registro" e sem
+    // o botão "Editar" por linha) — ver toggle de visibilidade em preencherSelectsPeriodo().
     abasDisponiveis.splice(1, 0, {id:'editar', rotulo:'Editar'});
+  }
+  if(estado.papel === 'gerente'){
     abasDisponiveis.push({id:'metas', rotulo:'Metas'});
     abasDisponiveis.push({id:'dashboard', rotulo:'Dashboard'});
     abasDisponiveis.push({id:'analises', rotulo:'Análises'});
@@ -1725,6 +1730,8 @@ function preencherSelectsPeriodo(){
   filtroProfEvolucao.addEventListener('change', atualizarEvolucaoAno);
 
   document.getElementById('botao-novo-registro-gerencial').addEventListener('click', ()=>abrirModal(null));
+  // Atendente consulta a aba Editar, mas não cria/edita/exclui registros.
+  document.getElementById('botao-novo-registro-gerencial').style.display = (estado.papel==='gerente') ? 'inline-flex' : 'none';
   document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
 
   document.getElementById('filtro-data-inicio').addEventListener('change', atualizarEditar);
@@ -1980,12 +1987,13 @@ async function atualizarEditar(){
     <div class="kpi"><div class="rotulo">Total${estado.conveniosSelecionados.length?' filtrado':''}</div><div class="valor teal" id="resumo-fp-total">${formatarMoeda(totalGeral)}</div></div>
   `;
 
+  const podeEditar = estado.papel === 'gerente';
   const tabela = document.getElementById('tabela-gerencial');
   if(registros.length===0){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
   } else {
     tabela.innerHTML = `
-      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th><th></th></tr></thead>
+      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th>${podeEditar?'<th></th>':''}</tr></thead>
       <tbody>${registros.map((r,i)=>`
         <tr>
           <td>${formatarDataExibicao(r.data)}</td>
@@ -1997,20 +2005,23 @@ async function atualizarEditar(){
           <td>${r.forma_pagamento||'—'}</td>
           <td class="mono">${formatarMoeda(r.valor)}</td>
           <td>${r.atendente||''}</td>
-          <td class="celula-acoes"><button class="botao sutil pequeno" data-indice="${i}">Editar</button></td>
+          ${podeEditar?`<td class="celula-acoes"><button class="botao sutil pequeno" data-indice="${i}">Editar</button></td>`:''}
         </tr>`).join('')}</tbody>`;
     // Usa a posição na lista (não o id) para achar o registro certo — assim
     // funciona mesmo se algum registro antigo tiver o id vazio ou repetido.
-    tabela.querySelectorAll('button[data-indice]').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        const registro = registros[Number(b.dataset.indice)];
-        if(!registro.id){
-          alert('Este registro não tem um identificador único (provavelmente um dado bem antigo, de antes da migração para o Supabase). Abra a tabela "producao" no Table Editor do Supabase e defina um id para essa linha (ex.: gen_random_uuid()) antes de editá-la por aqui.');
-          return;
-        }
-        abrirModal(registro);
+    // Atendente só consulta: nem o botão nem os listeners de edição existem para esse papel.
+    if(podeEditar){
+      tabela.querySelectorAll('button[data-indice]').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const registro = registros[Number(b.dataset.indice)];
+          if(!registro.id){
+            alert('Este registro não tem um identificador único (provavelmente um dado bem antigo, de antes da migração para o Supabase). Abra a tabela "producao" no Table Editor do Supabase e defina um id para essa linha (ex.: gen_random_uuid()) antes de editá-la por aqui.');
+            return;
+          }
+          abrirModal(registro);
+        });
       });
-    });
+    }
   }
 }
 
