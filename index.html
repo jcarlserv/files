@@ -454,6 +454,7 @@
         <p style="margin:-6px 0 12px;color:var(--ink-400);font-size:12.5px;">
           Quantidade de pacientes distintos com algum campo pendente, por atendente responsável pelo lançamento.
         </p>
+        <div id="grafico-ranking-atendentes-critica" class="mini-grafico" style="min-height:220px;margin-bottom:16px;"></div>
         <div class="tabela-scroll">
           <table id="tabela-ranking-atendentes-critica"></table>
         </div>
@@ -766,7 +767,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v1.3.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v1.4.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -2035,10 +2036,13 @@ function renderizarRankingAtendentesCritica(incompletos){
     .sort((a,b) => b.qtd - a.qtd);
 
   const tabela = document.getElementById('tabela-ranking-atendentes-critica');
+  const grafico = document.getElementById('grafico-ranking-atendentes-critica');
   if(ranking.length===0){
     tabela.innerHTML = '<tr><td class="vazio">Nenhuma pendência no período. 🎉</td></tr>';
+    grafico.innerHTML = '';
     return;
   }
+  miniGraficoBarras('grafico-ranking-atendentes-critica', ranking.map(r=>r.atendente), ranking.map(r=>r.qtd), '#9C6E22');
   tabela.innerHTML = `
     <thead><tr><th>#</th><th>Atendente</th><th>Pacientes com pendência</th></tr></thead>
     <tbody>${ranking.map((r,i)=>`
