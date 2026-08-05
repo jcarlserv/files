@@ -79,6 +79,10 @@
   .marca-login h1{font-size:26px;margin:0 0 2px;color:var(--plum-900);font-weight:600;}
   .marca-login p{margin:0;color:var(--ink-400);font-size:14px;}
   .campo{margin-bottom:16px;}
+  .campo.campo-pendente input, .campo.campo-pendente select{
+    border-color:var(--gold-500);background:var(--gold-100);
+  }
+  .campo.campo-pendente label{color:var(--gold-600);}
   .campo label{
     display:block;font-size:12.5px;font-weight:600;letter-spacing:.02em;
     color:var(--ink-600);margin-bottom:6px;text-transform:uppercase;
@@ -316,7 +320,7 @@
 
 <!-- ===================== APLICAÇÃO ===================== -->
 <div id="app">
-  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — conecte o Google Sheets em CONFIG.API_URL para usar dados reais (veja o GUIA_DE_CONFIGURACAO.md)</div>
+  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — configure SUPABASE_URL e SUPABASE_ANON_KEY para usar dados reais</div>
   <header class="topo">
     <div class="marca-topo">
       <div class="selo">C</div>
@@ -380,6 +384,10 @@
             <div class="campo">
               <label>Profissional</label>
               <select id="filtro-prof-gerencial"><option value="">Todos</option></select>
+            </div>
+            <div class="campo">
+              <label>Andar</label>
+              <select id="filtro-andar-gerencial"><option value="">Todos</option></select>
             </div>
             <div class="campo campo-multiselect">
               <label>Convênio</label>
@@ -505,6 +513,9 @@
       <div class="grade-2">
         <div class="cartao"><h3>Atendimentos por profissional</h3><div id="grafico-profissional" class="mini-grafico" style="min-height:220px;"></div></div>
         <div class="cartao"><h3>Distribuição por convênio</h3><div id="grafico-convenio" class="mini-grafico" style="min-height:220px;"></div></div>
+      </div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Distribuição por andar</h3><div id="grafico-andar" class="mini-grafico" style="min-height:220px;"></div></div>
       </div>
 
       <div class="squad-titulo"><span>Squad Financeiro</span><div class="linha"></div></div>
@@ -674,7 +685,7 @@
       <div class="cabecalho-painel">
         <div>
           <h2>Configurações</h2>
-          <p>Dados gerais do sistema, salvos na planilha (aba Configuracoes).</p>
+          <p>Dados gerais do sistema, salvos no Supabase.</p>
         </div>
       </div>
 
@@ -690,6 +701,49 @@
         </div>
         <p style="margin:14px 0 0;color:var(--ink-400);font-size:12px;">
           Esse nome aparece no cabeçalho do sistema e na tela de login, para todos os usuários.
+        </p>
+      </div>
+
+      <div class="cartao" style="max-width:620px;">
+        <h3>Listas do sistema</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Essas são as opções que aparecem nos menus de Profissional, Convênio, Procedimento etc.
+          Adicionar ou remover aqui atualiza a planilha (aba Listas) direto — sem precisar abrir o Google Sheets.
+        </p>
+        <div class="campo">
+          <label>Lista</label>
+          <select id="config-lista-selecionada"></select>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input type="text" id="config-novo-item-lista" placeholder="Novo item nessa lista..." style="flex:1;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);">
+          <button class="botao secundario" id="botao-adicionar-item-lista">Adicionar</button>
+        </div>
+        <div id="config-itens-lista" style="display:flex;flex-wrap:wrap;gap:8px;max-height:280px;overflow-y:auto;padding:4px 0;"></div>
+        <p style="margin:14px 0 0;color:var(--ink-400);font-size:12px;">
+          Remover um item daqui só tira ele das opções futuras — não muda lançamentos que já usaram esse valor.
+        </p>
+      </div>
+
+      <div class="cartao" style="max-width:820px;">
+        <h3>Importar produção em massa (CSV)</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Importa um arquivo <code>.csv</code> exportado da planilha direto para a tabela de produção do Supabase.
+          Colunas aceitas no cabeçalho: <b>andar, prof, data, turno, paciente, protocolo, procedimento, exames,
+          biopsias, convenio, valor, forma_pagamento, atendente</b>. A data pode estar em <code>dd/mm/aaaa</code>
+          ou <code>aaaa-mm-dd</code>; o valor aceita vírgula ou ponto como separador decimal.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="input-importar-csv" accept=".csv,text/csv" />
+          <button type="button" class="botao secundario" id="botao-importar-csv" disabled>Importar arquivo</button>
+        </div>
+        <div id="barra-progresso-importacao" style="display:none;margin-top:14px;height:8px;border-radius:4px;background:var(--line);overflow:hidden;">
+          <div id="barra-progresso-importacao-interna" style="height:100%;width:0%;background:var(--teal-600);transition:width .2s;"></div>
+        </div>
+        <div id="resumo-importacao-csv" style="margin-top:12px;font-size:13px;color:var(--ink-600);white-space:pre-line;"></div>
+        <p style="margin:14px 0 0;color:var(--ink-400);font-size:12px;">
+          Essa importação só adiciona registros novos (não substitui nem atualiza os que já existem). Se algum lote
+          falhar, corrija o problema na planilha e reimporte só as linhas que faltaram — reimportar o arquivo inteiro
+          de novo duplicaria os registros que já entraram com sucesso.
         </p>
       </div>
     </section>
@@ -741,19 +795,24 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* =====================================================================
-   CONFIGURAÇÃO
-   Depois de publicar o Apps Script (ver GUIA_DE_CONFIGURACAO.md), cole
-   a URL do Web App aqui. Enquanto estiver vazio, o sistema roda em
-   MODO DEMONSTRAÇÃO com dados de exemplo guardados só nesta sessão.
+   CONFIGURAÇÃO — Supabase
+   Preencha SUPABASE_URL e SUPABASE_ANON_KEY com os valores do seu
+   projeto (Project Settings > API Keys, no painel do Supabase — use a
+   "Publishable key", nunca a "Secret key"). Enquanto SUPABASE_URL
+   estiver vazio, o sistema roda em MODO DEMONSTRAÇÃO com dados de
+   exemplo guardados só nesta sessão.
 ===================================================================== */
-const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycby-7GHSoZRtIMeBRQg20Xp3TA-X7z8SzhAA7M1867Kjv9jqCrxi0mAV5mqFRsmoNUBr/exec" // <-- cole aqui a URL do seu Web App do Apps Script
-};
+const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
+const supabaseClient = (SUPABASE_URL && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const MODO_DEMO = !CONFIG.API_URL;
+const MODO_DEMO = !supabaseClient;
 
 /* ---------------------------------------------------------------------
    ESTADO
@@ -766,7 +825,7 @@ const estado = {
 };
 
 /* ---------------------------------------------------------------------
-   DADOS DE DEMONSTRAÇÃO (usados só quando CONFIG.API_URL estiver vazio)
+   DADOS DE DEMONSTRAÇÃO (usados só quando SUPABASE_URL estiver vazio)
 --------------------------------------------------------------------- */
 const demo = {
   configuracoes: { nome_clinica: 'Clínica Cliza' },
@@ -784,23 +843,24 @@ const demo = {
     turnos:['M','T'],
     formas_pagamento:['CONVÊNIO','PIX','CARTÃO','ESPÉCIE'],
     biopsias_frascos:['','1 FRASCO','2 FRASCOS','3 FRASCOS','4 FRASCOS','5 FRASCOS','6 FRASCOS','7 FRASCOS','8 FRASCOS','9 FRASCOS'],
+    andares:['TÉRREO','COPARTICIPADOS'],
     exames:['MAMAS','ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)','ABDOME SUPERIOR (FÍGADO, VIAS BILIARES, VESÍCULA, PÂNCREAS E BAÇO)','ABDOME INFERIOR MASCULINO (BEXIGA, PRÓSTATA E VESÍCULAS SEMINAIS)','ABDOME INFERIOR FEMININO (BEXIGA, ÚTERO, OVÁRIO E ANEXOS)','DERMATOLÓGICO - PELE E SUBCUTÂNEO','ÓRGÃOS SUPERFICIAIS (TIREÓIDE OU ESCROTO OU PÊNIS OU CRÂNIO)','ARTICULAR (POR ARTICULAÇÃO)','OBSTÉTRICA','OBSTÉTRICA COM DOPPLER','OBSTÉTRICA MORFOLÓGICA','TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)','PRÓSTATA TRANSRETAL (NÃO INCLUI ABDOME INFERIOR MASCULINO)','PRÓSTATA (VIA ABDOMINAL)','APARELHO URINÁRIO (RINS, URETERES E BEXIGA)','PUNÇÃO BIÓPSIA/ASPIRATIVA DE ÓRGÃO OU ESTRUTURA SUPERFICIAL ORIENTADA POR US','COLONOSCOPIA','ENDOSCOPIA','AXILA','DOPPLER','PREPARO COLONOSCOPIA','POLIPECTOMIA DE EDA','POLIPECTOMIA DE COLON','PÉLVICA','CERVICAL','PAREDE ABDOMINAL','PARTES MOLES','MANOMETRIA','PHMETRIA','DOPPLER DE CARÓTIDAS']
   },
   producao:[
-    {id:'d1',prof:'ANGELINA',data:'2026-05-04',turno:'M',paciente:'YSE DE QUEIROZ PONTE',protocolo:'206774113',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d2',prof:'ANGELINA',data:'2026-05-05',turno:'M',paciente:'LARA PAULA PESSOA ARAUJO',protocolo:'206861817',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d3',prof:'LISIENE',data:'2026-05-04',turno:'T',paciente:'KHYO RAMON ANJOS CUNHA',protocolo:'206632649',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d4',prof:'LISIENE',data:'2026-05-06',turno:'T',paciente:'MIRYAN LIRA VIANA',protocolo:'',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'',valor:120,forma_pagamento:'ESPÉCIE',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d5',prof:'RENATA',data:'2026-05-07',turno:'M',paciente:'MARIA CLARA SILVA ARAUJO',protocolo:'207794248',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'ADRIELE',mes:'Maio',ano:2026},
-    {id:'d6',prof:'DR MARCELO USG',data:'2026-05-08',turno:'T',paciente:'FRANCISCO M G NOBRE JR',protocolo:'207751609',procedimento:'USG',exames:'ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)',biopsias:'',convenio:'UNIMED',valor:120,forma_pagamento:'CONVÊNIO',atendente:'SOCORRO',mes:'Maio',ano:2026},
-    {id:'d7',prof:'DR CHARLES USG',data:'2026-05-08',turno:'M',paciente:'JOÃO PEDRO LIMA',protocolo:'207751610',procedimento:'USG',exames:'TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)',biopsias:'',convenio:'CASSI',valor:140,forma_pagamento:'CONVÊNIO',atendente:'ROBERTA',mes:'Maio',ano:2026},
-    {id:'d8',prof:'DR MAURICIO EXAMES',data:'2026-05-09',turno:'M',paciente:'MARIA EDUARDA COSTA',protocolo:'207751611',procedimento:'PROCEDIMENTO',exames:'COLONOSCOPIA',biopsias:'2 FRASCOS',convenio:'BRADESCO',valor:850,forma_pagamento:'CONVÊNIO',atendente:'GERMANA',mes:'Maio',ano:2026},
-    {id:'d9',prof:'DR MAURICIO',data:'2026-05-09',turno:'T',paciente:'PEDRO HENRIQUE ALVES',protocolo:'207751612',procedimento:'PROCEDIMENTO',exames:'ENDOSCOPIA',biopsias:'1 FRASCO',convenio:'UNIMED',valor:620,forma_pagamento:'CONVÊNIO',atendente:'LETICIA',mes:'Maio',ano:2026},
-    {id:'d10',prof:'GABRIELE',data:'2026-05-10',turno:'M',paciente:'ANA CLARA MENDES',protocolo:'',procedimento:'BIOIMPEDÂNCIA',exames:'',biopsias:'',convenio:'',valor:80,forma_pagamento:'PIX',atendente:'ADRIELE',mes:'Maio',ano:2026},
-    {id:'d11',prof:'ISABELLE',data:'2026-05-11',turno:'T',paciente:'LUCAS GABRIEL SOUZA',protocolo:'207751613',procedimento:'CONSULTA',exames:'',biopsias:'',convenio:'SÃO CAMILO',valor:250,forma_pagamento:'CONVÊNIO',atendente:'KEROLAINE',mes:'Maio',ano:2026},
-    {id:'d12',prof:'DRA RICARLA USG',data:'2026-05-11',turno:'M',paciente:'BEATRIZ OLIVEIRA',protocolo:'207751614',procedimento:'USG',exames:'OBSTÉTRICA MORFOLÓGICA',biopsias:'',convenio:'PARTICULAR',valor:380,forma_pagamento:'CARTÃO',atendente:'ROBERTA',mes:'Maio',ano:2026},
-    {id:'d13',prof:'DR MARCELO',data:'2026-05-12',turno:'T',paciente:'RAFAEL COSTA LIMA',protocolo:'207751615',procedimento:'RETORNO',exames:'',biopsias:'',convenio:'GEAP',valor:60,forma_pagamento:'CONVÊNIO',atendente:'GLEIDY MARA',mes:'Maio',ano:2026},
-    {id:'d14',prof:'DRA AMANDA USG',data:'2026-05-12',turno:'M',paciente:'CAMILA FERREIRA',protocolo:'',procedimento:'USG',exames:'MAMAS',biopsias:'',convenio:'',valor:180,forma_pagamento:'ESPÉCIE',atendente:'SOCORRO',mes:'Maio',ano:2026}
+    {id:'d1',prof:'ANGELINA',data:'2026-05-04',turno:'M',paciente:'YSE DE QUEIROZ PONTE',protocolo:'206774113',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',andar:'TÉRREO',mes:'Maio',ano:2026},
+    {id:'d2',prof:'ANGELINA',data:'2026-05-05',turno:'M',paciente:'LARA PAULA PESSOA ARAUJO',protocolo:'206861817',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',andar:'TÉRREO',mes:'Maio',ano:2026},
+    {id:'d3',prof:'LISIENE',data:'2026-05-04',turno:'T',paciente:'KHYO RAMON ANJOS CUNHA',protocolo:'206632649',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',andar:'TÉRREO',mes:'Maio',ano:2026},
+    {id:'d4',prof:'LISIENE',data:'2026-05-06',turno:'T',paciente:'MIRYAN LIRA VIANA',protocolo:'',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'',valor:120,forma_pagamento:'ESPÉCIE',atendente:'KAILLANY',andar:'TÉRREO',mes:'Maio',ano:2026},
+    {id:'d5',prof:'RENATA',data:'2026-05-07',turno:'M',paciente:'MARIA CLARA SILVA ARAUJO',protocolo:'207794248',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'ADRIELE',andar:'COPARTICIPADOS',mes:'Maio',ano:2026},
+    {id:'d6',prof:'DR MARCELO USG',data:'2026-05-08',turno:'T',paciente:'FRANCISCO M G NOBRE JR',protocolo:'207751609',procedimento:'USG',exames:'ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)',biopsias:'',convenio:'UNIMED',valor:120,forma_pagamento:'CONVÊNIO',atendente:'SOCORRO',andar:'COPARTICIPADOS',mes:'Maio',ano:2026},
+    {id:'d7',prof:'DR CHARLES USG',data:'2026-05-08',turno:'M',paciente:'JOÃO PEDRO LIMA',protocolo:'207751610',procedimento:'USG',exames:'TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)',biopsias:'',convenio:'CASSI',valor:140,forma_pagamento:'CONVÊNIO',atendente:'ROBERTA',andar:'COPARTICIPADOS',mes:'Maio',ano:2026},
+    {id:'d8',prof:'DR MAURICIO EXAMES',data:'2026-05-09',turno:'M',paciente:'MARIA EDUARDA COSTA',protocolo:'207751611',procedimento:'PROCEDIMENTO',exames:'COLONOSCOPIA',biopsias:'2 FRASCOS',convenio:'BRADESCO',valor:850,forma_pagamento:'CONVÊNIO',atendente:'GERMANA',andar:'COPARTICIPADOS',mes:'Maio',ano:2026},
+    {id:'d9',prof:'DR MAURICIO',data:'2026-05-09',turno:'T',paciente:'PEDRO HENRIQUE ALVES',protocolo:'207751612',procedimento:'PROCEDIMENTO',exames:'ENDOSCOPIA',biopsias:'1 FRASCO',convenio:'UNIMED',valor:620,forma_pagamento:'CONVÊNIO',atendente:'LETICIA',andar:'COPARTICIPADOS',mes:'Maio',ano:2026},
+    {id:'d10',prof:'GABRIELE',data:'2026-05-10',turno:'M',paciente:'ANA CLARA MENDES',protocolo:'',procedimento:'BIOIMPEDÂNCIA',exames:'',biopsias:'',convenio:'',valor:80,forma_pagamento:'PIX',atendente:'ADRIELE',andar:'TÉRREO',mes:'Maio',ano:2026},
+    {id:'d11',prof:'ISABELLE',data:'2026-05-11',turno:'T',paciente:'LUCAS GABRIEL SOUZA',protocolo:'207751613',procedimento:'CONSULTA',exames:'',biopsias:'',convenio:'SÃO CAMILO',valor:250,forma_pagamento:'CONVÊNIO',atendente:'KEROLAINE',andar:'TÉRREO',mes:'Maio',ano:2026},
+    {id:'d12',prof:'DRA RICARLA USG',data:'2026-05-11',turno:'M',paciente:'BEATRIZ OLIVEIRA',protocolo:'207751614',procedimento:'USG',exames:'OBSTÉTRICA MORFOLÓGICA',biopsias:'',convenio:'PARTICULAR',valor:380,forma_pagamento:'CARTÃO',atendente:'ROBERTA',andar:'COPARTICIPADOS',mes:'Maio',ano:2026},
+    {id:'d13',prof:'DR MARCELO',data:'2026-05-12',turno:'T',paciente:'RAFAEL COSTA LIMA',protocolo:'207751615',procedimento:'RETORNO',exames:'',biopsias:'',convenio:'GEAP',valor:60,forma_pagamento:'CONVÊNIO',atendente:'GLEIDY MARA',andar:'COPARTICIPADOS',mes:'Maio',ano:2026},
+    {id:'d14',prof:'DRA AMANDA USG',data:'2026-05-12',turno:'M',paciente:'CAMILA FERREIRA',protocolo:'',procedimento:'USG',exames:'MAMAS',biopsias:'',convenio:'',valor:180,forma_pagamento:'ESPÉCIE',atendente:'SOCORRO',andar:'TÉRREO',mes:'Maio',ano:2026}
   ],
   metas:[
     {prof:'ANGELINA', mes:'Maio', ano:2026, turnos_disponibilizados:6, meta_valor:1764, meta_qtd:55},
@@ -812,7 +872,7 @@ const demo = {
 };
 
 /* ---------------------------------------------------------------------
-   CAMADA DE API — chama o Apps Script de verdade, ou o mock de demo
+   CAMADA DE API — chama o Supabase de verdade, ou o mock de demo
 --------------------------------------------------------------------- */
 let chamadasApiEmAndamento = 0;
 function mostrarBarraProgresso(mostrar){
@@ -829,14 +889,209 @@ async function api(acao, dados={}) {
   mostrarBarraProgresso(true);
   try {
     if (MODO_DEMO) return await mockApi(acao, dados);
-    const resposta = await fetch(CONFIG.API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS no Apps Script
-      body: JSON.stringify({action:acao, data:dados})
-    });
-    return await resposta.json();
+    return await supabaseApi(acao, dados);
+  } catch(e) {
+    return {ok:false, erro: String((e&&e.message)||e)};
   } finally {
     mostrarBarraProgresso(false);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Auxiliares de conversão mês (nome <-> número) e mês/ano a partir da data
+   — a tabela do Supabase guarda "data" (yyyy-MM-dd) e "mes" como número
+   nas metas/notas; o front-end inteiro trabalha com nomes de mês
+   (ex.: "Maio") e com r.mes/r.ano em cada registro de produção, então
+   fazemos essa ponte aqui em vez de mudar o resto do código.
+--------------------------------------------------------------------- */
+function nomeMesParaNumero(nome){
+  const i = MESES.indexOf(nome);
+  return i>-1 ? i+1 : null;
+}
+function numeroMesParaNome(num){
+  return MESES[Number(num)-1] || '';
+}
+function anexarMesAnoPelaData(registro){
+  if(registro && registro.data){
+    const [ano, mes] = String(registro.data).slice(0,10).split('-');
+    registro.mes = numeroMesParaNome(Number(mes));
+    registro.ano = Number(ano);
+  }
+  return registro;
+}
+
+/* ---------------------------------------------------------------------
+   CAMADA SUPABASE — substitui as ações que antes iam para o Code.gs
+--------------------------------------------------------------------- */
+async function supabaseApi(acao, dados) {
+  switch(acao){
+    case 'login': {
+      const { data, error } = await supabaseClient.from('usuarios').select('*')
+        .eq('usuario', dados.usuario).eq('senha', dados.senha).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      if(!data) return {ok:false, erro:'Usuário ou senha inválidos.'};
+      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional};
+    }
+
+    case 'listarListas': {
+      const { data, error } = await supabaseClient.from('listas').select('*').order('ordem');
+      if(error) return {ok:false, erro:error.message};
+      const listas = {};
+      (data||[]).forEach(item=>{
+        if(!listas[item.tipo]) listas[item.tipo] = [];
+        listas[item.tipo].push(item.valor);
+      });
+      return {ok:true, listas};
+    }
+
+    case 'adicionarItemLista': {
+      const { data: existentes, error: errBusca } = await supabaseClient.from('listas').select('valor').eq('tipo', dados.coluna);
+      if(errBusca) return {ok:false, erro:errBusca.message};
+      const jaExiste = (existentes||[]).some(v=>String(v.valor).trim().toUpperCase()===String(dados.valor).trim().toUpperCase());
+      if(jaExiste) return {ok:false, erro:'Esse item já existe nessa lista.'};
+      const { error } = await supabaseClient.from('listas').insert({tipo:dados.coluna, valor:dados.valor, ordem:(existentes||[]).length+1});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'removerItemLista': {
+      const { error } = await supabaseClient.from('listas').delete().eq('tipo', dados.coluna).eq('valor', dados.valor);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'listarProducao': {
+      let query = supabaseClient.from('producao').select('*');
+      if(dados.dataInicio) query = query.gte('data', dados.dataInicio);
+      if(dados.dataFim) query = query.lte('data', dados.dataFim);
+      if(!dados.dataInicio && !dados.dataFim && dados.ano){
+        query = query.gte('data', `${dados.ano}-01-01`).lte('data', `${dados.ano}-12-31`);
+      }
+      if(dados.prof) query = query.eq('prof', dados.prof);
+      if(dados.limite) query = query.limit(Number(dados.limite));
+      const { data, error } = await query.order('data', {ascending:false});
+      if(error) return {ok:false, erro:error.message};
+      let registros = (data||[]).map(anexarMesAnoPelaData);
+      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+      return {ok:true, registros};
+    }
+
+    case 'adicionarProducao': {
+      const registro = Object.assign({}, dados);
+      delete registro.id; delete registro.mes; delete registro.ano; delete registro.timestamp;
+      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
+      const { data, error } = await supabaseClient.from('producao').insert(registro).select().single();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, registro:anexarMesAnoPelaData(data)};
+    }
+
+    case 'atualizarProducao': {
+      const registro = Object.assign({}, dados.registro);
+      delete registro.id; delete registro.mes; delete registro.ano; delete registro.timestamp;
+      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
+      const { error } = await supabaseClient.from('producao').update(registro).eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'excluirProducao': {
+      const { error } = await supabaseClient.from('producao').delete().eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'listarMetas': {
+      let query = supabaseClient.from('metas').select('*');
+      const mesNum = nomeMesParaNumero(dados.mes);
+      if(mesNum) query = query.eq('mes', mesNum);
+      if(dados.ano) query = query.eq('ano', dados.ano);
+      const { data, error } = await query;
+      if(error) return {ok:false, erro:error.message};
+      const metas = (data||[]).map(m=>Object.assign({}, m, {mes:numeroMesParaNome(m.mes)}));
+      return {ok:true, metas};
+    }
+
+    case 'salvarMeta': {
+      const registro = {
+        prof: dados.prof,
+        mes: nomeMesParaNumero(dados.mes),
+        ano: Number(dados.ano),
+        turnos_disponibilizados: Number(dados.turnos_disponibilizados)||0,
+        meta_valor: Number(dados.meta_valor)||0,
+        meta_qtd: Number(dados.meta_qtd)||0
+      };
+      const { error } = await supabaseClient.from('metas').upsert(registro, {onConflict:'prof,mes,ano'});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'obterNota': {
+      const { data, error } = await supabaseClient.from('notas').select('texto')
+        .eq('mes', nomeMesParaNumero(dados.mes)).eq('ano', dados.ano).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, texto: data ? data.texto : ''};
+    }
+
+    case 'salvarNota': {
+      const { error } = await supabaseClient.from('notas').upsert(
+        {mes:nomeMesParaNumero(dados.mes), ano:Number(dados.ano), texto:dados.texto},
+        {onConflict:'mes,ano'}
+      );
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'obterConfiguracoes': {
+      const { data, error } = await supabaseClient.from('configuracoes').select('*');
+      if(error) return {ok:false, erro:error.message};
+      const configuracoes = {};
+      (data||[]).forEach(c=>configuracoes[c.chave]=c.valor);
+      return {ok:true, configuracoes};
+    }
+
+    case 'salvarConfiguracao': {
+      const { error } = await supabaseClient.from('configuracoes').upsert({chave:dados.chave, valor:dados.valor});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'alterarConta': {
+      const { data: usuario, error: errBusca } = await supabaseClient.from('usuarios').select('*')
+        .eq('usuario', dados.usuario).eq('senha', dados.senhaAtual).maybeSingle();
+      if(errBusca) return {ok:false, erro:errBusca.message};
+      if(!usuario) return {ok:false, erro:'Senha atual incorreta.'};
+      const atualizacao = {};
+      if(dados.novoNome) atualizacao.nome_profissional = dados.novoNome;
+      if(dados.novaSenha) atualizacao.senha = dados.novaSenha;
+      const { error } = await supabaseClient.from('usuarios').update(atualizacao).eq('usuario', dados.usuario);
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, nomeProfissional: dados.novoNome || usuario.nome_profissional};
+    }
+
+    case 'dashboard': {
+      const respProd = await supabaseApi('listarProducao', {mes:dados.mes, ano:dados.ano});
+      if(!respProd.ok) return respProd;
+      const registros = respProd.registros;
+      const porProfissional = {}, porConvenio = {}, porAndar = {};
+      let totalValor = 0;
+      registros.forEach(r=>{
+        const prof = r.prof || 'Não informado';
+        const conv = r.convenio || 'PARTICULAR';
+        const andar = r.andar || 'Não informado';
+        const valor = Number(r.valor)||0;
+        if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
+        porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
+        if(!porConvenio[conv]) porConvenio[conv]=0;
+        porConvenio[conv]+=valor;
+        if(!porAndar[andar]) porAndar[andar]=0;
+        porAndar[andar]+=valor;
+        totalValor+=valor;
+      });
+      const respMetas = await supabaseApi('listarMetas', {mes:dados.mes, ano:dados.ano});
+      const metas = respMetas.ok ? respMetas.metas : [];
+      const metaPorProf = {}; metas.forEach(m=>metaPorProf[m.prof]=m);
+      const comparativo = Object.keys(porProfissional).map(prof=>{
+        const m = metaPorProf[prof]||{};
+        return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
+                metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
+      });
+      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, porAndar, comparativo};
+    }
+
+    default: return {ok:false, erro:'Ação desconhecida (Supabase): '+acao};
   }
 }
 
@@ -847,7 +1102,11 @@ function mockApi(acao, dados) {
       if(!achado) return {ok:false, erro:'Usuário ou senha inválidos.'};
       return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional};
     }
-    case 'listarListas': return {ok:true, listas:demo.listas};
+    case 'listarListas': {
+      const copiaListas = {};
+      Object.keys(demo.listas).forEach(k=>copiaListas[k]=demo.listas[k].slice());
+      return {ok:true, listas:copiaListas};
+    }
     case 'listarProducao': {
       let registros = demo.producao.slice();
       if(dados.dataInicio || dados.dataFim){
@@ -858,6 +1117,8 @@ function mockApi(acao, dados) {
         if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
       }
       if(dados.prof) registros = registros.filter(r=>r.prof.toUpperCase()===dados.prof.toUpperCase());
+      registros.sort((a,b)=> String(b.data).localeCompare(String(a.data))); // mais recente primeiro, igual ao Supabase
+      if(dados.limite) registros = registros.slice(0, Number(dados.limite));
       return {ok:true, registros};
     }
     case 'adicionarProducao': {
@@ -903,6 +1164,18 @@ function mockApi(acao, dados) {
       demo.configuracoes[dados.chave] = dados.valor;
       return {ok:true};
     }
+    case 'adicionarItemLista': {
+      if(!demo.listas[dados.coluna]) return {ok:false, erro:'Lista desconhecida.'};
+      const jaExiste = demo.listas[dados.coluna].some(v=>String(v).trim().toUpperCase()===String(dados.valor).trim().toUpperCase());
+      if(jaExiste) return {ok:false, erro:'Esse item já existe nessa lista.'};
+      demo.listas[dados.coluna].push(dados.valor);
+      return {ok:true};
+    }
+    case 'removerItemLista': {
+      if(!demo.listas[dados.coluna]) return {ok:false, erro:'Lista desconhecida.'};
+      demo.listas[dados.coluna] = demo.listas[dados.coluna].filter(v=>v!==dados.valor);
+      return {ok:true};
+    }
     case 'alterarConta': {
       const usuario = demo.usuarios.find(u=>u.usuario===dados.usuario);
       if(!usuario) return {ok:false, erro:'Usuário não encontrado.'};
@@ -915,16 +1188,19 @@ function mockApi(acao, dados) {
       let registros = demo.producao.slice();
       if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
       if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
-      const porProfissional = {}, porConvenio = {};
+      const porProfissional = {}, porConvenio = {}, porAndar = {};
       let totalValor = 0;
       registros.forEach(r=>{
         const prof = r.prof || 'Não informado';
         const conv = r.convenio || 'PARTICULAR';
+        const andar = r.andar || 'Não informado';
         const valor = Number(r.valor)||0;
         if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
         porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
         if(!porConvenio[conv]) porConvenio[conv]=0;
         porConvenio[conv]+=valor;
+        if(!porAndar[andar]) porAndar[andar]=0;
+        porAndar[andar]+=valor;
         totalValor+=valor;
       });
       let metas = demo.metas.filter(m=>m.mes===dados.mes && String(m.ano)===String(dados.ano));
@@ -934,7 +1210,7 @@ function mockApi(acao, dados) {
         return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
                 metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
       });
-      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, comparativo};
+      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, porAndar, comparativo};
     }
     default: return {ok:false, erro:'Ação desconhecida em modo demo: '+acao};
   }
@@ -1209,7 +1485,7 @@ async function iniciarApp(){
     if(!listasResp.ok) throw new Error(listasResp.erro || 'A planilha não respondeu como esperado.');
     estado.listas = listasResp.listas || {};
   }catch(e){
-    mostrarErroInicializacao('Não foi possível carregar as listas da planilha (' + (e.message||e) + '). Confira se o Code.gs foi republicado (Implantar → Gerenciar implantações → Nova versão) e se a URL em CONFIG.API_URL está correta.');
+    mostrarErroInicializacao('Não foi possível carregar as listas do banco (' + (e.message||e) + '). Confira se SUPABASE_URL e SUPABASE_ANON_KEY estão corretos e se as políticas de RLS estão liberando leitura na tabela "listas".');
     return;
   }
 
@@ -1286,6 +1562,7 @@ async function atualizarPainelAtivo(){
 --------------------------------------------------------------------- */
 const DIMENSOES_ANALISE = [
   {chave:'prof', rotulo:'Profissional'},
+  {chave:'andar', rotulo:'Andar'},
   {chave:'convenio', rotulo:'Convênio'},
   {chave:'procedimento', rotulo:'Procedimento'},
   {chave:'atendente', rotulo:'Atendente'},
@@ -1297,6 +1574,7 @@ const DIMENSOES_ANALISE = [
 
 const CAMPOS_CRITICOS = [
   {chave:'prof', rotulo:'Profissional'},
+  {chave:'andar', rotulo:'Andar'},
   {chave:'data', rotulo:'Data'},
   {chave:'turno', rotulo:'Turno'},
   {chave:'paciente', rotulo:'Paciente'},
@@ -1345,6 +1623,11 @@ function preencherSelectsPeriodo(){
     (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
   filtroProf.addEventListener('change', atualizarPainelAtivo);
 
+  const filtroAndarGerencial = document.getElementById('filtro-andar-gerencial');
+  filtroAndarGerencial.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
+  filtroAndarGerencial.addEventListener('change', atualizarEditar);
+
   montarMultiselectConvenio();
 
   const filtroFormaPagamentoGerencial = document.getElementById('filtro-forma-pagamento-gerencial');
@@ -1379,6 +1662,7 @@ function preencherSelectsPeriodo(){
     document.getElementById('filtro-data-inicio').value = paraISO(primeiroDiaMes);
     document.getElementById('filtro-data-fim').value = paraISO(ultimoDiaMes);
     document.getElementById('filtro-prof-gerencial').value = '';
+    document.getElementById('filtro-andar-gerencial').value = '';
     estado.conveniosSelecionados = [];
     document.querySelectorAll('#painel-filtro-convenio input[type="checkbox"]').forEach(chk=>chk.checked=false);
     document.getElementById('botao-filtro-convenio').textContent = 'Todos';
@@ -1395,6 +1679,7 @@ function definicaoCampos(){
   return [
     {chave:'prof', rotulo:'Profissional', tipo:'select', opcoes:L.profissionais, obrigatorio:true,
       travado: estado.papel==='profissional'},
+    {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
     {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos},
     {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
@@ -1409,7 +1694,7 @@ function definicaoCampos(){
   ];
 }
 
-function renderizarCampo(campo, valorAtual='', prefixo='campo_'){
+function renderizarCampo(campo, valorAtual='', prefixo='campo_', destacar=false){
   const id = prefixo+campo.chave;
   let controle;
   if(campo.tipo==='select'){
@@ -1418,7 +1703,7 @@ function renderizarCampo(campo, valorAtual='', prefixo='campo_'){
   } else {
     controle = `<input type="${campo.tipo}" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" ${campo.travado?'disabled':''} ${campo.tipo==='number'?'step="0.01"':''}/>`;
   }
-  return `<div class="campo"><label>${campo.rotulo}${campo.obrigatorio?' *':''}</label>${controle}</div>`;
+  return `<div class="campo${destacar?' campo-pendente':''}"><label>${campo.rotulo}${campo.obrigatorio?' *':''}${destacar?' <span class="tag tag-alerta" style="margin-left:4px;">preencher</span>':''}</label>${controle}</div>`;
 }
 
 function lerValoresCampos(prefixo='campo_'){
@@ -1464,8 +1749,10 @@ document.getElementById('form-lancamento').addEventListener('submit', async (ev)
 
 async function atualizarMeusLancamentos(){
   const filtro = estado.papel==='profissional' ? {prof: estado.nomeProfissional} : {};
-  const resp = await api('listarProducao', filtro);
-  const registros = (resp.registros||[]).slice(-15).reverse();
+  const resp = await api('listarProducao', Object.assign({}, filtro, {limite:15}));
+  // resp.registros já vem ordenado do mais recente para o mais antigo (ver supabaseApi/mockApi) —
+  // então pegamos os 15 primeiros direto, sem precisar de slice(-15)/reverse().
+  const registros = (resp.registros||[]).slice(0, 15);
   const tabela = document.getElementById('tabela-meus-lancamentos');
   if(registros.length===0){ tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento ainda.</td></tr>'; return; }
   tabela.innerHTML = `
@@ -1555,6 +1842,7 @@ function montarMultiselectConvenio(){
 --------------------------------------------------------------------- */
 async function atualizarEditar(){
   const prof = document.getElementById('filtro-prof-gerencial').value;
+  const andar = document.getElementById('filtro-andar-gerencial').value;
   const formaPagamento = document.getElementById('filtro-forma-pagamento-gerencial').value;
   const dataInicio = document.getElementById('filtro-data-inicio').value;
   const dataFim = document.getElementById('filtro-data-fim').value;
@@ -1564,6 +1852,9 @@ async function atualizarEditar(){
 
   const resp = await api('listarProducao', {prof, dataInicio, dataFim});
   let registros = resp.registros||[];
+  if(andar){
+    registros = registros.filter(r => String(r.andar||'').trim().toUpperCase() === andar.trim().toUpperCase());
+  }
   if(estado.conveniosSelecionados.length){
     const selecionadosUpper = estado.conveniosSelecionados.map(c=>c.trim().toUpperCase());
     registros = registros.filter(r => selecionadosUpper.includes(String(r.convenio||'').trim().toUpperCase()));
@@ -1595,22 +1886,29 @@ async function atualizarEditar(){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
   } else {
     tabela.innerHTML = `
-      <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th><th></th></tr></thead>
-      <tbody>${registros.map(r=>`
+      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th><th></th></tr></thead>
+      <tbody>${registros.map((r,i)=>`
         <tr>
           <td>${formatarDataExibicao(r.data)}</td>
           <td>${r.prof||''}</td>
+          <td>${r.andar? `<span class="tag">${r.andar}</span>` : '—'}</td>
           <td>${r.paciente||''}</td>
           <td>${r.procedimento||''}</td>
           <td>${r.convenio||'—'}</td>
           <td>${r.forma_pagamento||'—'}</td>
           <td class="mono">${formatarMoeda(r.valor)}</td>
           <td>${r.atendente||''}</td>
-          <td class="celula-acoes"><button class="botao sutil pequeno" data-id="${r.id}">Editar</button></td>
+          <td class="celula-acoes"><button class="botao sutil pequeno" data-indice="${i}">Editar</button></td>
         </tr>`).join('')}</tbody>`;
-    tabela.querySelectorAll('button[data-id]').forEach(b=>{
+    // Usa a posição na lista (não o id) para achar o registro certo — assim
+    // funciona mesmo se algum registro antigo tiver o id vazio ou repetido.
+    tabela.querySelectorAll('button[data-indice]').forEach(b=>{
       b.addEventListener('click', ()=>{
-        const registro = registros.find(r=>r.id===b.dataset.id);
+        const registro = registros[Number(b.dataset.indice)];
+        if(!registro.id){
+          alert('Este registro não tem um identificador único (provavelmente um dado bem antigo, de antes da migração para o Supabase). Abra a tabela "producao" no Table Editor do Supabase e defina um id para essa linha (ex.: gen_random_uuid()) antes de editá-la por aqui.');
+          return;
+        }
         abrirModal(registro);
       });
     });
@@ -1643,21 +1941,28 @@ async function atualizarCritica(){
   }
   tabela.innerHTML = `
     <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Campos pendentes</th><th></th></tr></thead>
-    <tbody>${incompletos.map(r=>{
+    <tbody>${incompletos.map((r,i)=>{
       const faltando = CAMPOS_CRITICOS.filter(c=>campoCriticoVazio(r,c.chave));
       return `<tr>
         <td>${formatarDataExibicao(r.data)}</td>
         <td>${r.prof||'—'}</td>
         <td>${r.paciente||'—'}</td>
         <td>${faltando.map(c=>`<span class="tag tag-alerta">${c.rotulo}</span>`).join('')}</td>
-        <td class="celula-acoes"><button class="botao secundario pequeno" data-id="${r.id}">Completar</button></td>
+        <td class="celula-acoes"><button class="botao secundario pequeno" data-indice="${i}">Completar</button></td>
       </tr>`;
     }).join('')}</tbody>`;
 
-  tabela.querySelectorAll('button[data-id]').forEach(b=>{
+  // Usa a posição na lista (não o id) para achar o registro certo — assim
+  // funciona mesmo se algum registro antigo tiver o id vazio ou repetido.
+  tabela.querySelectorAll('button[data-indice]').forEach(b=>{
     b.addEventListener('click', ()=>{
-      const registro = incompletos.find(r=>r.id===b.dataset.id);
-      abrirModal(registro);
+      const registro = incompletos[Number(b.dataset.indice)];
+      if(!registro.id){
+        alert('Este registro não tem um identificador único (provavelmente um dado bem antigo, de antes da migração para o Supabase). Abra a tabela "producao" no Table Editor do Supabase e defina um id para essa linha (ex.: gen_random_uuid()) antes de completá-la por aqui.');
+        return;
+      }
+      const faltando = CAMPOS_CRITICOS.filter(c=>campoCriticoVazio(registro,c.chave)).map(c=>c.chave);
+      abrirModal(registro, faltando);
     });
   });
 }
@@ -1668,9 +1973,77 @@ async function atualizarCritica(){
 /* ---------------------------------------------------------------------
    PAINEL: CONFIGURAÇÕES
 --------------------------------------------------------------------- */
+const DEFINICAO_LISTAS_CONFIG = [
+  {chave:'profissionais', rotulo:'Profissionais'},
+  {chave:'andares', rotulo:'Andares'},
+  {chave:'convenios', rotulo:'Convênios'},
+  {chave:'procedimentos', rotulo:'Procedimentos'},
+  {chave:'atendentes', rotulo:'Atendentes'},
+  {chave:'turnos', rotulo:'Turnos'},
+  {chave:'formas_pagamento', rotulo:'Formas de pagamento'},
+  {chave:'biopsias_frascos', rotulo:'Biópsia (frascos)'},
+  {chave:'exames', rotulo:'Exames'}
+];
+let listaConfigSelectPronto = false;
+
 async function atualizarConfiguracoes(){
   document.getElementById('config-nome-clinica').value = nomeClinicaAtual;
+  prepararSelectListaConfig();
+  renderizarItensListaConfig();
 }
+
+function prepararSelectListaConfig(){
+  if(listaConfigSelectPronto) return;
+  const sel = document.getElementById('config-lista-selecionada');
+  sel.innerHTML = DEFINICAO_LISTAS_CONFIG.map(d=>`<option value="${d.chave}">${d.rotulo}</option>`).join('');
+  sel.addEventListener('change', renderizarItensListaConfig);
+  document.getElementById('botao-adicionar-item-lista').addEventListener('click', adicionarItemListaConfig);
+  document.getElementById('config-novo-item-lista').addEventListener('keydown', (ev)=>{
+    if(ev.key==='Enter'){ ev.preventDefault(); adicionarItemListaConfig(); }
+  });
+  listaConfigSelectPronto = true;
+}
+
+function renderizarItensListaConfig(){
+  const chave = document.getElementById('config-lista-selecionada').value;
+  const itens = estado.listas[chave]||[];
+  const container = document.getElementById('config-itens-lista');
+  if(itens.length===0){
+    container.innerHTML = '<p class="vazio" style="padding:10px 0;">Nenhum item nessa lista ainda.</p>';
+    return;
+  }
+  container.innerHTML = itens.map(item=>`
+    <span class="tag" style="display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 10px;font-size:12.5px;">
+      ${item}
+      <button type="button" class="botao-remover-item-lista" data-valor="${item.replace(/"/g,'&quot;')}" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--teal-700);font-weight:700;padding:0 2px;font-size:14px;line-height:1;">×</button>
+    </span>`).join('');
+  container.querySelectorAll('.botao-remover-item-lista').forEach(b=>{
+    b.addEventListener('click', ()=>removerItemListaConfig(b.dataset.valor));
+  });
+}
+
+async function adicionarItemListaConfig(){
+  const chave = document.getElementById('config-lista-selecionada').value;
+  const input = document.getElementById('config-novo-item-lista');
+  const valor = input.value.trim();
+  if(!valor) return;
+  const resp = await api('adicionarItemLista', {coluna:chave, valor});
+  if(!resp.ok){ alert(resp.erro || 'Não foi possível adicionar este item.'); return; }
+  if(!estado.listas[chave]) estado.listas[chave] = [];
+  estado.listas[chave].push(valor);
+  input.value = '';
+  renderizarItensListaConfig();
+}
+
+async function removerItemListaConfig(valor){
+  if(!confirm(`Remover "${valor}" desta lista?`)) return;
+  const chave = document.getElementById('config-lista-selecionada').value;
+  const resp = await api('removerItemLista', {coluna:chave, valor});
+  if(!resp.ok){ alert(resp.erro || 'Não foi possível remover este item.'); return; }
+  estado.listas[chave] = (estado.listas[chave]||[]).filter(v=>v!==valor);
+  renderizarItensListaConfig();
+}
+
 document.getElementById('botao-salvar-config').addEventListener('click', async ()=>{
   const valor = document.getElementById('config-nome-clinica').value.trim();
   const botao = document.getElementById('botao-salvar-config');
@@ -1681,6 +2054,172 @@ document.getElementById('botao-salvar-config').addEventListener('click', async (
   const confirmacao = document.getElementById('confirmacao-config');
   confirmacao.textContent = 'Salvo ✓';
   setTimeout(()=>confirmacao.textContent='', 2000);
+});
+
+/* ---------------------------------------------------------------------
+   IMPORTAÇÃO EM MASSA DE PRODUÇÃO VIA CSV
+--------------------------------------------------------------------- */
+const COLUNAS_PRODUCAO_ACEITAS = ['andar','prof','data','turno','paciente','protocolo','procedimento','exames','biopsias','convenio','valor','forma_pagamento','atendente'];
+const ALIAS_CABECALHO_PRODUCAO = {
+  'forma_de_pagamento':'forma_pagamento',
+  'forma_pagto':'forma_pagamento',
+  'convenios':'convenio',
+  'biopsia':'biopsias',
+  'exame':'exames',
+  'nome_do_paciente':'paciente'
+};
+
+function normalizarCabecalhoCsv(h){
+  return h.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,'_');
+}
+
+function detectarDelimitadorCsv(linhaCabecalho){
+  const virgulas = (linhaCabecalho.match(/,/g)||[]).length;
+  const pontoVirgulas = (linhaCabecalho.match(/;/g)||[]).length;
+  return pontoVirgulas > virgulas ? ';' : ',';
+}
+
+function parsearLinhaCsv(linha, delimitador){
+  const valores = [];
+  let atual = '', dentroDeAspas = false;
+  for(let i=0;i<linha.length;i++){
+    const c = linha[i];
+    if(c === '"'){
+      if(dentroDeAspas && linha[i+1] === '"'){ atual+='"'; i++; }
+      else dentroDeAspas = !dentroDeAspas;
+    } else if(c === delimitador && !dentroDeAspas){
+      valores.push(atual); atual='';
+    } else {
+      atual += c;
+    }
+  }
+  valores.push(atual);
+  return valores;
+}
+
+function parsearCsv(texto){
+  texto = texto.replace(/^\uFEFF/, ''); // remove BOM, se existir
+  const linhas = texto.split(/\r\n|\r|\n/).filter(l=>l.trim()!=='');
+  if(linhas.length===0) return {cabecalho:[], linhasDados:[]};
+  const delimitador = detectarDelimitadorCsv(linhas[0]);
+  const cabecalho = parsearLinhaCsv(linhas[0], delimitador).map(normalizarCabecalhoCsv);
+  const linhasDados = linhas.slice(1).map(l=>parsearLinhaCsv(l, delimitador));
+  return {cabecalho, linhasDados};
+}
+
+function normalizarDataImportacao(valor){
+  valor = String(valor||'').trim();
+  if(!valor) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
+  const m = valor.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){
+    const [, d, mo, a] = m;
+    return `${a}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  return valor;
+}
+
+function normalizarValorImportacao(valor){
+  valor = String(valor||'').trim();
+  if(!valor) return 0;
+  if(valor.includes(',') && valor.includes('.')) valor = valor.replace(/\./g,'').replace(',', '.');
+  else if(valor.includes(',')) valor = valor.replace(',', '.');
+  const n = Number(valor);
+  return isNaN(n) ? 0 : n;
+}
+
+let linhasImportacaoCsv = [];
+
+document.getElementById('input-importar-csv').addEventListener('change', (ev)=>{
+  const arquivo = ev.target.files[0];
+  const resumo = document.getElementById('resumo-importacao-csv');
+  const botaoImportar = document.getElementById('botao-importar-csv');
+  botaoImportar.disabled = true;
+  linhasImportacaoCsv = [];
+  resumo.style.color = 'var(--ink-600)';
+  resumo.textContent = '';
+  if(!arquivo) return;
+
+  const leitor = new FileReader();
+  leitor.onload = () => {
+    const {cabecalho, linhasDados} = parsearCsv(leitor.result);
+    const indicePorColuna = {};
+    cabecalho.forEach((h,i)=>{
+      const alias = ALIAS_CABECALHO_PRODUCAO[h] || h;
+      if(COLUNAS_PRODUCAO_ACEITAS.includes(alias) && !(alias in indicePorColuna)) indicePorColuna[alias] = i;
+    });
+
+    const faltando = ['prof','data','valor'].filter(c=>!(c in indicePorColuna));
+    if(faltando.length){
+      resumo.style.color = 'var(--danger)';
+      resumo.textContent = `Não encontrei a(s) coluna(s) obrigatória(s) no cabeçalho: ${faltando.join(', ')}. Confira os títulos da primeira linha do CSV.`;
+      return;
+    }
+
+    const registros = [];
+    let semData = 0, semValor = 0;
+    linhasDados.forEach(colunas=>{
+      const registro = {};
+      COLUNAS_PRODUCAO_ACEITAS.forEach(c=>{
+        if(c in indicePorColuna) registro[c] = (colunas[indicePorColuna[c]]||'').trim();
+      });
+      if(!registro.prof && !registro.data && !registro.paciente) return; // linha totalmente vazia, ignora
+      registro.data = normalizarDataImportacao(registro.data);
+      registro.valor = normalizarValorImportacao(registro.valor);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(registro.data)) semData++;
+      if(!registro.valor) semValor++;
+      registros.push(registro);
+    });
+
+    linhasImportacaoCsv = registros;
+    resumo.textContent = `${registros.length} registro(s) encontrados no arquivo, prontos para importar.` +
+      (semData ? `\n⚠️ ${semData} linha(s) com data em formato não reconhecido — essas serão rejeitadas pelo banco.` : '') +
+      (semValor ? `\n⚠️ ${semValor} linha(s) com valor zerado ou inválido.` : '');
+    botaoImportar.disabled = registros.length===0;
+  };
+  leitor.readAsText(arquivo, 'UTF-8');
+});
+
+document.getElementById('botao-importar-csv').addEventListener('click', async ()=>{
+  if(MODO_DEMO){ alert('A importação em massa só funciona conectado ao Supabase — não está disponível no modo demonstração.'); return; }
+  if(!linhasImportacaoCsv.length) return;
+  if(!confirm(`Confirma importar ${linhasImportacaoCsv.length} registro(s) para a tabela de produção?\n\nIsso não pode ser desfeito automaticamente — cada registro entra como um lançamento novo.`)) return;
+
+  const botao = document.getElementById('botao-importar-csv');
+  const resumo = document.getElementById('resumo-importacao-csv');
+  const barraWrap = document.getElementById('barra-progresso-importacao');
+  const barra = document.getElementById('barra-progresso-importacao-interna');
+  botao.disabled = true;
+  document.getElementById('input-importar-csv').disabled = true;
+  barraWrap.style.display = 'block';
+
+  const TAMANHO_LOTE = 300;
+  let importados = 0, comErro = 0;
+  const primeirosErros = [];
+
+  for(let i=0; i<linhasImportacaoCsv.length; i+=TAMANHO_LOTE){
+    const lote = linhasImportacaoCsv.slice(i, i+TAMANHO_LOTE);
+    const { error } = await supabaseClient.from('producao').insert(lote);
+    if(error){
+      comErro += lote.length;
+      if(primeirosErros.length<3) primeirosErros.push(error.message);
+    } else {
+      importados += lote.length;
+    }
+    const feitos = Math.min(i+TAMANHO_LOTE, linhasImportacaoCsv.length);
+    barra.style.width = Math.round((feitos/linhasImportacaoCsv.length)*100)+'%';
+    resumo.textContent = `Importando... ${feitos}/${linhasImportacaoCsv.length}`;
+  }
+
+  botao.disabled = false;
+  document.getElementById('input-importar-csv').disabled = false;
+  resumo.style.color = comErro ? 'var(--danger)' : 'var(--teal-700)';
+  resumo.textContent = `Importação concluída: ${importados} registro(s) importado(s) com sucesso` +
+    (comErro ? `, ${comErro} com erro (lotes rejeitados inteiros — corrija e reimporte só as linhas problemáticas). Detalhe: ${primeirosErros.join(' | ')}` : '.');
+  document.getElementById('input-importar-csv').value = '';
+  linhasImportacaoCsv = [];
 });
 
 async function atualizarMetas(){
@@ -1741,12 +2280,14 @@ async function salvarNota(){
 /* ---------------------------------------------------------------------
    MODAL DE EDIÇÃO / CRIAÇÃO
 --------------------------------------------------------------------- */
-function abrirModal(registro){
+function abrirModal(registro, camposPendentes){
   estado.editandoId = registro ? registro.id : null;
   estado.editandoMes = registro ? registro.mes : null;
   estado.editandoAno = registro ? registro.ano : null;
   document.getElementById('titulo-modal').textContent = registro ? 'Editar registro' : 'Novo registro';
-  document.getElementById('grade-modal').innerHTML = definicaoCampos().map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_')).join('');
+  document.getElementById('grade-modal').innerHTML = definicaoCampos()
+    .map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_', (camposPendentes||[]).includes(c.chave)))
+    .join('');
   document.getElementById('botao-excluir-modal').style.display = registro ? 'inline-flex' : 'none';
   document.getElementById('sobreposicao-modal').classList.add('aberta');
 }
@@ -1759,14 +2300,29 @@ document.getElementById('sobreposicao-modal').addEventListener('click', (ev)=>{ 
 document.getElementById('form-modal').addEventListener('submit', async (ev)=>{
   ev.preventDefault();
   const registro = lerValoresCampos('modal_');
+  const botaoSalvar = ev.target.querySelector('button[type="submit"]');
+  const rotuloOriginal = botaoSalvar.textContent;
+  botaoSalvar.disabled = true;
+  botaoSalvar.textContent = 'Salvando...';
+
+  let resp;
   if(estado.editandoId){
     // mesOriginal/anoOriginal dizem em qual aba mensal (Producao_AAAA_MM) o
     // registro está guardado hoje — se a data mudar de mês, o backend move
     // a linha para a aba certa sozinho.
-    await api('atualizarProducao', {id:estado.editandoId, registro, mesOriginal:estado.editandoMes, anoOriginal:estado.editandoAno});
+    resp = await api('atualizarProducao', {id:estado.editandoId, registro, mesOriginal:estado.editandoMes, anoOriginal:estado.editandoAno});
   } else {
-    await api('adicionarProducao', registro);
+    resp = await api('adicionarProducao', registro);
   }
+
+  botaoSalvar.disabled = false;
+  botaoSalvar.textContent = rotuloOriginal;
+
+  if(!resp || !resp.ok){
+    alert('Não foi possível salvar: ' + ((resp && resp.erro) || 'erro desconhecido. Tente novamente.'));
+    return; // mantém o modal aberto, com os dados digitados, para tentar de novo
+  }
+
   fecharModal();
   await atualizarPainelAtivo();
 });
@@ -1774,7 +2330,11 @@ document.getElementById('form-modal').addEventListener('submit', async (ev)=>{
 document.getElementById('botao-excluir-modal').addEventListener('click', async ()=>{
   if(!estado.editandoId) return;
   if(!confirm('Excluir este registro definitivamente?')) return;
-  await api('excluirProducao', {id: estado.editandoId, mes: estado.editandoMes, ano: estado.editandoAno});
+  const resp = await api('excluirProducao', {id: estado.editandoId, mes: estado.editandoMes, ano: estado.editandoAno});
+  if(!resp || !resp.ok){
+    alert('Não foi possível excluir: ' + ((resp && resp.erro) || 'erro desconhecido. Tente novamente.'));
+    return;
+  }
   fecharModal();
   await atualizarPainelAtivo();
 });
@@ -1791,7 +2351,7 @@ async function atualizarDashboard(){
   try{
     resp = await api('dashboard', {mes, ano});
   }catch(e){
-    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o servidor. Confira a CONFIG.API_URL.</td></tr>';
+    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o Supabase. Confira SUPABASE_URL e SUPABASE_ANON_KEY.</td></tr>';
     return;
   }
   if(!resp.ok){
@@ -1809,6 +2369,7 @@ async function atualizarDashboard(){
 
   desenharGraficoProfissional(resp.porProfissional);
   desenharGraficoConvenio(resp.porConvenio);
+  desenharGraficoAndar(resp.porAndar||{});
   desenharTabelaComparativo(resp.comparativo);
   await atualizarEvolucaoAno();
 }
@@ -1823,6 +2384,12 @@ function desenharGraficoConvenio(porConvenio){
   const rotulos = Object.keys(porConvenio);
   const valores = rotulos.map(r=>porConvenio[r]);
   miniGraficoRosca('grafico-convenio', rotulos, valores);
+}
+
+function desenharGraficoAndar(porAndar){
+  const rotulos = Object.keys(porAndar);
+  const valores = rotulos.map(r=>porAndar[r]);
+  miniGraficoRosca('grafico-andar', rotulos, valores);
 }
 
 function desenharTabelaComparativo(comparativo){
@@ -2252,9 +2819,9 @@ function rmrDesenharTabelaDetalhe(registros){
   const tabela = document.getElementById('rmr-tabela-detalhe-nominal');
   if(registros.length===0){ tabela.innerHTML='<tr><td class="vazio">Nenhum atendimento no período.</td></tr>'; return; }
   tabela.innerHTML = `
-    <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Convênio/Forma</th><th>Procedimento</th><th>Atendente</th><th>Valor</th></tr></thead>
+    <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Convênio/Forma</th><th>Procedimento</th><th>Atendente</th><th>Valor</th></tr></thead>
     <tbody>${registros.map(r=>`
-      <tr><td>${formatarDataExibicao(r.data)}</td><td>${r.prof}</td><td>${r.paciente||''}</td>
+      <tr><td>${formatarDataExibicao(r.data)}</td><td>${r.prof}</td><td>${r.andar||'—'}</td><td>${r.paciente||''}</td>
       <td>${r.convenio || r.forma_pagamento || '—'}</td><td>${r.procedimento||''}</td><td>${r.atendente||''}</td>
       <td class="mono">${formatarMoeda(r.valor)}</td></tr>`).join('')}</tbody>`;
 }
@@ -2265,6 +2832,7 @@ function rmrFiltrarTabelaDetalhe(){
   const filtrados = base.filter(r =>
     (r.paciente||'').toUpperCase().includes(termo) ||
     (r.prof||'').toUpperCase().includes(termo) ||
+    (r.andar||'').toUpperCase().includes(termo) ||
     (r.convenio||'').toUpperCase().includes(termo) ||
     (r.procedimento||'').toUpperCase().includes(termo)
   );
