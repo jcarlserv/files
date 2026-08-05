@@ -449,6 +449,16 @@
         <div class="kpi"><div class="rotulo">% pendente</div><div class="valor" id="kpi-critica-pct">—</div></div>
       </div>
 
+      <div class="cartao" style="margin-bottom:16px;">
+        <h3>Ranking de pendências por atendente</h3>
+        <p style="margin:-6px 0 12px;color:var(--ink-400);font-size:12.5px;">
+          Quantidade de pacientes distintos com algum campo pendente, por atendente responsável pelo lançamento.
+        </p>
+        <div class="tabela-scroll">
+          <table id="tabela-ranking-atendentes-critica"></table>
+        </div>
+      </div>
+
       <div class="cartao">
         <h3>Lançamentos pendentes</h3>
         <div class="tabela-scroll">
@@ -2005,6 +2015,40 @@ async function atualizarEditar(){
 /* ---------------------------------------------------------------------
    PAINEL: CRÍTICA (lançamentos com campos obrigatórios em branco)
 --------------------------------------------------------------------- */
+/* Conta pacientes DISTINTOS com pendência por atendente — não o total de registros
+   (o mesmo paciente com dois lançamentos pendentes pela mesma atendente conta como 1,
+   não 2). Se o próprio nome do paciente estiver em branco (também pode ser uma
+   pendência), cada registro assim é tratado como um paciente distinto, para não
+   subestimar o total por falta de nome pra agrupar. */
+function renderizarRankingAtendentesCritica(incompletos){
+  const porAtendente = {};
+  incompletos.forEach(r=>{
+    const atendente = String(r.atendente||'').trim() || 'Não informado';
+    if(!porAtendente[atendente]) porAtendente[atendente] = new Set();
+    const nomePaciente = String(r.paciente||'').trim().toUpperCase();
+    const chavePaciente = nomePaciente || ('__sem_nome__'+(r.id || Math.random()));
+    porAtendente[atendente].add(chavePaciente);
+  });
+
+  const ranking = Object.keys(porAtendente)
+    .map(atendente => ({atendente, qtd: porAtendente[atendente].size}))
+    .sort((a,b) => b.qtd - a.qtd);
+
+  const tabela = document.getElementById('tabela-ranking-atendentes-critica');
+  if(ranking.length===0){
+    tabela.innerHTML = '<tr><td class="vazio">Nenhuma pendência no período. 🎉</td></tr>';
+    return;
+  }
+  tabela.innerHTML = `
+    <thead><tr><th>#</th><th>Atendente</th><th>Pacientes com pendência</th></tr></thead>
+    <tbody>${ranking.map((r,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td>${r.atendente}</td>
+        <td class="mono">${r.qtd}</td>
+      </tr>`).join('')}</tbody>`;
+}
+
 async function atualizarCritica(){
   const mes = document.getElementById('filtro-mes-critica').value;
   const ano = document.getElementById('filtro-ano-critica').value;
@@ -2020,6 +2064,8 @@ async function atualizarCritica(){
   document.getElementById('kpi-critica-total').textContent = registros.length;
   document.getElementById('kpi-critica-incompletos').textContent = incompletos.length;
   document.getElementById('kpi-critica-pct').textContent = registros.length ? Math.round((incompletos.length/registros.length)*100)+'%' : '—';
+
+  renderizarRankingAtendentesCritica(incompletos);
 
   const tabela = document.getElementById('tabela-critica');
   if(incompletos.length===0){
