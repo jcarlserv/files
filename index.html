@@ -1577,9 +1577,6 @@ const CAMPOS_CRITICOS = [
   {chave:'andar', rotulo:'Andar'},
   {chave:'data', rotulo:'Data'},
   {chave:'turno', rotulo:'Turno'},
-  {chave:'paciente', rotulo:'Paciente'},
-  {chave:'protocolo', rotulo:'Protocolo'},
-  {chave:'procedimento', rotulo:'Procedimento'},
   {chave:'convenio', rotulo:'Convênio'},
   {chave:'valor', rotulo:'Valor'},
   {chave:'forma_pagamento', rotulo:'Forma de pagamento'},
@@ -1681,17 +1678,30 @@ function definicaoCampos(){
       travado: estado.papel==='profissional'},
     {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
-    {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos},
-    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
+    {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos, obrigatorio:true},
+    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text'},
     {chave:'protocolo', rotulo:'Protocolo de realização', tipo:'text'},
     {chave:'procedimento', rotulo:'Procedimento', tipo:'select', opcoes:L.procedimentos},
     {chave:'exames', rotulo:'Exame', tipo:'select', opcoes:L.exames},
     {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
-    {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios},
+    {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios, obrigatorio:true},
     {chave:'valor', rotulo:'Valor (R$)', tipo:'number', obrigatorio:true},
-    {chave:'forma_pagamento', rotulo:'Forma de pagamento', tipo:'select', opcoes:L.formas_pagamento},
-    {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes}
+    {chave:'forma_pagamento', rotulo:'Forma de pagamento', tipo:'select', opcoes:L.formas_pagamento, obrigatorio:true},
+    {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes, obrigatorio:true}
   ];
+}
+
+/* Confere os campos marcados obrigatorio:true num formulário (Lançamento ou Modal) e
+   devolve a lista de rótulos que estão vazios — usada para bloquear o salvamento de
+   verdade (o "*" no rótulo, sozinho, era só visual e não impedia salvar em branco). */
+function camposObrigatoriosFaltando(prefixo){
+  return definicaoCampos()
+    .filter(c => c.obrigatorio)
+    .filter(c => {
+      const el = document.getElementById(prefixo+c.chave);
+      return !el || String(el.value||'').trim()==='';
+    })
+    .map(c => c.rotulo);
 }
 
 function renderizarCampo(campo, valorAtual='', prefixo='campo_', destacar=false){
@@ -1732,10 +1742,17 @@ function montarFormularioLancamento(){
 
 document.getElementById('form-lancamento').addEventListener('submit', async (ev)=>{
   ev.preventDefault();
-  const registro = lerValoresCampos('campo_');
   const confirmacao = document.getElementById('confirmacao-lancamento');
+  const faltando = camposObrigatoriosFaltando('campo_');
+  if(faltando.length){
+    confirmacao.style.color = 'var(--danger)';
+    confirmacao.textContent = 'Preencha os campos obrigatórios: ' + faltando.join(', ') + '.';
+    return;
+  }
+  const registro = lerValoresCampos('campo_');
   const resp = await api('adicionarProducao', registro);
   if(resp.ok){
+    confirmacao.style.color = 'var(--teal-700)';
     confirmacao.textContent = 'Atendimento salvo com sucesso.';
     document.getElementById('form-lancamento').reset();
     montarFormularioLancamento();
@@ -2299,6 +2316,11 @@ document.getElementById('sobreposicao-modal').addEventListener('click', (ev)=>{ 
 
 document.getElementById('form-modal').addEventListener('submit', async (ev)=>{
   ev.preventDefault();
+  const faltando = camposObrigatoriosFaltando('modal_');
+  if(faltando.length){
+    alert('Preencha os campos obrigatórios antes de salvar: ' + faltando.join(', ') + '.');
+    return;
+  }
   const registro = lerValoresCampos('modal_');
   const botaoSalvar = ev.target.querySelector('button[type="submit"]');
   const rotuloOriginal = botaoSalvar.textContent;
