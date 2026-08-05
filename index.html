@@ -265,6 +265,13 @@
   .modal-acoes{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
 
   .rodape-nota{display:flex;justify-content:flex-end;margin-top:10px;}
+  .rodape-sistema{
+    display:flex;justify-content:center;align-items:center;gap:8px;
+    padding:16px 24px;color:var(--ink-400);font-size:12px;
+    border-top:1px solid var(--line);
+  }
+  .rodape-sistema b{color:var(--ink-600);font-weight:600;}
+  .rodape-sistema .separador-rodape{color:var(--line);}
   textarea{resize:vertical;min-height:70px;}
 
   @media (max-width:720px){
@@ -748,6 +755,11 @@
       </div>
     </section>
   </main>
+  <footer class="rodape-sistema">
+    <span>ProdClin <b id="versao-sistema">v1.3.0</b></span>
+    <span class="separador-rodape">•</span>
+    <span>Desenvolvido por <b>DSP Group</b></span>
+  </footer>
 </div>
 
 <!-- ===================== MODAL DE EDIÇÃO ===================== -->
@@ -1377,12 +1389,51 @@ function miniGraficoLinhas(idContainer, labels, series){
 }
 
 /* ---------------------------------------------------------------------
+   SESSÃO — mantém o usuário logado ao atualizar/recarregar a página.
+   Guarda só a identidade (usuário/papel/nome), nunca a senha. Isso não
+   piora a segurança do sistema em relação ao que já existia: hoje o
+   controle de acesso real depende só da tela de login mesmo (ver
+   observação sobre RLS/Supabase Auth no prompt de arquitetura).
+--------------------------------------------------------------------- */
+const CHAVE_SESSAO = 'prodclin_sessao';
+
+function salvarSessao(){
+  try{
+    localStorage.setItem(CHAVE_SESSAO, JSON.stringify({
+      usuario: estado.usuario, papel: estado.papel, nomeProfissional: estado.nomeProfissional
+    }));
+  }catch(e){ /* navegador pode bloquear localStorage (ex.: modo privado) — segue sem persistir sessão */ }
+}
+
+function limparSessao(){
+  try{ localStorage.removeItem(CHAVE_SESSAO); }catch(e){}
+}
+
+function carregarSessaoSalva(){
+  try{
+    const bruto = localStorage.getItem(CHAVE_SESSAO);
+    return bruto ? JSON.parse(bruto) : null;
+  }catch(e){ return null; }
+}
+
+/* ---------------------------------------------------------------------
    LOGIN
 --------------------------------------------------------------------- */
 if(MODO_DEMO){
   document.getElementById('contas-demo').innerHTML =
     '<b>Contas de demonstração</b><br>Gerente → usuário <b>gerente</b> / senha <b>gerente123</b><br>Profissional → usuário <b>angelina</b> / senha <b>123</b>';
 }
+
+// Se já existir uma sessão salva de uma visita anterior, entra direto —
+// sem isso, atualizar a página (F5) sempre derrubava a pessoa pro login.
+(function tentarRetomarSessao(){
+  const sessao = carregarSessaoSalva();
+  if(!sessao || !sessao.usuario) return;
+  estado.usuario = sessao.usuario;
+  estado.papel = sessao.papel;
+  estado.nomeProfissional = sessao.nomeProfissional;
+  iniciarApp().catch(()=>limparSessao());
+})();
 
 document.getElementById('form-login').addEventListener('submit', async (ev)=>{
   ev.preventDefault();
@@ -1396,6 +1447,7 @@ document.getElementById('form-login').addEventListener('submit', async (ev)=>{
     estado.usuario = resp.usuario;
     estado.papel = resp.papel;
     estado.nomeProfissional = resp.nomeProfissional;
+    salvarSessao();
     await iniciarApp();
   }catch(e){
     erroEl.textContent = 'Erro de conexão com o servidor.';
@@ -1403,6 +1455,7 @@ document.getElementById('form-login').addEventListener('submit', async (ev)=>{
 });
 
 document.getElementById('botao-sair').addEventListener('click', ()=>{
+  limparSessao();
   location.reload();
 });
 
@@ -1450,6 +1503,7 @@ document.getElementById('form-conta').addEventListener('submit', async (ev)=>{
 
   estado.nomeProfissional = novoNome;
   document.getElementById('nome-usuario-topo').textContent = novoNome;
+  salvarSessao();
   mensagemEl.style.color = 'var(--teal-700)';
   mensagemEl.textContent = 'Salvo com sucesso!';
   setTimeout(()=>document.getElementById('sobreposicao-conta').classList.remove('aberta'), 900);
@@ -1577,6 +1631,8 @@ const CAMPOS_CRITICOS = [
   {chave:'andar', rotulo:'Andar'},
   {chave:'data', rotulo:'Data'},
   {chave:'turno', rotulo:'Turno'},
+  {chave:'paciente', rotulo:'Paciente'},
+  {chave:'procedimento', rotulo:'Procedimento'},
   {chave:'convenio', rotulo:'Convênio'},
   {chave:'valor', rotulo:'Valor'},
   {chave:'forma_pagamento', rotulo:'Forma de pagamento'},
@@ -1679,9 +1735,9 @@ function definicaoCampos(){
     {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
     {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos, obrigatorio:true},
-    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text'},
+    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
     {chave:'protocolo', rotulo:'Protocolo de realização', tipo:'text'},
-    {chave:'procedimento', rotulo:'Procedimento', tipo:'select', opcoes:L.procedimentos},
+    {chave:'procedimento', rotulo:'Procedimento', tipo:'select', opcoes:L.procedimentos, obrigatorio:true},
     {chave:'exames', rotulo:'Exame', tipo:'select', opcoes:L.exames},
     {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
     {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios, obrigatorio:true},
