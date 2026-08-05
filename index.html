@@ -768,7 +768,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v1.5.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v1.5.1</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -2437,7 +2437,9 @@ function abrirModal(registro, camposPendentes){
   document.getElementById('grade-modal').innerHTML = definicaoCampos()
     .map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_', (camposPendentes||[]).includes(c.chave)))
     .join('');
-  document.getElementById('botao-excluir-modal').style.display = registro ? 'inline-flex' : 'none';
+  // Excluir é ação exclusiva do gerente — profissional/atendente completam ou
+  // editam campos (na Crítica ou na Editar), mas nunca veem a opção de excluir.
+  document.getElementById('botao-excluir-modal').style.display = (registro && estado.papel === 'gerente') ? 'inline-flex' : 'none';
   document.getElementById('sobreposicao-modal').classList.add('aberta');
 }
 function fecharModal(){
@@ -2483,6 +2485,7 @@ document.getElementById('form-modal').addEventListener('submit', async (ev)=>{
 
 document.getElementById('botao-excluir-modal').addEventListener('click', async ()=>{
   if(!estado.editandoId) return;
+  if(estado.papel !== 'gerente'){ alert('Só o gerente pode excluir registros.'); return; }
   if(!confirm('Excluir este registro definitivamente?')) return;
   const resp = await api('excluirProducao', {id: estado.editandoId, mes: estado.editandoMes, ano: estado.editandoAno});
   if(!resp || !resp.ok){
