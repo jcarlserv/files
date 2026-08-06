@@ -752,13 +752,13 @@
         </p>
       </div>
 
-      <div class="cartao" style="max-width:720px;">
+      <div class="cartao" id="cartao-direitos-privilegios" style="max-width:100%;">
         <h3>Direitos e Privilégios</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-          Além do papel de cada usuário (Gerente, Atendente, Profissional), você pode liberar
-          individualmente a edição de registros <b>já existentes</b> na aba <b>Verificar</b> para
-          qualquer usuário — sem precisar mudar o papel dele. Essa permissão libera só o botão
-          "Editar" de cada linha; criar registro novo e excluir continuam exclusivos do gerente.
+          Cada usuário já nasce com um pacote de permissões conforme o papel (Gerente tem acesso
+          total sempre; Atendente e Profissional têm um padrão). Aqui você pode ligar ou desligar,
+          um por um, o que cada usuário pode <b>ver</b>, <b>criar</b>, <b>editar</b> ou <b>excluir</b>
+          em cada tela — sem precisar mudar o papel dele.
         </p>
         <div class="tabela-scroll">
           <table id="tabela-permissoes"></table>
@@ -790,7 +790,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v1.7.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.0.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -861,12 +861,66 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const MODO_DEMO = !supabaseClient;
 
 /* ---------------------------------------------------------------------
+   DIREITOS E PRIVILÉGIOS — permissões fragmentadas por tela/ação.
+   O gerente NUNCA passa por essa matriz (sempre tem acesso completo, para
+   nunca correr o risco de um gerente se autobloquear por engano). Para
+   profissional/atendente, cada usuário tem um "pacote padrão" conforme o
+   papel (PERMISSOES_PADRAO_POR_PAPEL) que pode ser sobrescrito
+   individualmente na tabela `permissoes` do Supabase (usuario, chave, valor).
+--------------------------------------------------------------------- */
+const DEFINICAO_PERMISSOES = [
+  {tela:'Lançamento',     chave:'ver_lancamento',          rotulo:'Ver'},
+  {tela:'Verificar',      chave:'ver_verificar',           rotulo:'Ver'},
+  {tela:'Verificar',      chave:'ver_financeiro_verificar',rotulo:'Ver financeiro'},
+  {tela:'Verificar',      chave:'criar_verificar',         rotulo:'Criar'},
+  {tela:'Verificar',      chave:'editar_verificar',        rotulo:'Editar'},
+  {tela:'Verificar',      chave:'excluir_verificar',       rotulo:'Excluir'},
+  {tela:'Crítica',        chave:'ver_critica',             rotulo:'Ver'},
+  {tela:'Crítica',        chave:'editar_critica',          rotulo:'Editar'},
+  {tela:'Crítica',        chave:'excluir_critica',         rotulo:'Excluir'},
+  {tela:'Metas',          chave:'ver_metas',               rotulo:'Ver'},
+  {tela:'Metas',          chave:'editar_metas',            rotulo:'Editar'},
+  {tela:'Dashboard',      chave:'ver_dashboard',           rotulo:'Ver'},
+  {tela:'Análises',       chave:'ver_analises',            rotulo:'Ver'},
+  {tela:'RMR',            chave:'ver_rmr',                 rotulo:'Ver'},
+  {tela:'Configurações',  chave:'ver_configuracoes',       rotulo:'Ver'},
+  {tela:'Configurações',  chave:'editar_configuracoes',    rotulo:'Editar'}
+];
+
+const PERMISSOES_PADRAO_POR_PAPEL = {
+  profissional: {
+    ver_lancamento:true, ver_critica:true, editar_critica:true
+    // tudo que não aparece aqui vale false por padrão
+  },
+  atendente: {
+    ver_lancamento:true, ver_critica:true, editar_critica:true,
+    ver_verificar:true, ver_financeiro_verificar:true
+  }
+};
+
+// Combina o pacote padrão do papel com qualquer sobrescrita individual
+// (linhas da tabela permissoes para aquele usuário) — a sobrescrita sempre
+// ganha da regra padrão.
+function calcularPermissoesEfetivas(papel, sobrescritas){
+  const padrao = PERMISSOES_PADRAO_POR_PAPEL[papel] || {};
+  const efetivas = Object.assign({}, padrao);
+  (sobrescritas||[]).forEach(o=>{ efetivas[o.chave] = !!o.valor; });
+  return efetivas;
+}
+
+// Atalho usado em toda a aplicação: gerente sempre pode; outro papel só se
+// a permissão efetiva daquela chave estiver marcada.
+function temPermissao(chave){
+  return estado.papel === 'gerente' || !!estado.permissoes[chave];
+}
+
+/* ---------------------------------------------------------------------
    ESTADO
 --------------------------------------------------------------------- */
 const estado = {
-  usuario:null, papel:null, nomeProfissional:null, podeEditarVerificar:false,
+  usuario:null, papel:null, nomeProfissional:null, permissoes:{},
   listas:{}, abaAtiva:'lancamento',
-  editandoId:null, editandoMes:null, editandoAno:null,
+  editandoId:null, editandoMes:null, editandoAno:null, editandoContexto:null,
   conveniosSelecionados:[]
 };
 
@@ -876,11 +930,16 @@ const estado = {
 const demo = {
   configuracoes: { nome_clinica: 'Clínica Cliza' },
   usuarios:[
-    {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação', pode_editar_verificar:false},
-    {usuario:'angelina', senha:'123', papel:'profissional', nome_profissional:'ANGELINA', pode_editar_verificar:false},
-    {usuario:'lisiene', senha:'123', papel:'profissional', nome_profissional:'LISIENE', pode_editar_verificar:false},
-    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA', pode_editar_verificar:false},
-    {usuario:'kaillany', senha:'123', papel:'atendente', nome_profissional:'KAILLANY', pode_editar_verificar:true}
+    {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação'},
+    {usuario:'angelina', senha:'123', papel:'profissional', nome_profissional:'ANGELINA'},
+    {usuario:'lisiene', senha:'123', papel:'profissional', nome_profissional:'LISIENE'},
+    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA'},
+    {usuario:'kaillany', senha:'123', papel:'atendente', nome_profissional:'KAILLANY'}
+  ],
+  // Sobrescritas individuais de permissão (equivalente à tabela `permissoes` do Supabase).
+  // KAILLANY já entra com editar_verificar ligado, como pedido antes.
+  permissoes:[
+    {usuario:'kaillany', chave:'editar_verificar', valor:true}
   ],
   listas:{
     profissionais:['ANGELINA','AYANE CARNEIRO','CARLOTA','CLEIA','DANIELE ERTHAL','DR CARLOS AUGUSTO','DR CHARLES USG','DR MARCELO','DR MARCELO USG','DR MAURICIO','DR MAURICIO EXAMES','DR OSMAR','DRA AMANDA USG','DRA IVNA','DRA RICARLA USG','GABRIELE','ISABELLE','IZADORA ZARA','JAQUELANE PONTE','JOSEANE','KÁTIA RODRIGUES','KIMBERLY','LIA BRITO','LISIENE','MARILIA','RAFAELA MORAIS','RENATA','RONALDO GILDO','VALERIA','VICTOR MOREIRA'],
@@ -915,7 +974,13 @@ const demo = {
     {prof:'RENATA', mes:'Maio', ano:2026, turnos_disponibilizados:36, meta_valor:20412, meta_qtd:176},
     {prof:'DR MARCELO USG', mes:'Maio', ano:2026, turnos_disponibilizados:16, meta_valor:15000, meta_qtd:158}
   ],
-  notas:{}
+  notas:{},
+  // Sobrescritas individuais de permissão (equivalente à tabela `permissoes` do
+  // Supabase). Deixei a KAILLANY já com "editar_verificar" ligado, pra manter o
+  // que tínhamos configurado antes nesta demonstração.
+  permissoes:[
+    {usuario:'kaillany', chave:'editar_verificar', valor:true}
+  ]
 };
 
 /* ---------------------------------------------------------------------
@@ -977,7 +1042,14 @@ async function supabaseApi(acao, dados) {
         .eq('usuario', dados.usuario).eq('senha', dados.senha).maybeSingle();
       if(error) return {ok:false, erro:error.message};
       if(!data) return {ok:false, erro:'Usuário ou senha inválidos.'};
-      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional, podeEditarVerificar: !!data.pode_editar_verificar};
+      let permissoes = {};
+      if(data.papel !== 'gerente'){
+        const { data: sobrescritas, error: errPerm } = await supabaseClient.from('permissoes')
+          .select('chave, valor').eq('usuario', data.usuario);
+        if(errPerm) return {ok:false, erro:errPerm.message};
+        permissoes = calcularPermissoesEfetivas(data.papel, sobrescritas);
+      }
+      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional, permissoes};
     }
 
     case 'listarListas': {
@@ -1109,19 +1181,24 @@ async function supabaseApi(acao, dados) {
     }
 
     // Direitos e Privilégios — lista todo usuário que não seja gerente (o gerente já
-    // tem acesso completo por papel, não precisa de permissão individual nenhuma).
-    case 'listarUsuarios': {
-      const { data, error } = await supabaseClient.from('usuarios')
-        .select('usuario, papel, nome_profissional, pode_editar_verificar')
-        .neq('papel', 'gerente').order('nome_profissional');
-      if(error) return {ok:false, erro:error.message};
-      return {ok:true, usuarios:data||[]};
+    // tem acesso completo por papel, não precisa de permissão individual nenhuma),
+    // com a permissão EFETIVA de cada chave (padrão do papel + sobrescritas).
+    case 'listarPermissoesTodos': {
+      const { data: usuarios, error: errUsuarios } = await supabaseClient.from('usuarios')
+        .select('usuario, papel, nome_profissional').neq('papel', 'gerente').order('nome_profissional');
+      if(errUsuarios) return {ok:false, erro:errUsuarios.message};
+      const { data: todasSobrescritas, error: errPerm } = await supabaseClient.from('permissoes').select('*');
+      if(errPerm) return {ok:false, erro:errPerm.message};
+      const resultado = (usuarios||[]).map(u=>{
+        const sobrescritasDoUsuario = (todasSobrescritas||[]).filter(s=>s.usuario===u.usuario);
+        return Object.assign({}, u, { permissoes: calcularPermissoesEfetivas(u.papel, sobrescritasDoUsuario) });
+      });
+      return {ok:true, usuarios:resultado};
     }
 
-    case 'definirPermissaoUsuario': {
-      const { error } = await supabaseClient.from('usuarios')
-        .update({ pode_editar_verificar: !!dados.podeEditarVerificar })
-        .eq('usuario', dados.usuario);
+    case 'definirPermissao': {
+      const { error } = await supabaseClient.from('permissoes')
+        .upsert({ usuario: dados.usuario, chave: dados.chave, valor: !!dados.valor }, { onConflict: 'usuario,chave' });
       return error ? {ok:false, erro:error.message} : {ok:true};
     }
 
@@ -1165,17 +1242,21 @@ function mockApi(acao, dados) {
     case 'login': {
       const achado = demo.usuarios.find(u => u.usuario===dados.usuario && u.senha===dados.senha);
       if(!achado) return {ok:false, erro:'Usuário ou senha inválidos.'};
-      return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional, podeEditarVerificar: !!achado.pode_editar_verificar};
+      const sobrescritas = demo.permissoes.filter(p=>p.usuario===achado.usuario);
+      const permissoes = achado.papel==='gerente' ? {} : calcularPermissoesEfetivas(achado.papel, sobrescritas);
+      return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional, permissoes};
     }
-    case 'listarUsuarios': {
-      const usuarios = demo.usuarios.filter(u=>u.papel!=='gerente')
-        .map(u=>({usuario:u.usuario, papel:u.papel, nome_profissional:u.nome_profissional, pode_editar_verificar: !!u.pode_editar_verificar}));
+    case 'listarPermissoesTodos': {
+      const usuarios = demo.usuarios.filter(u=>u.papel!=='gerente').map(u=>{
+        const sobrescritas = demo.permissoes.filter(p=>p.usuario===u.usuario);
+        return {usuario:u.usuario, papel:u.papel, nome_profissional:u.nome_profissional, permissoes: calcularPermissoesEfetivas(u.papel, sobrescritas)};
+      });
       return {ok:true, usuarios};
     }
-    case 'definirPermissaoUsuario': {
-      const usuario = demo.usuarios.find(u=>u.usuario===dados.usuario);
-      if(!usuario) return {ok:false, erro:'Usuário não encontrado.'};
-      usuario.pode_editar_verificar = !!dados.podeEditarVerificar;
+    case 'definirPermissao': {
+      const existente = demo.permissoes.find(p=>p.usuario===dados.usuario && p.chave===dados.chave);
+      if(existente) existente.valor = !!dados.valor;
+      else demo.permissoes.push({usuario:dados.usuario, chave:dados.chave, valor:!!dados.valor});
       return {ok:true};
     }
     case 'listarListas': {
@@ -1466,7 +1547,7 @@ function salvarSessao(){
   try{
     localStorage.setItem(CHAVE_SESSAO, JSON.stringify({
       usuario: estado.usuario, papel: estado.papel, nomeProfissional: estado.nomeProfissional,
-      podeEditarVerificar: estado.podeEditarVerificar
+      permissoes: estado.permissoes
     }));
   }catch(e){ /* navegador pode bloquear localStorage (ex.: modo privado) — segue sem persistir sessão */ }
 }
@@ -1498,7 +1579,7 @@ if(MODO_DEMO){
   estado.usuario = sessao.usuario;
   estado.papel = sessao.papel;
   estado.nomeProfissional = sessao.nomeProfissional;
-  estado.podeEditarVerificar = !!sessao.podeEditarVerificar;
+  estado.permissoes = sessao.permissoes || {};
   iniciarApp().catch(()=>limparSessao());
 })();
 
@@ -1514,7 +1595,7 @@ document.getElementById('form-login').addEventListener('submit', async (ev)=>{
     estado.usuario = resp.usuario;
     estado.papel = resp.papel;
     estado.nomeProfissional = resp.nomeProfissional;
-    estado.podeEditarVerificar = !!resp.podeEditarVerificar;
+    estado.permissoes = resp.permissoes || {};
     salvarSessao();
     await iniciarApp();
   }catch(e){
@@ -1638,19 +1719,17 @@ function mostrarErroInicializacao(mensagem){
 --------------------------------------------------------------------- */
 function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
-  const abasDisponiveis = [{id:'lancamento', rotulo:'Lançamento'}, {id:'critica', rotulo:'Crítica'}];
-  if(estado.papel === 'gerente' || estado.papel === 'atendente' || estado.podeEditarVerificar){
-    // Atendente vê a aba Editar em modo só-consulta (sem "+ Novo registro" e sem
-    // o botão "Editar" por linha) — ver toggle de visibilidade em preencherSelectsPeriodo().
-    abasDisponiveis.splice(1, 0, {id:'editar', rotulo:'Verificar'});
-  }
-  if(estado.papel === 'gerente'){
-    abasDisponiveis.push({id:'metas', rotulo:'Metas'});
-    abasDisponiveis.push({id:'dashboard', rotulo:'Dashboard'});
-    abasDisponiveis.push({id:'analises', rotulo:'Análises'});
-    abasDisponiveis.push({id:'rmr', rotulo:'RMR'});
-    abasDisponiveis.push({id:'configuracoes', rotulo:'Configurações'});
-  }
+  const TODAS_ABAS = [
+    {id:'lancamento', rotulo:'Lançamento', chave:'ver_lancamento'},
+    {id:'editar', rotulo:'Verificar', chave:'ver_verificar'},
+    {id:'critica', rotulo:'Crítica', chave:'ver_critica'},
+    {id:'metas', rotulo:'Metas', chave:'ver_metas'},
+    {id:'dashboard', rotulo:'Dashboard', chave:'ver_dashboard'},
+    {id:'analises', rotulo:'Análises', chave:'ver_analises'},
+    {id:'rmr', rotulo:'RMR', chave:'ver_rmr'},
+    {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
+  ];
+  const abasDisponiveis = TODAS_ABAS.filter(a => temPermissao(a.chave));
   nav.innerHTML = '';
   abasDisponiveis.forEach((a,i)=>{
     const botao = document.createElement('button');
@@ -1660,8 +1739,9 @@ function montarNavegacao(){
     botao.addEventListener('click', ()=>trocarAba(a.id));
     nav.appendChild(botao);
   });
-  estado.abaAtiva = abasDisponiveis[0].id;
-  document.getElementById('painel-'+estado.abaAtiva).classList.add('ativo');
+  estado.abaAtiva = abasDisponiveis.length ? abasDisponiveis[0].id : 'lancamento';
+  const painelAtivo = document.getElementById('painel-'+estado.abaAtiva);
+  if(painelAtivo) painelAtivo.classList.add('ativo');
 }
 
 async function trocarAba(idAba){
@@ -1794,12 +1874,9 @@ function preencherSelectsPeriodo(){
     (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
   filtroProfEvolucao.addEventListener('change', atualizarEvolucaoAno);
 
-  document.getElementById('botao-novo-registro-gerencial').addEventListener('click', ()=>abrirModal(null));
-  // Atendente consulta a aba Editar, mas não cria/edita/exclui registros.
-  // "+ Novo registro" continua exclusivo do gerente. A permissão individual
-  // (Direitos e Privilégios) libera só o botão "Editar" de cada linha existente,
-  // não a criação de registros novos — ver toggle de podeEditar em atualizarEditar().
-  document.getElementById('botao-novo-registro-gerencial').style.display = (estado.papel==='gerente') ? 'inline-flex' : 'none';
+  document.getElementById('botao-novo-registro-gerencial').addEventListener('click', ()=>abrirModal(null, [], 'verificar'));
+  // "+ Novo registro" segue a permissão fragmentada criar_verificar (gerente sempre tem).
+  document.getElementById('botao-novo-registro-gerencial').style.display = temPermissao('criar_verificar') ? 'inline-flex' : 'none';
   document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
 
   document.getElementById('filtro-data-inicio').addEventListener('change', atualizarEditar);
@@ -2045,17 +2122,22 @@ async function atualizarEditar(){
     if(porFormaPagamento.hasOwnProperty(forma)) porFormaPagamento[forma] += valor;
     totalGeral += valor;
   });
-  const rotuloConvenios = estado.conveniosSelecionados.length===1 ? ` (${estado.conveniosSelecionados[0]})`
-    : estado.conveniosSelecionados.length>1 ? ` (${estado.conveniosSelecionados.length} convênios)` : '';
-  document.getElementById('resumo-financeiro-editar').innerHTML = `
-    <div class="kpi"><div class="rotulo">Convênio${rotuloConvenios}</div><div class="valor" id="resumo-fp-convenio">${formatarMoeda(porFormaPagamento['CONVÊNIO'])}</div></div>
-    <div class="kpi"><div class="rotulo">Pix</div><div class="valor" id="resumo-fp-pix">${formatarMoeda(porFormaPagamento['PIX'])}</div></div>
-    <div class="kpi"><div class="rotulo">Espécie</div><div class="valor" id="resumo-fp-especie">${formatarMoeda(porFormaPagamento['ESPÉCIE'])}</div></div>
-    <div class="kpi"><div class="rotulo">Cartão</div><div class="valor" id="resumo-fp-cartao">${formatarMoeda(porFormaPagamento['CARTÃO'])}</div></div>
-    <div class="kpi"><div class="rotulo">Total${estado.conveniosSelecionados.length?' filtrado':''}</div><div class="valor teal" id="resumo-fp-total">${formatarMoeda(totalGeral)}</div></div>
-  `;
+  const podeVerFinanceiro = temPermissao('ver_financeiro_verificar');
+  if(!podeVerFinanceiro){
+    document.getElementById('resumo-financeiro-editar').innerHTML = '';
+  } else {
+    const rotuloConvenios = estado.conveniosSelecionados.length===1 ? ` (${estado.conveniosSelecionados[0]})`
+      : estado.conveniosSelecionados.length>1 ? ` (${estado.conveniosSelecionados.length} convênios)` : '';
+    document.getElementById('resumo-financeiro-editar').innerHTML = `
+      <div class="kpi"><div class="rotulo">Convênio${rotuloConvenios}</div><div class="valor" id="resumo-fp-convenio">${formatarMoeda(porFormaPagamento['CONVÊNIO'])}</div></div>
+      <div class="kpi"><div class="rotulo">Pix</div><div class="valor" id="resumo-fp-pix">${formatarMoeda(porFormaPagamento['PIX'])}</div></div>
+      <div class="kpi"><div class="rotulo">Espécie</div><div class="valor" id="resumo-fp-especie">${formatarMoeda(porFormaPagamento['ESPÉCIE'])}</div></div>
+      <div class="kpi"><div class="rotulo">Cartão</div><div class="valor" id="resumo-fp-cartao">${formatarMoeda(porFormaPagamento['CARTÃO'])}</div></div>
+      <div class="kpi"><div class="rotulo">Total${estado.conveniosSelecionados.length?' filtrado':''}</div><div class="valor teal" id="resumo-fp-total">${formatarMoeda(totalGeral)}</div></div>
+    `;
+  }
 
-  const podeEditar = estado.papel === 'gerente' || estado.podeEditarVerificar;
+  const podeEditar = temPermissao('editar_verificar');
   const tabela = document.getElementById('tabela-gerencial');
   if(registros.length===0){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
@@ -2077,7 +2159,7 @@ async function atualizarEditar(){
         </tr>`).join('')}</tbody>`;
     // Usa a posição na lista (não o id) para achar o registro certo — assim
     // funciona mesmo se algum registro antigo tiver o id vazio ou repetido.
-    // Atendente só consulta: nem o botão nem os listeners de edição existem para esse papel.
+    // Sem a permissão editar_verificar: nem o botão nem os listeners existem.
     if(podeEditar){
       tabela.querySelectorAll('button[data-indice]').forEach(b=>{
         b.addEventListener('click', ()=>{
@@ -2086,7 +2168,7 @@ async function atualizarEditar(){
             alert('Este registro não tem um identificador único (provavelmente um dado bem antigo, de antes da migração para o Supabase). Abra a tabela "producao" no Table Editor do Supabase e defina um id para essa linha (ex.: gen_random_uuid()) antes de editá-la por aqui.');
             return;
           }
-          abrirModal(registro);
+          abrirModal(registro, [], 'verificar');
         });
       });
     }
@@ -2151,13 +2233,14 @@ async function atualizarCritica(){
 
   renderizarRankingAtendentesCritica(incompletos);
 
+  const podeEditarCritica = temPermissao('editar_critica');
   const tabela = document.getElementById('tabela-critica');
   if(incompletos.length===0){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento com campo pendente neste período. 🎉</td></tr>';
     return;
   }
   tabela.innerHTML = `
-    <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Campos pendentes</th><th></th></tr></thead>
+    <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Campos pendentes</th>${podeEditarCritica?'<th></th>':''}</tr></thead>
     <tbody>${incompletos.map((r,i)=>{
       const faltando = CAMPOS_CRITICOS.filter(c=>campoCriticoVazio(r,c.chave));
       return `<tr>
@@ -2165,9 +2248,11 @@ async function atualizarCritica(){
         <td>${r.prof||'—'}</td>
         <td>${r.paciente||'—'}</td>
         <td>${faltando.map(c=>`<span class="tag tag-alerta">${c.rotulo}</span>`).join('')}</td>
-        <td class="celula-acoes"><button class="botao secundario pequeno" data-indice="${i}">Completar</button></td>
+        ${podeEditarCritica?`<td class="celula-acoes"><button class="botao secundario pequeno" data-indice="${i}">Completar</button></td>`:''}
       </tr>`;
     }).join('')}</tbody>`;
+
+  if(!podeEditarCritica) return;
 
   // Usa a posição na lista (não o id) para achar o registro certo — assim
   // funciona mesmo se algum registro antigo tiver o id vazio ou repetido.
@@ -2179,7 +2264,7 @@ async function atualizarCritica(){
         return;
       }
       const faltando = CAMPOS_CRITICOS.filter(c=>campoCriticoVazio(registro,c.chave)).map(c=>c.chave);
-      abrirModal(registro, faltando);
+      abrirModal(registro, faltando, 'critica');
     });
   });
 }
@@ -2207,18 +2292,61 @@ async function atualizarConfiguracoes(){
   document.getElementById('config-nome-clinica').value = nomeClinicaAtual;
   prepararSelectListaConfig();
   renderizarItensListaConfig();
-  await carregarPermissoes();
+
+  // Direitos e Privilégios nunca é liberado pela própria matriz de permissões —
+  // isso evitaria alguém se autoconceder mais acesso. É sempre exclusivo do gerente.
+  const cartaoPermissoes = document.getElementById('cartao-direitos-privilegios');
+  if(estado.papel === 'gerente'){
+    cartaoPermissoes.style.display = '';
+    await carregarPermissoes();
+  } else {
+    cartaoPermissoes.style.display = 'none';
+  }
+
+  const podeEditarConfig = temPermissao('editar_configuracoes');
+  document.getElementById('botao-salvar-config').style.display = podeEditarConfig ? 'inline-flex' : 'none';
+  document.getElementById('config-nome-clinica').disabled = !podeEditarConfig;
+  document.getElementById('botao-adicionar-item-lista').style.display = podeEditarConfig ? 'inline-flex' : 'none';
+  document.getElementById('config-novo-item-lista').disabled = !podeEditarConfig;
 }
 
 /* ---------------------------------------------------------------------
-   DIREITOS E PRIVILÉGIOS — liberar edição na aba Verificar por usuário,
-   independente do papel dele (gerente sempre tem acesso completo).
+   DIREITOS E PRIVILÉGIOS — matriz completa (ver/criar/editar/excluir por
+   tela), guardada na tabela `permissoes` (usuario, chave, valor) do
+   Supabase. Gerente nunca aparece aqui — sempre tem acesso total.
 --------------------------------------------------------------------- */
+function agruparPermissoesPorTela(){
+  const grupos = [];
+  DEFINICAO_PERMISSOES.forEach(p=>{
+    let grupo = grupos.find(g=>g.tela===p.tela);
+    if(!grupo){ grupo = {tela:p.tela, itens:[]}; grupos.push(grupo); }
+    grupo.itens.push(p);
+  });
+  return grupos;
+}
+
 async function carregarPermissoes(){
   const tabela = document.getElementById('tabela-permissoes');
   tabela.innerHTML = '<tr><td class="vazio">Carregando usuários...</td></tr>';
-  const resp = await api('listarUsuarios', {});
+  const resp = await api('listarPermissoesTodos', {});
   if(!resp.ok){
+    if(/relation.*permissoes.*does not exist/i.test(resp.erro||'')){
+      tabela.innerHTML = `<tr><td class="vazio" style="text-align:left;padding:16px;">
+        <b style="color:var(--danger);">Falta uma tabela no banco.</b><br>
+        Ainda não existe a tabela <code>permissoes</code>. Vá no <b>SQL Editor</b> do Supabase e
+        rode este comando uma vez, depois recarregue esta página:
+        <pre style="background:var(--rose-100);padding:10px 12px;border-radius:8px;margin-top:10px;white-space:pre-wrap;font-size:12.5px;">CREATE TABLE IF NOT EXISTS permissoes (
+  id bigint generated always as identity primary key,
+  usuario text not null,
+  chave text not null,
+  valor boolean not null default false,
+  unique(usuario, chave)
+);
+ALTER TABLE permissoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY acesso_total_anon ON permissoes FOR ALL USING (true) WITH CHECK (true);</pre>
+      </td></tr>`;
+      return;
+    }
     tabela.innerHTML = `<tr><td class="vazio">${resp.erro || 'Não foi possível carregar os usuários.'}</td></tr>`;
     return;
   }
@@ -2228,26 +2356,34 @@ async function carregarPermissoes(){
     return;
   }
   const rotuloPapel = p => p==='atendente' ? 'Atendente' : (p==='profissional' ? 'Profissional' : p);
+  const grupos = agruparPermissoesPorTela();
+  const linhaGrupos = grupos.map(g=>`<th colspan="${g.itens.length}" style="text-align:center;border-left:2px solid var(--line);">${g.tela}</th>`).join('');
+  const linhaColunas = grupos.map(g=>g.itens.map(p=>`<th style="text-align:center;font-size:10.5px;border-left:${g.itens.indexOf(p)===0?'2px solid var(--line)':'none'};">${p.rotulo}</th>`).join('')).join('');
+
   tabela.innerHTML = `
-    <thead><tr><th>Nome</th><th>Usuário</th><th>Papel</th><th>Pode editar em Verificar</th></tr></thead>
+    <thead>
+      <tr><th rowspan="2">Nome</th><th rowspan="2">Usuário</th><th rowspan="2">Papel</th>${linhaGrupos}</tr>
+      <tr>${linhaColunas}</tr>
+    </thead>
     <tbody>${usuarios.map(u=>`
       <tr data-usuario="${u.usuario}">
         <td>${u.nome_profissional || u.usuario}</td>
         <td class="mono">${u.usuario}</td>
         <td><span class="tag">${rotuloPapel(u.papel)}</span></td>
-        <td><input type="checkbox" class="chk-permissao-editar" ${u.pode_editar_verificar?'checked':''}></td>
+        ${DEFINICAO_PERMISSOES.map((p,i)=>`<td style="text-align:center;border-left:${grupos.some(g=>g.itens[0]===p)?'2px solid var(--line)':'none'};"><input type="checkbox" class="chk-permissao" data-chave="${p.chave}" ${u.permissoes[p.chave]?'checked':''}></td>`).join('')}
       </tr>`).join('')}</tbody>`;
 
-  tabela.querySelectorAll('.chk-permissao-editar').forEach(chk=>{
+  tabela.querySelectorAll('.chk-permissao').forEach(chk=>{
     chk.addEventListener('change', async ()=>{
       const usuario = chk.closest('tr').dataset.usuario;
+      const chave = chk.dataset.chave;
       const valorAnterior = !chk.checked;
       chk.disabled = true;
-      const resp = await api('definirPermissaoUsuario', {usuario, podeEditarVerificar: chk.checked});
+      const resp = await api('definirPermissao', {usuario, chave, valor: chk.checked});
       chk.disabled = false;
       if(!resp.ok){
         alert(resp.erro || 'Não foi possível salvar essa permissão.');
-        chk.checked = valorAnterior; // desfaz visualmente se a gravação falhou
+        chk.checked = valorAnterior;
       }
     });
   });
@@ -2269,6 +2405,7 @@ function renderizarItensListaConfig(){
   const chave = document.getElementById('config-lista-selecionada').value;
   const itens = estado.listas[chave]||[];
   const container = document.getElementById('config-itens-lista');
+  const podeEditarConfig = temPermissao('editar_configuracoes');
   if(itens.length===0){
     container.innerHTML = '<p class="vazio" style="padding:10px 0;">Nenhum item nessa lista ainda.</p>';
     return;
@@ -2276,7 +2413,7 @@ function renderizarItensListaConfig(){
   container.innerHTML = itens.map(item=>`
     <span class="tag" style="display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 10px;font-size:12.5px;">
       ${item}
-      <button type="button" class="botao-remover-item-lista" data-valor="${item.replace(/"/g,'&quot;')}" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--teal-700);font-weight:700;padding:0 2px;font-size:14px;line-height:1;">×</button>
+      ${podeEditarConfig?`<button type="button" class="botao-remover-item-lista" data-valor="${item.replace(/"/g,'&quot;')}" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--teal-700);font-weight:700;padding:0 2px;font-size:14px;line-height:1;">×</button>`:''}
     </span>`).join('');
   container.querySelectorAll('.botao-remover-item-lista').forEach(b=>{
     b.addEventListener('click', ()=>removerItemListaConfig(b.dataset.valor));
@@ -2489,12 +2626,17 @@ async function atualizarMetas(){
   document.getElementById('tabela-metas').innerHTML = '<tr><td class="vazio">Carregando metas...</td></tr>';
   await atualizarTabelaMetas(mes, ano);
   await carregarNota(mes, ano);
+  const podeEditarMetas = temPermissao('editar_metas');
+  document.getElementById('botao-salvar-nota').style.display = podeEditarMetas ? 'inline-flex' : 'none';
+  document.getElementById('texto-nota').disabled = !podeEditarMetas;
 }
 
 async function atualizarTabelaMetas(mes, ano){
   const respMetas = await api('listarMetas', {mes, ano});
   const metas = respMetas.metas||[];
   const profissionais = estado.listas.profissionais||[];
+  const podeEditarMetas = temPermissao('editar_metas');
+  const desabilitado = podeEditarMetas ? '' : 'disabled';
   const tabela = document.getElementById('tabela-metas');
   tabela.innerHTML = `
     <thead><tr><th>Profissional</th><th>Turnos disponibilizados</th><th>Meta de valor (R$)</th><th>Meta de qtde</th><th></th></tr></thead>
@@ -2502,12 +2644,14 @@ async function atualizarTabelaMetas(mes, ano){
       const m = metas.find(x=>x.prof===prof) || {};
       return `<tr data-prof="${prof}">
         <td>${prof}</td>
-        <td><input type="number" class="input-turnos" value="${m.turnos_disponibilizados||''}" style="width:90px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
-        <td><input type="number" class="input-meta" value="${m.meta_valor||''}" style="width:120px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
-        <td><input type="number" class="input-meta-qtd" value="${m.meta_qtd||''}" style="width:100px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
-        <td><button class="botao secundario pequeno botao-salvar-meta">Salvar</button></td>
+        <td><input type="number" class="input-turnos" value="${m.turnos_disponibilizados||''}" ${desabilitado} style="width:90px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td><input type="number" class="input-meta" value="${m.meta_valor||''}" ${desabilitado} style="width:120px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td><input type="number" class="input-meta-qtd" value="${m.meta_qtd||''}" ${desabilitado} style="width:100px;padding:6px;border-radius:6px;border:1.5px solid var(--line);"></td>
+        <td>${podeEditarMetas?'<button class="botao secundario pequeno botao-salvar-meta">Salvar</button>':''}</td>
       </tr>`;
     }).join('')}</tbody>`;
+
+  if(!podeEditarMetas) return;
 
   tabela.querySelectorAll('.botao-salvar-meta').forEach(botao=>{
     botao.addEventListener('click', async (ev)=>{
@@ -2541,17 +2685,19 @@ async function salvarNota(){
 /* ---------------------------------------------------------------------
    MODAL DE EDIÇÃO / CRIAÇÃO
 --------------------------------------------------------------------- */
-function abrirModal(registro, camposPendentes){
+function abrirModal(registro, camposPendentes, contexto){
   estado.editandoId = registro ? registro.id : null;
   estado.editandoMes = registro ? registro.mes : null;
   estado.editandoAno = registro ? registro.ano : null;
+  estado.editandoContexto = contexto || 'verificar';
   document.getElementById('titulo-modal').textContent = registro ? 'Editar registro' : 'Novo registro';
   document.getElementById('grade-modal').innerHTML = definicaoCampos()
     .map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_', (camposPendentes||[]).includes(c.chave)))
     .join('');
-  // Excluir é ação exclusiva do gerente — profissional/atendente completam ou
-  // editam campos (na Crítica ou na Editar), mas nunca veem a opção de excluir.
-  document.getElementById('botao-excluir-modal').style.display = (registro && estado.papel === 'gerente') ? 'inline-flex' : 'none';
+  // Excluir depende da permissão do contexto de onde o modal foi aberto:
+  // excluir_verificar (aba Verificar) ou excluir_critica (aba Crítica).
+  const chaveExcluir = estado.editandoContexto === 'critica' ? 'excluir_critica' : 'excluir_verificar';
+  document.getElementById('botao-excluir-modal').style.display = (registro && temPermissao(chaveExcluir)) ? 'inline-flex' : 'none';
   document.getElementById('sobreposicao-modal').classList.add('aberta');
 }
 function fecharModal(){
@@ -2597,7 +2743,8 @@ document.getElementById('form-modal').addEventListener('submit', async (ev)=>{
 
 document.getElementById('botao-excluir-modal').addEventListener('click', async ()=>{
   if(!estado.editandoId) return;
-  if(estado.papel !== 'gerente'){ alert('Só o gerente pode excluir registros.'); return; }
+  const chaveExcluir = estado.editandoContexto === 'critica' ? 'excluir_critica' : 'excluir_verificar';
+  if(!temPermissao(chaveExcluir)){ alert('Você não tem permissão para excluir registros aqui.'); return; }
   if(!confirm('Excluir este registro definitivamente?')) return;
   const resp = await api('excluirProducao', {id: estado.editandoId, mes: estado.editandoMes, ano: estado.editandoAno});
   if(!resp || !resp.ok){
