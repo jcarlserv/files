@@ -752,6 +752,19 @@
         </p>
       </div>
 
+      <div class="cartao" style="max-width:720px;">
+        <h3>Direitos e Privilégios</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Além do papel de cada usuário (Gerente, Atendente, Profissional), você pode liberar
+          individualmente a edição de registros na aba <b>Verificar</b> para qualquer usuário —
+          sem precisar mudar o papel dele. Excluir registros continua exclusivo do gerente,
+          mesmo com essa permissão ligada.
+        </p>
+        <div class="tabela-scroll">
+          <table id="tabela-permissoes"></table>
+        </div>
+      </div>
+
       <div class="cartao" style="max-width:820px;">
         <h3>Importar produção em massa (CSV)</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
@@ -777,7 +790,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v1.6.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v1.7.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -851,7 +864,7 @@ const MODO_DEMO = !supabaseClient;
    ESTADO
 --------------------------------------------------------------------- */
 const estado = {
-  usuario:null, papel:null, nomeProfissional:null,
+  usuario:null, papel:null, nomeProfissional:null, podeEditarVerificar:false,
   listas:{}, abaAtiva:'lancamento',
   editandoId:null, editandoMes:null, editandoAno:null,
   conveniosSelecionados:[]
@@ -863,11 +876,11 @@ const estado = {
 const demo = {
   configuracoes: { nome_clinica: 'Clínica Cliza' },
   usuarios:[
-    {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação'},
-    {usuario:'angelina', senha:'123', papel:'profissional', nome_profissional:'ANGELINA'},
-    {usuario:'lisiene', senha:'123', papel:'profissional', nome_profissional:'LISIENE'},
-    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA'},
-    {usuario:'kaillany', senha:'123', papel:'atendente', nome_profissional:'KAILLANY'}
+    {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação', pode_editar_verificar:false},
+    {usuario:'angelina', senha:'123', papel:'profissional', nome_profissional:'ANGELINA', pode_editar_verificar:false},
+    {usuario:'lisiene', senha:'123', papel:'profissional', nome_profissional:'LISIENE', pode_editar_verificar:false},
+    {usuario:'renata', senha:'123', papel:'profissional', nome_profissional:'RENATA', pode_editar_verificar:false},
+    {usuario:'kaillany', senha:'123', papel:'atendente', nome_profissional:'KAILLANY', pode_editar_verificar:false}
   ],
   listas:{
     profissionais:['ANGELINA','AYANE CARNEIRO','CARLOTA','CLEIA','DANIELE ERTHAL','DR CARLOS AUGUSTO','DR CHARLES USG','DR MARCELO','DR MARCELO USG','DR MAURICIO','DR MAURICIO EXAMES','DR OSMAR','DRA AMANDA USG','DRA IVNA','DRA RICARLA USG','GABRIELE','ISABELLE','IZADORA ZARA','JAQUELANE PONTE','JOSEANE','KÁTIA RODRIGUES','KIMBERLY','LIA BRITO','LISIENE','MARILIA','RAFAELA MORAIS','RENATA','RONALDO GILDO','VALERIA','VICTOR MOREIRA'],
@@ -964,7 +977,7 @@ async function supabaseApi(acao, dados) {
         .eq('usuario', dados.usuario).eq('senha', dados.senha).maybeSingle();
       if(error) return {ok:false, erro:error.message};
       if(!data) return {ok:false, erro:'Usuário ou senha inválidos.'};
-      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional};
+      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional, podeEditarVerificar: !!data.pode_editar_verificar};
     }
 
     case 'listarListas': {
@@ -1095,6 +1108,23 @@ async function supabaseApi(acao, dados) {
       return {ok:true, nomeProfissional: dados.novoNome || usuario.nome_profissional};
     }
 
+    // Direitos e Privilégios — lista todo usuário que não seja gerente (o gerente já
+    // tem acesso completo por papel, não precisa de permissão individual nenhuma).
+    case 'listarUsuarios': {
+      const { data, error } = await supabaseClient.from('usuarios')
+        .select('usuario, papel, nome_profissional, pode_editar_verificar')
+        .neq('papel', 'gerente').order('nome_profissional');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, usuarios:data||[]};
+    }
+
+    case 'definirPermissaoUsuario': {
+      const { error } = await supabaseClient.from('usuarios')
+        .update({ pode_editar_verificar: !!dados.podeEditarVerificar })
+        .eq('usuario', dados.usuario);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
     case 'dashboard': {
       const respProd = await supabaseApi('listarProducao', {mes:dados.mes, ano:dados.ano});
       if(!respProd.ok) return respProd;
@@ -1135,7 +1165,18 @@ function mockApi(acao, dados) {
     case 'login': {
       const achado = demo.usuarios.find(u => u.usuario===dados.usuario && u.senha===dados.senha);
       if(!achado) return {ok:false, erro:'Usuário ou senha inválidos.'};
-      return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional};
+      return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional, podeEditarVerificar: !!achado.pode_editar_verificar};
+    }
+    case 'listarUsuarios': {
+      const usuarios = demo.usuarios.filter(u=>u.papel!=='gerente')
+        .map(u=>({usuario:u.usuario, papel:u.papel, nome_profissional:u.nome_profissional, pode_editar_verificar: !!u.pode_editar_verificar}));
+      return {ok:true, usuarios};
+    }
+    case 'definirPermissaoUsuario': {
+      const usuario = demo.usuarios.find(u=>u.usuario===dados.usuario);
+      if(!usuario) return {ok:false, erro:'Usuário não encontrado.'};
+      usuario.pode_editar_verificar = !!dados.podeEditarVerificar;
+      return {ok:true};
     }
     case 'listarListas': {
       const copiaListas = {};
@@ -1424,7 +1465,8 @@ const CHAVE_SESSAO = 'prodclin_sessao';
 function salvarSessao(){
   try{
     localStorage.setItem(CHAVE_SESSAO, JSON.stringify({
-      usuario: estado.usuario, papel: estado.papel, nomeProfissional: estado.nomeProfissional
+      usuario: estado.usuario, papel: estado.papel, nomeProfissional: estado.nomeProfissional,
+      podeEditarVerificar: estado.podeEditarVerificar
     }));
   }catch(e){ /* navegador pode bloquear localStorage (ex.: modo privado) — segue sem persistir sessão */ }
 }
@@ -1456,6 +1498,7 @@ if(MODO_DEMO){
   estado.usuario = sessao.usuario;
   estado.papel = sessao.papel;
   estado.nomeProfissional = sessao.nomeProfissional;
+  estado.podeEditarVerificar = !!sessao.podeEditarVerificar;
   iniciarApp().catch(()=>limparSessao());
 })();
 
@@ -1471,6 +1514,7 @@ document.getElementById('form-login').addEventListener('submit', async (ev)=>{
     estado.usuario = resp.usuario;
     estado.papel = resp.papel;
     estado.nomeProfissional = resp.nomeProfissional;
+    estado.podeEditarVerificar = !!resp.podeEditarVerificar;
     salvarSessao();
     await iniciarApp();
   }catch(e){
@@ -1595,7 +1639,7 @@ function mostrarErroInicializacao(mensagem){
 function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
   const abasDisponiveis = [{id:'lancamento', rotulo:'Lançamento'}, {id:'critica', rotulo:'Crítica'}];
-  if(estado.papel === 'gerente' || estado.papel === 'atendente'){
+  if(estado.papel === 'gerente' || estado.papel === 'atendente' || estado.podeEditarVerificar){
     // Atendente vê a aba Editar em modo só-consulta (sem "+ Novo registro" e sem
     // o botão "Editar" por linha) — ver toggle de visibilidade em preencherSelectsPeriodo().
     abasDisponiveis.splice(1, 0, {id:'editar', rotulo:'Verificar'});
@@ -1752,7 +1796,7 @@ function preencherSelectsPeriodo(){
 
   document.getElementById('botao-novo-registro-gerencial').addEventListener('click', ()=>abrirModal(null));
   // Atendente consulta a aba Editar, mas não cria/edita/exclui registros.
-  document.getElementById('botao-novo-registro-gerencial').style.display = (estado.papel==='gerente') ? 'inline-flex' : 'none';
+  document.getElementById('botao-novo-registro-gerencial').style.display = (estado.papel==='gerente' || estado.podeEditarVerificar) ? 'inline-flex' : 'none';
   document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
 
   document.getElementById('filtro-data-inicio').addEventListener('change', atualizarEditar);
@@ -2008,7 +2052,7 @@ async function atualizarEditar(){
     <div class="kpi"><div class="rotulo">Total${estado.conveniosSelecionados.length?' filtrado':''}</div><div class="valor teal" id="resumo-fp-total">${formatarMoeda(totalGeral)}</div></div>
   `;
 
-  const podeEditar = estado.papel === 'gerente';
+  const podeEditar = estado.papel === 'gerente' || estado.podeEditarVerificar;
   const tabela = document.getElementById('tabela-gerencial');
   if(registros.length===0){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
@@ -2160,6 +2204,50 @@ async function atualizarConfiguracoes(){
   document.getElementById('config-nome-clinica').value = nomeClinicaAtual;
   prepararSelectListaConfig();
   renderizarItensListaConfig();
+  await carregarPermissoes();
+}
+
+/* ---------------------------------------------------------------------
+   DIREITOS E PRIVILÉGIOS — liberar edição na aba Verificar por usuário,
+   independente do papel dele (gerente sempre tem acesso completo).
+--------------------------------------------------------------------- */
+async function carregarPermissoes(){
+  const tabela = document.getElementById('tabela-permissoes');
+  tabela.innerHTML = '<tr><td class="vazio">Carregando usuários...</td></tr>';
+  const resp = await api('listarUsuarios', {});
+  if(!resp.ok){
+    tabela.innerHTML = `<tr><td class="vazio">${resp.erro || 'Não foi possível carregar os usuários.'}</td></tr>`;
+    return;
+  }
+  const usuarios = resp.usuarios || [];
+  if(usuarios.length===0){
+    tabela.innerHTML = '<tr><td class="vazio">Nenhum usuário além do gerente cadastrado ainda.</td></tr>';
+    return;
+  }
+  const rotuloPapel = p => p==='atendente' ? 'Atendente' : (p==='profissional' ? 'Profissional' : p);
+  tabela.innerHTML = `
+    <thead><tr><th>Nome</th><th>Usuário</th><th>Papel</th><th>Pode editar em Verificar</th></tr></thead>
+    <tbody>${usuarios.map(u=>`
+      <tr data-usuario="${u.usuario}">
+        <td>${u.nome_profissional || u.usuario}</td>
+        <td class="mono">${u.usuario}</td>
+        <td><span class="tag">${rotuloPapel(u.papel)}</span></td>
+        <td><input type="checkbox" class="chk-permissao-editar" ${u.pode_editar_verificar?'checked':''}></td>
+      </tr>`).join('')}</tbody>`;
+
+  tabela.querySelectorAll('.chk-permissao-editar').forEach(chk=>{
+    chk.addEventListener('change', async ()=>{
+      const usuario = chk.closest('tr').dataset.usuario;
+      const valorAnterior = !chk.checked;
+      chk.disabled = true;
+      const resp = await api('definirPermissaoUsuario', {usuario, podeEditarVerificar: chk.checked});
+      chk.disabled = false;
+      if(!resp.ok){
+        alert(resp.erro || 'Não foi possível salvar essa permissão.');
+        chk.checked = valorAnterior; // desfaz visualmente se a gravação falhou
+      }
+    });
+  });
 }
 
 function prepararSelectListaConfig(){
