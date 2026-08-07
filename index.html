@@ -769,9 +769,10 @@
         <h3>Importar produção em massa (CSV)</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
           Importa um arquivo <code>.csv</code> exportado da planilha direto para a tabela de produção do Supabase.
-          Colunas aceitas no cabeçalho: <b>andar, prof, data, turno, paciente, protocolo, procedimento, exames,
-          biopsias, convenio, valor, forma_pagamento, atendente</b>. A data pode estar em <code>dd/mm/aaaa</code>
-          ou <code>aaaa-mm-dd</code>; o valor aceita vírgula ou ponto como separador decimal.
+          Colunas aceitas no cabeçalho: <b>andar, prof, data, turno, paciente, protocolo, carteirinha,
+          procedimento, exames, biopsias, convenio, valor, forma_pagamento, atendente</b>. A data pode
+          estar em <code>dd/mm/aaaa</code> ou <code>aaaa-mm-dd</code>; o valor aceita vírgula ou ponto
+          como separador decimal.
         </p>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <input type="file" id="input-importar-csv" accept=".csv,text/csv" />
@@ -790,7 +791,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.0.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.1.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1915,6 +1916,7 @@ function definicaoCampos(){
     {chave:'exames', rotulo:'Exame', tipo:'select', opcoes:L.exames},
     {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
     {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios, obrigatorio:true},
+    {chave:'carteirinha', rotulo:'Carteirinha', tipo:'text'},
     {chave:'valor', rotulo:'Valor (R$)', tipo:'number', obrigatorio:true},
     {chave:'forma_pagamento', rotulo:'Forma de pagamento', tipo:'select', opcoes:L.formas_pagamento, obrigatorio:true},
     {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes, obrigatorio:true}
@@ -2143,7 +2145,7 @@ async function atualizarEditar(){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
   } else {
     tabela.innerHTML = `
-      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th>${podeEditar?'<th></th>':''}</tr></thead>
+      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Carteirinha</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th>${podeEditar?'<th></th>':''}</tr></thead>
       <tbody>${registros.map((r,i)=>`
         <tr>
           <td>${formatarDataExibicao(r.data)}</td>
@@ -2152,6 +2154,7 @@ async function atualizarEditar(){
           <td>${r.paciente||''}</td>
           <td>${r.procedimento||''}</td>
           <td>${r.convenio||'—'}</td>
+          <td class="mono">${r.carteirinha||'—'}</td>
           <td>${r.forma_pagamento||'—'}</td>
           <td class="mono">${formatarMoeda(r.valor)}</td>
           <td>${r.atendente||''}</td>
@@ -2460,7 +2463,7 @@ document.getElementById('botao-salvar-config').addEventListener('click', async (
 /* ---------------------------------------------------------------------
    IMPORTAÇÃO EM MASSA DE PRODUÇÃO VIA CSV
 --------------------------------------------------------------------- */
-const COLUNAS_PRODUCAO_ACEITAS = ['andar','prof','data','turno','paciente','protocolo','procedimento','exames','biopsias','convenio','valor','forma_pagamento','atendente'];
+const COLUNAS_PRODUCAO_ACEITAS = ['andar','prof','data','turno','paciente','protocolo','carteirinha','procedimento','exames','biopsias','convenio','valor','forma_pagamento','atendente'];
 const ALIAS_CABECALHO_PRODUCAO = {
   'forma_de_pagamento':'forma_pagamento',
   'forma_pagto':'forma_pagamento',
