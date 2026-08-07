@@ -297,6 +297,23 @@
     50%{left:40%;width:45%;}
     100%{left:100%;width:30%;}
   }
+
+  /* ---------- IMPRESSÃO / EXPORTAR PDF ----------
+     "Exportar PDF" só chama window.print() — sem biblioteca externa nenhuma. Esse bloco
+     esconde tudo que não faz sentido no papel (menu, filtros, botões de ação, rodapé) e
+     deixa só o conteúdo da aba aberta na hora (o resto já está com display:none pelo
+     próprio CSS de abas, então não precisa fazer nada especial pra "escolher" a aba). */
+  @media print{
+    #barra-progresso-topo, #faixa-demo, header.topo, footer.rodape-sistema,
+    .filtros, .celula-acoes, .sobreposicao, .botao-multiselect, .painel-multiselect{
+      display:none !important;
+    }
+    body{background:#fff;}
+    main{padding:0;max-width:100%;}
+    .cartao, .kpi{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}
+    .painel{display:none;}
+    .painel.ativo{display:block;}
+  }
 </style>
 </head>
 <body>
@@ -353,6 +370,7 @@
           <h2>Lançamento</h2>
           <p>Registre um atendimento realizado. Os campos com seta são padronizados por lista.</p>
         </div>
+        <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
       </div>
       <div class="cartao">
         <h3>Novo registro</h3>
@@ -408,6 +426,7 @@
             </div>
             <button class="botao secundario" id="botao-novo-registro-gerencial">+ Novo registro</button>
             <button class="botao sutil pequeno" id="botao-limpar-periodo">Limpar período</button>
+            <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
           </div>
         </div>
 
@@ -440,6 +459,7 @@
               <label>Profissional</label>
               <select id="filtro-prof-critica"><option value="">Todos</option></select>
             </div>
+            <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
           </div>
         </div>
       </div>
@@ -485,6 +505,7 @@
             <label>Ano</label>
             <select id="filtro-ano-metas"></select>
           </div>
+          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
         </div>
       </div>
 
@@ -522,6 +543,7 @@
             <label>Andar</label>
             <select id="filtro-andar-dashboard"><option value="">Todos</option></select>
           </div>
+          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
         </div>
       </div>
 
@@ -592,6 +614,7 @@
             <label>Andar</label>
             <select id="filtro-andar-analises"><option value="">Todos</option></select>
           </div>
+          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
         </div>
       </div>
 
@@ -642,7 +665,7 @@
           <div class="campo"><label>Mês</label><select id="rmr-mes"></select></div>
           <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
           <div class="campo"><label>Andar</label><select id="rmr-andar"><option value="">Todos</option></select></div>
-          <button class="botao sutil pequeno" id="rmr-botao-imprimir">Imprimir / PDF</button>
+          <button class="botao sutil pequeno botao-exportar-pdf" id="rmr-botao-imprimir">Exportar PDF</button>
         </div>
       </div>
 
@@ -715,6 +738,7 @@
           <h2>Configurações</h2>
           <p>Dados gerais do sistema, salvos no Supabase.</p>
         </div>
+        <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
       </div>
 
       <div class="cartao" style="max-width:480px;">
@@ -791,7 +815,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.1.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.2.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1879,6 +1903,7 @@ function preencherSelectsPeriodo(){
   // "+ Novo registro" segue a permissão fragmentada criar_verificar (gerente sempre tem).
   document.getElementById('botao-novo-registro-gerencial').style.display = temPermissao('criar_verificar') ? 'inline-flex' : 'none';
   document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
+  document.querySelectorAll('.botao-exportar-pdf').forEach(b=>b.addEventListener('click', ()=>window.print()));
 
   document.getElementById('filtro-data-inicio').addEventListener('change', atualizarEditar);
   document.getElementById('filtro-data-fim').addEventListener('change', atualizarEditar);
@@ -3059,7 +3084,6 @@ function rmrPrepararSelects(){
   selAndar.addEventListener('change', atualizarRMR);
   document.getElementById('rmr-busca-detalhe').addEventListener('input', rmrFiltrarTabelaDetalhe);
   document.getElementById('rmr-botao-salvar-nota').addEventListener('click', rmrSalvarNota);
-  document.getElementById('rmr-botao-imprimir').addEventListener('click', ()=>window.print());
   rmrSelectsProntos = true;
 }
 
