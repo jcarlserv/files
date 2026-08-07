@@ -790,7 +790,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.0.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.0.1</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1185,7 +1185,7 @@ async function supabaseApi(acao, dados) {
     // com a permissão EFETIVA de cada chave (padrão do papel + sobrescritas).
     case 'listarPermissoesTodos': {
       const { data: usuarios, error: errUsuarios } = await supabaseClient.from('usuarios')
-        .select('usuario, papel, nome_profissional').neq('papel', 'gerente').order('nome_profissional');
+        .select('usuario, papel, nome_profissional').order('nome_profissional');
       if(errUsuarios) return {ok:false, erro:errUsuarios.message};
       const { data: todasSobrescritas, error: errPerm } = await supabaseClient.from('permissoes').select('*');
       if(errPerm) return {ok:false, erro:errPerm.message};
@@ -1247,7 +1247,7 @@ function mockApi(acao, dados) {
       return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional, permissoes};
     }
     case 'listarPermissoesTodos': {
-      const usuarios = demo.usuarios.filter(u=>u.papel!=='gerente').map(u=>{
+      const usuarios = demo.usuarios.map(u=>{
         const sobrescritas = demo.permissoes.filter(p=>p.usuario===u.usuario);
         return {usuario:u.usuario, papel:u.papel, nome_profissional:u.nome_profissional, permissoes: calcularPermissoesEfetivas(u.papel, sobrescritas)};
       });
@@ -2355,7 +2355,7 @@ CREATE POLICY acesso_total_anon ON permissoes FOR ALL USING (true) WITH CHECK (t
     tabela.innerHTML = '<tr><td class="vazio">Nenhum usuário além do gerente cadastrado ainda.</td></tr>';
     return;
   }
-  const rotuloPapel = p => p==='atendente' ? 'Atendente' : (p==='profissional' ? 'Profissional' : p);
+  const rotuloPapel = p => p==='atendente' ? 'Atendente' : (p==='profissional' ? 'Profissional' : (p==='gerente' ? 'Gerente' : p));
   const grupos = agruparPermissoesPorTela();
   const linhaGrupos = grupos.map(g=>`<th colspan="${g.itens.length}" style="text-align:center;border-left:2px solid var(--line);">${g.tela}</th>`).join('');
   const linhaColunas = grupos.map(g=>g.itens.map(p=>`<th style="text-align:center;font-size:10.5px;border-left:${g.itens.indexOf(p)===0?'2px solid var(--line)':'none'};">${p.rotulo}</th>`).join('')).join('');
@@ -2365,13 +2365,16 @@ CREATE POLICY acesso_total_anon ON permissoes FOR ALL USING (true) WITH CHECK (t
       <tr><th rowspan="2">Nome</th><th rowspan="2">Usuário</th><th rowspan="2">Papel</th>${linhaGrupos}</tr>
       <tr>${linhaColunas}</tr>
     </thead>
-    <tbody>${usuarios.map(u=>`
+    <tbody>${usuarios.map(u=>{
+      const ehGerente = u.papel === 'gerente';
+      return `
       <tr data-usuario="${u.usuario}">
         <td>${u.nome_profissional || u.usuario}</td>
         <td class="mono">${u.usuario}</td>
         <td><span class="tag">${rotuloPapel(u.papel)}</span></td>
-        ${DEFINICAO_PERMISSOES.map((p,i)=>`<td style="text-align:center;border-left:${grupos.some(g=>g.itens[0]===p)?'2px solid var(--line)':'none'};"><input type="checkbox" class="chk-permissao" data-chave="${p.chave}" ${u.permissoes[p.chave]?'checked':''}></td>`).join('')}
-      </tr>`).join('')}</tbody>`;
+        ${DEFINICAO_PERMISSOES.map((p,i)=>`<td style="text-align:center;border-left:${grupos.some(g=>g.itens[0]===p)?'2px solid var(--line)':'none'};" ${ehGerente?'title="Gerente sempre tem acesso total — não editável aqui."':''}><input type="checkbox" class="chk-permissao" data-chave="${p.chave}" ${(ehGerente || u.permissoes[p.chave])?'checked':''} ${ehGerente?'disabled':''}></td>`).join('')}
+      </tr>`;
+    }).join('')}</tbody>`;
 
   tabela.querySelectorAll('.chk-permissao').forEach(chk=>{
     chk.addEventListener('change', async ()=>{
