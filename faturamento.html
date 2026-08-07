@@ -68,6 +68,25 @@
   .aba.ativa{background:var(--bg);color:var(--plum-900);z-index:2;}
   .aba:hover:not(.ativa){color:#fff;}
 
+  .info-usuario{display:flex;align-items:center;gap:14px;padding-bottom:14px;}
+  .info-usuario span{font-size:13px;color:var(--plum-300);}
+  .info-usuario span b{color:#fff;}
+
+  /* Sub-navegação interna do módulo Faturamento (Importar/Consultar/Resumo) —
+     mais discreta que a barra principal, pra deixar claro que é um segundo
+     nível de navegação dentro da aba Faturamento já selecionada em cima. */
+  nav.sub-abas{
+    display:flex;gap:6px;padding:14px 32px 0;max-width:1320px;margin:0 auto;width:100%;
+    box-sizing:border-box;
+  }
+  .sub-aba{
+    background:transparent;color:var(--ink-400);border:1.5px solid var(--line);cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;padding:9px 18px;
+    border-radius:9px 9px 0 0;border-bottom:none;
+  }
+  .sub-aba.ativa{background:var(--card);color:var(--plum-900);border-color:var(--line);}
+  .sub-aba:hover:not(.ativa){color:var(--plum-700);}
+
   main{flex:1;padding:32px;max-width:1320px;width:100%;margin:0 auto;}
   .painel{display:none;}
   .painel.ativo{display:block;animation:surgir .25s ease;}
@@ -167,12 +186,18 @@
     <div class="selo">C</div>
     <div><h2>ProdClin</h2><span>Faturamento (Unimed)</span></div>
   </div>
-  <nav class="abas" id="nav-abas">
-    <button class="aba ativa" data-aba="importar">Importar PDF</button>
-    <button class="aba" data-aba="consultar">Consultar</button>
-    <button class="aba" data-aba="resumo">Resumo por competência</button>
-  </nav>
+  <nav class="abas" id="nav-abas"></nav>
+  <div class="info-usuario">
+    <span>Logado como <b id="nome-usuario-topo"></b></span>
+    <button class="botao sutil pequeno" id="botao-sair">Sair</button>
+  </div>
 </header>
+
+<nav class="sub-abas" id="sub-abas">
+  <button class="sub-aba ativa" data-sub="importar">Importar PDF</button>
+  <button class="sub-aba" data-sub="consultar">Consultar</button>
+  <button class="sub-aba" data-sub="resumo">Resumo por competência</button>
+</nav>
 
 <main>
 
@@ -281,6 +306,86 @@ const MODO_DEMO = !supabaseClient;
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 const formatarMoeda = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+/* =====================================================================
+   SESSÃO COMPARTILHADA COM O index.html
+   Este arquivo não tem tela de login própria — ele lê a mesma sessão que
+   o index.html grava no localStorage (chave 'prodclin_sessao'), já que os
+   dois arquivos vivem no mesmo domínio (GitHub Pages). Se não achar
+   sessão nenhuma, manda a pessoa logar no index.html primeiro.
+===================================================================== */
+const CHAVE_SESSAO = 'prodclin_sessao';
+function carregarSessaoSalva(){
+  try{
+    const bruto = localStorage.getItem(CHAVE_SESSAO);
+    return bruto ? JSON.parse(bruto) : null;
+  }catch(e){ return null; }
+}
+const sessao = carregarSessaoSalva();
+if(!sessao || !sessao.usuario){
+  location.href = 'index.html';
+}
+// Mesmo atalho de permissão do index.html: gerente sempre pode; outro
+// papel só se a permissão efetiva daquela chave estiver marcada.
+function temPermissao(chave){
+  return sessao && (sessao.papel === 'gerente' || !!(sessao.permissoes||{})[chave]);
+}
+if(sessao && !temPermissao('ver_faturamento')){
+  document.body.innerHTML = `<div style="display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;">
+    <div class="cartao" style="max-width:420px;text-align:center;">
+      <h3 style="color:var(--danger);">Sem acesso a esta página</h3>
+      <p style="color:var(--ink-600);">Seu usuário não tem permissão para ver o Faturamento. Peça ao gerente para liberar em Configurações → Direitos e Privilégios.</p>
+      <a class="botao secundario" href="index.html" style="margin-top:10px;">Voltar ao ProdClin</a>
+    </div>
+  </div>`;
+  throw new Error('Sem permissão ver_faturamento');
+}
+
+/* ---------------------------------------------------------------------
+   BARRA PRINCIPAL DE ABAS — mesma lista do index.html. Clicar em qualquer
+   uma que não seja "Faturamento" volta pro index.html naquela aba
+   (via #hash, que o index.html já sabe interpretar ao carregar).
+--------------------------------------------------------------------- */
+function montarNavegacaoPrincipal(){
+  const TODAS_ABAS = [
+    {id:'lancamento', rotulo:'Lançamento', chave:'ver_lancamento'},
+    {id:'editar', rotulo:'Verificar', chave:'ver_verificar'},
+    {id:'critica', rotulo:'Crítica', chave:'ver_critica'},
+    {id:'metas', rotulo:'Metas', chave:'ver_metas'},
+    {id:'dashboard', rotulo:'Dashboard', chave:'ver_dashboard'},
+    {id:'analises', rotulo:'Análises', chave:'ver_analises'},
+    {id:'rmr', rotulo:'RMR', chave:'ver_rmr'},
+    {id:'faturamento', rotulo:'Faturamento', chave:'ver_faturamento', local:true},
+    {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
+  ];
+  const nav = document.getElementById('nav-abas');
+  nav.innerHTML = '';
+  TODAS_ABAS.filter(a=>temPermissao(a.chave)).forEach(a=>{
+    const botao = document.createElement('button');
+    botao.className = 'aba' + (a.local ? ' ativa' : '');
+    botao.textContent = a.rotulo;
+    if(!a.local) botao.addEventListener('click', ()=>{ location.href = 'index.html#'+a.id; });
+    nav.appendChild(botao);
+  });
+  document.getElementById('nome-usuario-topo').textContent = sessao.nomeProfissional || sessao.usuario;
+}
+document.getElementById('botao-sair').addEventListener('click', ()=>{
+  try{ localStorage.removeItem(CHAVE_SESSAO); }catch(e){}
+  location.href = 'index.html';
+});
+if(sessao) montarNavegacaoPrincipal();
+
+/* ---------------------------------------------------------------------
+   SUB-ABAS internas do módulo (Importar / Consultar / Resumo)
+--------------------------------------------------------------------- */
+document.querySelectorAll('.sub-aba').forEach(botao=>{
+  botao.addEventListener('click', ()=>{
+    document.querySelectorAll('.sub-aba').forEach(b=>b.classList.toggle('ativa', b===botao));
+    document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativo'));
+    document.getElementById('painel-'+botao.dataset.sub).classList.add('ativo');
+    if(botao.dataset.sub==='resumo') carregarCompetencias();
+  });
+});
 
 /* ---------------------------------------------------------------------
    BARRA DE PROGRESSO GLOBAL (mesmo padrão do index.html)
@@ -777,17 +882,9 @@ async function mockApi(acao, dados){
 }
 
 /* =====================================================================
-   PARTE 5 — NAVEGAÇÃO ENTRE ABAS + CONSULTA
+   PARTE 5 — CONSULTA (a troca de sub-abas já é tratada mais acima,
+   junto do carregamento de sessão/permissões)
 ===================================================================== */
-document.querySelectorAll('.aba').forEach(botao=>{
-  botao.addEventListener('click', ()=>{
-    document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b===botao));
-    document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativo'));
-    document.getElementById('painel-'+botao.dataset.aba).classList.add('ativo');
-    if(botao.dataset.aba==='resumo') carregarCompetencias();
-  });
-});
-
 document.getElementById('botao-buscar-faturamento').addEventListener('click', buscarFaturamento);
 document.getElementById('busca-faturamento').addEventListener('keydown', e=>{ if(e.key==='Enter') buscarFaturamento(); });
 
