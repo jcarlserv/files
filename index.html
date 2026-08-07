@@ -908,6 +908,7 @@ const DEFINICAO_PERMISSOES = [
   {tela:'Dashboard',      chave:'ver_dashboard',           rotulo:'Ver'},
   {tela:'Análises',       chave:'ver_analises',            rotulo:'Ver'},
   {tela:'RMR',            chave:'ver_rmr',                 rotulo:'Ver'},
+  {tela:'Faturamento',    chave:'ver_faturamento',         rotulo:'Ver'},
   {tela:'Configurações',  chave:'ver_configuracoes',       rotulo:'Ver'},
   {tela:'Configurações',  chave:'editar_configuracoes',    rotulo:'Editar'}
 ];
@@ -921,6 +922,10 @@ const PERMISSOES_PADRAO_POR_PAPEL = {
     ver_lancamento:true, ver_critica:true, editar_critica:true,
     ver_verificar:true, ver_financeiro_verificar:true
   }
+  // ver_faturamento não entra em nenhum pacote padrão de propósito — só o
+  // gerente enxerga a aba Faturamento por padrão. Pra liberar pra alguém
+  // específico, o gerente liga essa chave manualmente em Direitos e
+  // Privilégios (ela já aparece lá por estar em DEFINICAO_PERMISSOES).
 };
 
 // Combina o pacote padrão do papel com qualquer sobrescrita individual
@@ -1565,6 +1570,10 @@ function miniGraficoLinhas(idContainer, labels, series){
    piora a segurança do sistema em relação ao que já existia: hoje o
    controle de acesso real depende só da tela de login mesmo (ver
    observação sobre RLS/Supabase Auth no prompt de arquitetura).
+
+   Essa mesma chave (CHAVE_SESSAO) também é lida pelo faturamento.html —
+   como os dois arquivos ficam no mesmo domínio, o Faturamento consegue
+   saber quem está logado sem pedir login de novo.
 --------------------------------------------------------------------- */
 const CHAVE_SESSAO = 'prodclin_sessao';
 
@@ -1741,6 +1750,12 @@ function mostrarErroInicializacao(mensagem){
 
 /* ---------------------------------------------------------------------
    NAVEGAÇÃO ENTRE ABAS
+
+   A aba "Faturamento" é diferente das outras: em vez de trocar um painel
+   dentro desta mesma página, ela navega para o arquivo faturamento.html
+   (um HTML separado, ver prompt de migração). Por isso ela tem
+   `externo: 'faturamento.html'` na definição — quando uma aba tem esse
+   campo, o clique faz location.href em vez de trocarAba().
 --------------------------------------------------------------------- */
 function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
@@ -1752,6 +1767,7 @@ function montarNavegacao(){
     {id:'dashboard', rotulo:'Dashboard', chave:'ver_dashboard'},
     {id:'analises', rotulo:'Análises', chave:'ver_analises'},
     {id:'rmr', rotulo:'RMR', chave:'ver_rmr'},
+    {id:'faturamento', rotulo:'Faturamento', chave:'ver_faturamento', externo:'faturamento.html'},
     {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
   ];
   const abasDisponiveis = TODAS_ABAS.filter(a => temPermissao(a.chave));
@@ -1761,12 +1777,27 @@ function montarNavegacao(){
     botao.className = 'aba' + (i===0 ? ' ativa':'');
     botao.textContent = a.rotulo;
     botao.dataset.aba = a.id;
-    botao.addEventListener('click', ()=>trocarAba(a.id));
+    if(a.externo){
+      botao.addEventListener('click', ()=>{ location.href = a.externo; });
+    } else {
+      botao.addEventListener('click', ()=>trocarAba(a.id));
+    }
     nav.appendChild(botao);
   });
-  estado.abaAtiva = abasDisponiveis.length ? abasDisponiveis[0].id : 'lancamento';
+  // A aba ativa por padrão ao abrir é sempre a primeira interna (nunca a
+  // Faturamento, já que ela nem tem painel local pra ativar).
+  const primeiraInterna = abasDisponiveis.find(a=>!a.externo);
+  estado.abaAtiva = primeiraInterna ? primeiraInterna.id : 'lancamento';
+  document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b.dataset.aba===estado.abaAtiva));
   const painelAtivo = document.getElementById('painel-'+estado.abaAtiva);
   if(painelAtivo) painelAtivo.classList.add('ativo');
+
+  // Deep-link: se a página foi aberta com #editar, #rmr etc. (ex.: clicando
+  // em "Verificar" a partir do faturamento.html), abre direto naquela aba.
+  const abaPelaHash = location.hash.replace('#','');
+  if(abaPelaHash && abasDisponiveis.some(a=>a.id===abaPelaHash && !a.externo)){
+    trocarAba(abaPelaHash);
+  }
 }
 
 async function trocarAba(idAba){
