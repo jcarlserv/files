@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ProdClin — Faturamento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Bloco de estilo copiado do index.html (v2.2.0) — mesmas
+   variáveis, tipografia e componentes (.cartao, .kpi, .tag,
+   .tabela-scroll etc.), para manter consistência visual total
+   com o sistema principal. Não recriar do zero.
+============================================================ */
+  :root{
+    --plum-900:#3D1636;
+    --plum-800:#4A1D45;
+    --plum-700:#5C2350;
+    --plum-500:#8A3D79;
+    --plum-300:#C495B8;
+    --rose-100:#F6ECF2;
+    --bg:#FAFAF8;
+    --card:#FFFFFF;
+    --teal-700:#0E5548;
+    --teal-600:#146B5D;
+    --teal-100:#E3F2EE;
+    --gold-600:#9C6E22;
+    --gold-500:#B9862E;
+    --gold-100:#F7EEDD;
+    --ink-900:#241522;
+    --ink-600:#5B4A57;
+    --ink-400:#8B7A87;
+    --line:#E7DDE4;
+    --danger:#B23A3A;
+    --danger-100:#F8E9E9;
+    --radius:14px;
+    --shadow:0 2px 10px rgba(61,22,54,0.07), 0 8px 24px rgba(61,22,54,0.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink-900);font-family:'Inter',sans-serif;min-height:100vh;}
+  h1,h2,h3,.display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--plum-300);color:var(--plum-900);}
+
+  header.topo{
+    background:var(--plum-900);color:#fff;padding:18px 32px 0;
+    display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;
+  }
+  .marca-topo{display:flex;align-items:center;gap:12px;padding-bottom:14px;}
+  .marca-topo .selo{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,var(--plum-500),var(--teal-600));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    font-family:'Fraunces',serif;font-weight:700;font-size:16px;
+  }
+  .marca-topo div h2{margin:0;font-size:17px;font-weight:600;}
+  .marca-topo div span{font-size:11.5px;color:var(--plum-300);}
+
+  nav.abas{display:flex;gap:2px;padding-bottom:0;}
+  .aba{
+    background:rgba(255,255,255,0.06);color:var(--plum-300);border:none;cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:600;padding:12px 26px 12px;
+    clip-path:polygon(10% 0, 100% 0, 92% 100%, 0% 100%);margin-right:-14px;position:relative;
+  }
+  .aba:first-child{clip-path:polygon(0 0, 100% 0, 92% 100%, 0% 100%);margin-left:0;}
+  .aba.ativa{background:var(--bg);color:var(--plum-900);z-index:2;}
+  .aba:hover:not(.ativa){color:#fff;}
+
+  main{flex:1;padding:32px;max-width:1320px;width:100%;margin:0 auto;}
+  .painel{display:none;}
+  .painel.ativo{display:block;animation:surgir .25s ease;}
+  @keyframes surgir{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  .cabecalho-painel{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
+  .cabecalho-painel h2{margin:0;font-size:24px;color:var(--plum-900);font-weight:600;}
+  .cabecalho-painel p{margin:4px 0 0;color:var(--ink-400);font-size:13.5px;}
+
+  .filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .campo{margin-bottom:0;min-width:140px;}
+  .campo label{
+    display:block;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:var(--ink-600);
+    margin-bottom:6px;text-transform:uppercase;
+  }
+  .campo input, .campo select{
+    width:100%;padding:11px 13px;border-radius:9px;border:1.5px solid var(--line);
+    font-size:15px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink-900);
+  }
+  .campo input:focus, .campo select:focus{outline:none;border-color:var(--plum-500);}
+
+  .botao{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--plum-800);color:#fff;border:none;border-radius:9px;
+    padding:12px 20px;font-size:14.5px;font-weight:600;cursor:pointer;
+    font-family:'Inter',sans-serif;transition:background .15s, transform .05s;
+  }
+  .botao:hover{background:var(--plum-700);}
+  .botao:disabled{background:var(--line);color:var(--ink-400);cursor:not-allowed;}
+  .botao.secundario{background:var(--rose-100);color:var(--plum-800);}
+  .botao.secundario:hover{background:#efdbe8;}
+  .botao.sutil{background:transparent;color:var(--ink-600);border:1.5px solid var(--line);}
+  .botao.sutil:hover{border-color:var(--plum-500);color:var(--plum-800);}
+  .botao.pequeno{padding:7px 12px;font-size:13px;border-radius:7px;}
+
+  .cartao{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px;}
+  .cartao h3{margin:0 0 18px;font-size:16px;color:var(--plum-900);font-weight:600;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{
+    text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);color:var(--ink-600);
+    font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;
+  }
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink-900);white-space:nowrap;}
+  tbody tr:hover{background:var(--rose-100);}
+  tbody tr.linha-total td{font-weight:700;background:var(--rose-100);border-top:2px solid var(--plum-300);}
+  .tabela-scroll{overflow-x:auto;}
+  .tag{display:inline-block;padding:3px 9px;border-radius:100px;font-size:11.5px;font-weight:600;background:var(--teal-100);color:var(--teal-700);}
+  .tag.tag-alerta{background:var(--gold-100);color:var(--gold-600);}
+  .tag.tag-perigo{background:var(--danger-100);color:var(--danger);}
+  .vazio{text-align:center;color:var(--ink-400);padding:40px 20px;font-size:14px;}
+
+  .grade-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:22px;}
+  .kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;}
+  .kpi .rotulo{font-size:12px;color:var(--ink-400);text-transform:uppercase;letter-spacing:.03em;font-weight:600;}
+  .kpi .valor{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--plum-900);margin-top:8px;}
+  .kpi .valor.teal{color:var(--teal-700);}
+  .kpi .valor.gold{color:var(--gold-600);}
+  .kpi .valor.danger{color:var(--danger);}
+
+  #barra-progresso-topo{position:fixed;top:0;left:0;width:100%;height:3px;z-index:200;overflow:hidden;display:none;}
+  #barra-progresso-topo.ativa{display:block;}
+  #barra-progresso-topo .filete{
+    position:absolute;top:0;left:-30%;width:30%;height:100%;
+    background:linear-gradient(90deg,var(--plum-500),var(--teal-600));
+    animation:deslizar-progresso 1s ease-in-out infinite;
+  }
+  @keyframes deslizar-progresso{0%{left:-30%;width:30%;}50%{left:40%;width:45%;}100%{left:100%;width:30%;}}
+
+  .zona-upload{
+    border:2px dashed var(--line);border-radius:12px;padding:32px;text-align:center;
+    background:var(--rose-100);margin-bottom:16px;
+  }
+  .zona-upload.arrastando{border-color:var(--plum-500);background:#efdbe8;}
+  .barra-import{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:14px;}
+  .barra-import > div{height:100%;width:0%;background:var(--teal-600);transition:width .2s;}
+  .caixa-conferencia{
+    background:var(--gold-100);border:1.5px solid var(--gold-500);border-radius:10px;
+    padding:16px 18px;margin-top:14px;font-size:13.5px;color:var(--ink-900);
+  }
+  .caixa-conferencia.ok{background:var(--teal-100);border-color:var(--teal-600);}
+  .caixa-conferencia b{display:block;margin-bottom:6px;color:var(--plum-900);}
+  .rodape-sistema{
+    display:flex;justify-content:center;align-items:center;gap:8px;padding:16px 24px;
+    color:var(--ink-400);font-size:12px;border-top:1px solid var(--line);
+  }
+  .rodape-sistema b{color:var(--ink-600);font-weight:600;}
+
+  @media (max-width:720px){main{padding:18px;}header.topo{padding:16px 16px 0;}.aba{padding:10px 16px;font-size:13px;}}
+</style>
+</head>
+<body>
+<div id="barra-progresso-topo"><div class="filete"></div></div>
+
+<header class="topo">
+  <div class="marca-topo">
+    <div class="selo">C</div>
+    <div><h2>ProdClin</h2><span>Faturamento (Unimed)</span></div>
+  </div>
+  <nav class="abas" id="nav-abas">
+    <button class="aba ativa" data-aba="importar">Importar PDF</button>
+    <button class="aba" data-aba="consultar">Consultar</button>
+    <button class="aba" data-aba="resumo">Resumo por competência</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ================= IMPORTAR ================= -->
+  <section class="painel ativo" id="painel-importar">
+    <div class="cabecalho-painel">
+      <div>
+        <h2>Importar Demonstrativo de Pagamento (PDF)</h2>
+        <p>Suba o PDF completo enviado pela Unimed (pode ter dezenas de páginas) — o sistema lê as seções de Serviços, Órteses/Próteses, Glosas e Resumo automaticamente.</p>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h3>1. Escolher arquivo</h3>
+      <div class="zona-upload" id="zona-upload">
+        <p style="margin:0 0 12px;color:var(--ink-600);">Arraste o PDF aqui, ou</p>
+        <input type="file" id="input-pdf" accept="application/pdf" style="display:none;" />
+        <button class="botao secundario" id="botao-escolher-pdf">Escolher arquivo PDF</button>
+        <p id="nome-arquivo-escolhido" style="margin:12px 0 0;color:var(--ink-400);font-size:13px;"></p>
+      </div>
+      <button class="botao" id="botao-processar-pdf" disabled>Processar PDF</button>
+      <div class="barra-import" id="barra-processamento" style="display:none;"><div id="barra-processamento-interna"></div></div>
+      <p id="status-processamento" style="margin:10px 0 0;color:var(--ink-600);font-size:13px;"></p>
+    </div>
+
+    <div class="cartao" id="cartao-conferencia" style="display:none;">
+      <h3>2. Conferir antes de importar</h3>
+      <div id="caixa-conferencia-conteudo"></div>
+      <div class="grade-kpi" id="kpi-preview" style="margin-top:16px;"></div>
+      <div class="tabela-scroll">
+        <table id="tabela-preview-notas"></table>
+      </div>
+      <div style="margin-top:18px;display:flex;gap:10px;align-items:center;">
+        <button class="botao" id="botao-confirmar-importacao">Confirmar importação</button>
+        <span id="status-importacao" style="color:var(--teal-700);font-size:13.5px;font-weight:600;"></span>
+      </div>
+      <div class="barra-import" id="barra-importacao" style="display:none;"><div id="barra-importacao-interna"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= CONSULTAR ================= -->
+  <section class="painel" id="painel-consultar">
+    <div class="cabecalho-painel">
+      <div>
+        <h2>Consultar faturamento</h2>
+        <p>Busque por nome do beneficiário, número do cartão ou número da nota, e veja se já foi pago ou glosado.</p>
+      </div>
+      <div class="filtros">
+        <div class="campo" style="min-width:280px;">
+          <label>Buscar</label>
+          <input type="text" id="busca-faturamento" placeholder="Nome, cartão ou nota..." />
+        </div>
+        <button class="botao secundario" id="botao-buscar-faturamento">Buscar</button>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <div class="tabela-scroll"><table id="tabela-consulta-notas"></table></div>
+    </div>
+
+    <div class="cartao" id="cartao-detalhe-nota" style="display:none;">
+      <h3 id="titulo-detalhe-nota">Detalhe da nota</h3>
+      <div class="tabela-scroll"><table id="tabela-detalhe-servicos"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= RESUMO ================= -->
+  <section class="painel" id="painel-resumo">
+    <div class="cabecalho-painel">
+      <div>
+        <h2>Resumo por competência</h2>
+        <p>Impostos, retenções e saldo líquido de cada competência importada.</p>
+      </div>
+      <div class="filtros">
+        <div class="campo">
+          <label>Competência</label>
+          <select id="select-competencia"></select>
+        </div>
+      </div>
+    </div>
+    <div class="cartao">
+      <div class="tabela-scroll"><table id="tabela-resumo-competencia"></table></div>
+    </div>
+  </section>
+
+</main>
+<footer class="rodape-sistema">
+  <span>ProdClin — Faturamento</span>
+  <span style="color:var(--line);">•</span>
+  <span>Módulo <b>Faturamento (Unimed)</b></span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO — Supabase (mesmo projeto do index.html)
+===================================================================== */
+const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
+const supabaseClient = (SUPABASE_URL && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+const MODO_DEMO = !supabaseClient;
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const formatarMoeda = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+/* ---------------------------------------------------------------------
+   BARRA DE PROGRESSO GLOBAL (mesmo padrão do index.html)
+--------------------------------------------------------------------- */
+let chamadasApiEmAndamento = 0;
+function mostrarBarraProgresso(mostrar){
+  const el = document.getElementById('barra-progresso-topo');
+  chamadasApiEmAndamento = Math.max(0, chamadasApiEmAndamento + (mostrar?1:-1));
+  el.classList.toggle('ativa', chamadasApiEmAndamento>0);
+}
+async function api(acao, dados={}){
+  mostrarBarraProgresso(true);
+  try{
+    if(MODO_DEMO) return await mockApi(acao, dados);
+    return await supabaseApi(acao, dados);
+  }catch(e){
+    return {ok:false, erro:String((e&&e.message)||e)};
+  }finally{
+    mostrarBarraProgresso(false);
+  }
+}
+
+/* =====================================================================
+   PARTE 1 — LEITURA DO PDF (pdf.js) → LINHAS DE TEXTO EM ORDEM DE LEITURA
+   Agrupa os itens de texto de cada página por coordenada Y (mesma linha
+   visual), ordena por X dentro da linha — reproduz o comportamento do
+   pdfplumber (usado para validar esse parser contra os PDFs reais da
+   Unimed antes de portar pra cá).
+===================================================================== */
+async function extrairLinhasPDF(arrayBuffer, aoProgredir){
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  const linhas = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const conteudo = await page.getTextContent();
+    const grupos = agruparItensPorLinha(conteudo.items);
+    grupos.forEach(itens=>{
+      const texto = itens.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+      if(texto) linhas.push(texto);
+    });
+    if(aoProgredir) aoProgredir(p, pdf.numPages);
+  }
+  return linhas;
+}
+
+function agruparItensPorLinha(items, tolerancia=2){
+  const ordenados = items.slice().sort((a,b)=> b.transform[5]-a.transform[5]);
+  const linhas = [];
+  let atual = null, yRef = null;
+  ordenados.forEach(item=>{
+    const y = item.transform[5];
+    if(atual===null || Math.abs(y-yRef)>tolerancia){
+      atual = []; linhas.push(atual); yRef = y;
+    }
+    atual.push(item);
+  });
+  linhas.forEach(l=>l.sort((a,b)=>a.transform[4]-b.transform[4]));
+  return linhas;
+}
+
+/* =====================================================================
+   PARTE 2 — PARSER (portado e validado em Python contra 3 PDFs reais
+   da clínica antes de virar JS: bateu 692/692 notas e R$ 67.861,81
+   exatamente com os totais que o próprio PDF imprime no rodapé)
+===================================================================== */
+const RE_NOTA_HEADER = /^(\d{4,6})\s+(\d{5,12})\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+(\d{2,3}\.\d{6,12}[\s\-]\d)\s+(.+?)\s+([\d.]+,\d{2})$/;
+const RE_PLANO = /^Plano\s*(.*?)\s*Acomoda[cç][aã]o\s*(.*)$/i;
+const RE_LABEL_LINHA = /^(Taxas de Sala|Servi[cç]os|Materiais e Medicamentos)\s*([A-Za-z0-9\-]+)\s+(.*)$/;
+const RE_CONTINUACAO = /^([A-Za-z0-9\-]{3,20})\s+(\d+,\d{2}(?:\s+\d+,\d{2}){1,6})$/;
+const RE_NUM = /\d+,\d{2}/g;
+const RE_GLOSA_LINHA = /^(\d{4,6})\s+(\d{5,12})\s+(\d{2,3}\.\d{6,12})[\s\-](\d)\s+(.+?)\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+(.+)$/;
+const RE_RESUMO_LINHA = /^(.+?)\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})\s+([CD])$/;
+const RE_SALDO = /^Saldo L[ií]quido:\s*([\d.]+,\d{2})$/;
+const RE_RODAPE_SECAO = /^Qt\. de Notas:\s*(\d+)\s+Total Servi[cç]os:\s*([\d.]+,\d{2})\s+Total Taxas:\s*([\d.]+,\d{2})/;
+
+const LINHAS_IGNORAR_EXATO = new Set([
+  'DEMONSTRATIVO DE PAGAMENTO', 'Modelo Completo',
+  'DETALHAMENTO DOS SERVIÇOS PRESTADOS', 'SERVICOS DIVERSOS',
+  'ORTESES E PROTESES', 'DETALHAMENTO DE GLOSAS',
+  'MODELO ALTERNATIVO DE REMUNERAÇÃO', 'Valores expressos em Reais (R$)',
+  'Mensagens do Cooperado', 'Outras Mensagens', 'Aviso',
+  'AVISO / RESUMO DE PAGAMENTO'
+]);
+const PREFIXOS_IGNORAR = [
+  'Produção/Movimento', 'Cooperativa de Trabalho Médico', 'Prestador:',
+  'Especialidade Médica', 'Lote Nota Data', 'Código Qt. Cobr',
+  'Lote Nota Cartão', 'Quantidade de Notas', 'Descrição dos Lançamentos',
+  'Data de Emiss'
+];
+
+function numeroBR(txt){ return parseFloat(String(txt).replace(/\./g,'').replace(',', '.')); }
+
+function parsearDemonstrativo(linhas){
+  const notas = [];       // {secao, lote, nota, data, hora, cartao, beneficiario, total_nota, plano, acomodacao}
+  const servicos = [];    // {nota_idx, tipo, codigo, numeros:[...]}
+  const glosas = [];
+  const resumo = [];
+  const rodapesSecao = [];
+  let saldoLiquido = null;
+  let secaoAtual = 'SERVICOS DIVERSOS';
+  let notaAtualIdx = -1;
+  let modoAtual = null;
+  let emGlosas = false;
+  let emResumo = false;
+
+  for(const linhaOriginal of linhas){
+    const linha = linhaOriginal.trim();
+    if(!linha) continue;
+
+    if(LINHAS_IGNORAR_EXATO.has(linha)){
+      if(linha==='SERVICOS DIVERSOS') secaoAtual = 'SERVICOS DIVERSOS';
+      if(linha==='ORTESES E PROTESES') secaoAtual = 'ORTESES E PROTESES';
+      if(linha==='DETALHAMENTO DE GLOSAS') emGlosas = true;
+      if(linha==='AVISO / RESUMO DE PAGAMENTO') emResumo = true;
+      continue;
+    }
+    if(PREFIXOS_IGNORAR.some(p=>linha.startsWith(p))) continue;
+
+    const mRodape = linha.match(RE_RODAPE_SECAO);
+    if(mRodape){
+      rodapesSecao.push({secao:secaoAtual, qtdNotas:parseInt(mRodape[1],10), totalServicos:numeroBR(mRodape[2]), totalTaxas:numeroBR(mRodape[3])});
+      continue;
+    }
+    const mSaldo = linha.match(RE_SALDO);
+    if(mSaldo){ saldoLiquido = numeroBR(mSaldo[1]); continue; }
+
+    if(emResumo){
+      const mRes = linha.match(RE_RESUMO_LINHA);
+      if(mRes){
+        resumo.push({descricao:mRes[1].trim(), quantidade:numeroBR(mRes[2]), valor:numeroBR(mRes[3]), tipo:mRes[4]});
+        continue;
+      }
+    }
+    if(emGlosas){
+      const mGlosa = linha.match(RE_GLOSA_LINHA);
+      if(mGlosa){
+        glosas.push({
+          secao:secaoAtual, lote:mGlosa[1], nota:mGlosa[2],
+          cartao:`${mGlosa[3]}-${mGlosa[4]}`, nome:mGlosa[5].trim(),
+          data:mGlosa[6], hora:mGlosa[7], mensagem:mGlosa[8].trim()
+        });
+        continue;
+      }
+    }
+
+    const mHeader = linha.match(RE_NOTA_HEADER);
+    if(mHeader){
+      notas.push({
+        secao:secaoAtual, lote:mHeader[1], nota:mHeader[2], data:mHeader[3], hora:mHeader[4],
+        cartao:mHeader[5].replace(' ','-'), beneficiario:mHeader[6].trim(),
+        total_nota:numeroBR(mHeader[7]), plano:null, acomodacao:null
+      });
+      notaAtualIdx = notas.length-1;
+      modoAtual = null;
+      continue;
+    }
+
+    const mPlano = linha.match(RE_PLANO);
+    if(mPlano && notaAtualIdx>-1){
+      notas[notaAtualIdx].plano = mPlano[1].trim();
+      notas[notaAtualIdx].acomodacao = mPlano[2].trim();
+      continue;
+    }
+
+    const mLabel = linha.match(RE_LABEL_LINHA);
+    if(mLabel && notaAtualIdx>-1){
+      modoAtual = mLabel[1];
+      const numeros = (mLabel[3].match(RE_NUM)||[]).map(numeroBR);
+      servicos.push({nota_idx:notaAtualIdx, tipo:modoAtual, codigo:mLabel[2], numeros});
+      continue;
+    }
+
+    const mCont = linha.match(RE_CONTINUACAO);
+    if(mCont && notaAtualIdx>-1 && modoAtual){
+      const numeros = (mCont[2].match(RE_NUM)||[]).map(numeroBR);
+      servicos.push({nota_idx:notaAtualIdx, tipo:modoAtual, codigo:mCont[1], numeros});
+      continue;
+    }
+    // linha não reconhecida: ignorada silenciosamente (cabeçalhos/rodapés de página)
+  }
+
+  return {notas, servicos, glosas, resumo, saldoLiquido, rodapesSecao};
+}
+
+/* Converte data BR (dd/mm/aaaa) e hora (hh:mm:ss) pros formatos que o Postgres espera */
+function dataBRparaISO(dataBR){
+  const [d,m,a] = dataBR.split('/');
+  return `${a}-${m}-${d}`;
+}
+
+/* =====================================================================
+   PARTE 3 — UI: upload, processamento e conferência antes de importar
+===================================================================== */
+let resultadoParseAtual = null;
+let arquivoSelecionado = null;
+
+document.getElementById('botao-escolher-pdf').addEventListener('click', ()=>document.getElementById('input-pdf').click());
+document.getElementById('input-pdf').addEventListener('change', (ev)=>{
+  arquivoSelecionado = ev.target.files[0] || null;
+  document.getElementById('nome-arquivo-escolhido').textContent = arquivoSelecionado ? `Selecionado: ${arquivoSelecionado.name}` : '';
+  document.getElementById('botao-processar-pdf').disabled = !arquivoSelecionado;
+});
+
+const zonaUpload = document.getElementById('zona-upload');
+['dragover','dragenter'].forEach(ev=>zonaUpload.addEventListener(ev, e=>{e.preventDefault(); zonaUpload.classList.add('arrastando');}));
+['dragleave','drop'].forEach(ev=>zonaUpload.addEventListener(ev, e=>{e.preventDefault(); zonaUpload.classList.remove('arrastando');}));
+zonaUpload.addEventListener('drop', e=>{
+  const arquivo = e.dataTransfer.files[0];
+  if(arquivo && arquivo.type==='application/pdf'){
+    arquivoSelecionado = arquivo;
+    document.getElementById('nome-arquivo-escolhido').textContent = `Selecionado: ${arquivo.name}`;
+    document.getElementById('botao-processar-pdf').disabled = false;
+  }
+});
+
+document.getElementById('botao-processar-pdf').addEventListener('click', async ()=>{
+  if(!arquivoSelecionado) return;
+  const barraWrap = document.getElementById('barra-processamento');
+  const barra = document.getElementById('barra-processamento-interna');
+  const status = document.getElementById('status-processamento');
+  barraWrap.style.display = 'block';
+  barra.style.width = '0%';
+  status.textContent = 'Lendo páginas do PDF...';
+  document.getElementById('botao-processar-pdf').disabled = true;
+
+  try{
+    const arrayBuffer = await arquivoSelecionado.arrayBuffer();
+    const linhas = await extrairLinhasPDF(arrayBuffer, (pagina, total)=>{
+      barra.style.width = Math.round((pagina/total)*100)+'%';
+      status.textContent = `Lendo página ${pagina} de ${total}...`;
+    });
+    status.textContent = 'Interpretando o conteúdo...';
+    resultadoParseAtual = parsearDemonstrativo(linhas);
+    exibirConferencia(resultadoParseAtual);
+    status.textContent = `Leitura concluída: ${linhas.length} linhas de texto processadas.`;
+  }catch(e){
+    status.textContent = 'Erro ao ler o PDF: ' + (e.message||e);
+  }finally{
+    document.getElementById('botao-processar-pdf').disabled = false;
+  }
+});
+
+function exibirConferencia(resultado){
+  const {notas, servicos, glosas, resumo, saldoLiquido, rodapesSecao} = resultado;
+  document.getElementById('cartao-conferencia').style.display = 'block';
+
+  // Cross-check: soma dos Total Nota (por seção) tem que bater com
+  // Total Serviços + Total Taxas impresso no rodapé da própria seção.
+  const secoes = Array.from(new Set(notas.map(n=>n.secao)));
+  let tudoBateu = true;
+  let linhasConferencia = '';
+  secoes.forEach(secao=>{
+    const notasDaSecao = notas.filter(n=>n.secao===secao);
+    const somaTotalNota = notasDaSecao.reduce((s,n)=>s+n.total_nota, 0);
+    const rodape = rodapesSecao.find(r=>r.secao===secao);
+    if(rodape){
+      const esperado = rodape.totalServicos + rodape.totalTaxas;
+      const bateu = Math.abs(esperado - somaTotalNota) < 0.02 && rodape.qtdNotas === notasDaSecao.length;
+      if(!bateu) tudoBateu = false;
+      linhasConferencia += `<div>${bateu?'✅':'⚠️'} <b>${secao}</b>: ${notasDaSecao.length} nota(s) lida(s) (PDF diz ${rodape.qtdNotas}) — soma ${formatarMoeda(somaTotalNota)} (PDF diz ${formatarMoeda(esperado)})</div>`;
+    } else {
+      linhasConferencia += `<div>⚠️ <b>${secao}</b>: ${notasDaSecao.length} nota(s) lida(s), mas não achei a linha de rodapé "Qt. de Notas" dessa seção pra conferir.</div>`;
+      tudoBateu = false;
+    }
+  });
+  if(notas.length===0){
+    linhasConferencia = '<div>⚠️ Nenhuma nota de serviço foi encontrada neste PDF (pode ser um arquivo só de glosas/resumo, ou o layout não bateu com o esperado).</div>';
+    tudoBateu = false;
+  }
+
+  const caixa = document.getElementById('caixa-conferencia-conteudo');
+  caixa.parentElement.querySelector('.caixa-conferencia')?.remove();
+  const divCaixa = document.createElement('div');
+  divCaixa.className = 'caixa-conferencia' + (tudoBateu ? ' ok' : '');
+  divCaixa.innerHTML = `<b>${tudoBateu ? 'Conferência bateu com os totais impressos no PDF ✓' : 'Atenção: revise antes de importar'}</b>${linhasConferencia}`;
+  caixa.innerHTML = '';
+  caixa.appendChild(divCaixa);
+
+  document.getElementById('kpi-preview').innerHTML = `
+    <div class="kpi"><div class="rotulo">Notas encontradas</div><div class="valor">${notas.length}</div></div>
+    <div class="kpi"><div class="rotulo">Linhas de serviço/taxa</div><div class="valor">${servicos.length}</div></div>
+    <div class="kpi"><div class="rotulo">Glosas encontradas</div><div class="valor gold">${glosas.length}</div></div>
+    <div class="kpi"><div class="rotulo">Saldo líquido da competência</div><div class="valor teal">${saldoLiquido!==null?formatarMoeda(saldoLiquido):'—'}</div></div>
+  `;
+
+  const tabela = document.getElementById('tabela-preview-notas');
+  const amostra = notas.slice(0, 25);
+  tabela.innerHTML = amostra.length===0 ? '<tr><td class="vazio">Nenhuma nota pra exibir.</td></tr>' : `
+    <thead><tr><th>Lote</th><th>Nota</th><th>Data</th><th>Beneficiário</th><th>Plano</th><th>Total</th></tr></thead>
+    <tbody>${amostra.map(n=>`
+      <tr><td class="mono">${n.lote}</td><td class="mono">${n.nota}</td><td>${n.data}</td>
+      <td>${n.beneficiario}</td><td>${n.plano||'—'}</td><td class="mono">${formatarMoeda(n.total_nota)}</td></tr>`).join('')}
+    </tbody>`;
+  if(notas.length>25){
+    tabela.innerHTML += `<caption style="caption-side:bottom;text-align:left;padding:10px 12px;color:var(--ink-400);font-size:12.5px;">Mostrando as primeiras 25 de ${notas.length} notas.</caption>`;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   CONFIRMAR IMPORTAÇÃO → grava no Supabase em lotes
+   (mesma técnica de importação em massa usada no index.html: lotes de
+   ~300 registros, sem sobrescrever nada que já exista)
+--------------------------------------------------------------------- */
+document.getElementById('botao-confirmar-importacao').addEventListener('click', async ()=>{
+  if(!resultadoParseAtual || !resultadoParseAtual.notas.length){ alert('Nada pra importar ainda — processe um PDF primeiro.'); return; }
+  if(MODO_DEMO){ alert('A importação real só funciona conectado ao Supabase (configure SUPABASE_URL/SUPABASE_ANON_KEY no topo do arquivo).'); return; }
+  if(!confirm(`Confirma importar ${resultadoParseAtual.notas.length} nota(s), ${resultadoParseAtual.glosas.length} glosa(s) e o resumo financeiro desta competência?`)) return;
+
+  const status = document.getElementById('status-importacao');
+  const barraWrap = document.getElementById('barra-importacao');
+  const barra = document.getElementById('barra-importacao-interna');
+  barraWrap.style.display = 'block';
+  document.getElementById('botao-confirmar-importacao').disabled = true;
+
+  try{
+    const resp = await api('importarFaturamento', resultadoParseAtual, (feitos, total)=>{
+      barra.style.width = Math.round((feitos/total)*100)+'%';
+      status.textContent = `Importando... ${feitos}/${total}`;
+    });
+    if(!resp.ok){
+      status.style.color = 'var(--danger)';
+      status.textContent = 'Erro na importação: ' + resp.erro;
+    } else {
+      status.style.color = 'var(--teal-700)';
+      status.textContent = `Importação concluída: ${resp.notasInseridas} nota(s), ${resp.servicosInseridos} linha(s) de serviço, ${resp.glosasInseridas} glosa(s), ${resp.resumoInserido} linha(s) de resumo.`;
+    }
+  }catch(e){
+    status.style.color = 'var(--danger)';
+    status.textContent = 'Erro inesperado: ' + (e.message||e);
+  }finally{
+    document.getElementById('botao-confirmar-importacao').disabled = false;
+  }
+});
+
+/* =====================================================================
+   PARTE 4 — CAMADA SUPABASE (importação + consultas)
+===================================================================== */
+async function supabaseApi(acao, dados){
+  switch(acao){
+
+    case 'importarFaturamento': {
+      const {notas, servicos, glosas, resumo} = dados;
+      const competencia = document.title;
+      const prestadorCodigo = null;
+
+      // 1) Insere as notas em lotes e guarda o id retornado pra cada uma
+      //    (necessário pra depois linkar os serviços via nota_id)
+      const idsNotas = [];
+      const TAMANHO_LOTE = 200;
+      for(let i=0;i<notas.length;i+=TAMANHO_LOTE){
+        const lote = notas.slice(i,i+TAMANHO_LOTE).map(n=>({
+          competencia, prestador_codigo: prestadorCodigo,
+          lote:n.lote, nota:n.nota, secao:n.secao,
+          data_atendimento: dataBRparaISO(n.data), hora_atendimento:n.hora,
+          cartao_beneficiario:n.cartao, nome_beneficiario:n.beneficiario,
+          plano:n.plano, acomodacao:n.acomodacao, total_nota:n.total_nota
+        }));
+        const { data, error } = await supabaseClient.from('faturamento_notas')
+          .upsert(lote, {onConflict:'lote,nota,competencia'}).select('id, lote, nota');
+        if(error) return {ok:false, erro:'Ao gravar notas: '+error.message};
+        data.forEach(d=>idsNotas.push(d));
+      }
+
+      // mapa lote+nota -> id, pra linkar serviços e glosas
+      const mapaIdPorLoteNota = {};
+      idsNotas.forEach(d=>{ mapaIdPorLoteNota[`${d.lote}_${d.nota}`] = d.id; });
+
+      // 2) Serviços — remonta nota_id a partir do índice original salvo no parser
+      const servicosParaInserir = servicos.map(s=>{
+        const notaOriginal = notas[s.nota_idx];
+        const nota_id = mapaIdPorLoteNota[`${notaOriginal.lote}_${notaOriginal.nota}`];
+        // convenção de posições dos números conforme o tipo de linha (validada nos PDFs reais):
+        // 'Taxas de Sala': [qtcobr, qtpaga, valor, subtotal?]
+        // 'Serviços':      [qtcobr, qtpaga, valor, filme, qtdch, subtotal?, dimGlobal?, dimIndividual?]
+        // 'Materiais e Medicamentos': [qtcobr, qtpaga, valor, subtotal?]
+        const n = s.numeros;
+        const registro = { nota_id, tipo:s.tipo, codigo:s.codigo };
+        if(s.tipo === 'Serviços' && n.length>=5){
+          registro.qt_cobrada=n[0]; registro.qt_paga=n[1]; registro.valor=n[2];
+          registro.filme=n[3]; registro.qtd_ch=n[4];
+          if(n.length>=6) registro.subtotal=n[5];
+          if(n.length>=8){ registro.valor_dimensao_global=n[6]; registro.valor_dimensao_individual=n[7]; }
+        } else {
+          registro.qt_cobrada=n[0]; registro.qt_paga=n[1]; registro.valor=n[2];
+          if(n.length>=4) registro.subtotal=n[3];
+        }
+        return registro;
+      }).filter(r=>r.nota_id);
+
+      let servicosInseridos = 0;
+      for(let i=0;i<servicosParaInserir.length;i+=TAMANHO_LOTE){
+        const lote = servicosParaInserir.slice(i,i+TAMANHO_LOTE);
+        const { error } = await supabaseClient.from('faturamento_servicos').insert(lote);
+        if(error) return {ok:false, erro:'Ao gravar serviços: '+error.message};
+        servicosInseridos += lote.length;
+      }
+
+      // 3) Glosas
+      const glosasParaInserir = glosas.map(g=>({
+        competencia, secao:g.secao, lote:g.lote, nota:g.nota,
+        cartao_beneficiario:g.cartao, nome_beneficiario:g.nome,
+        data_glosa: `${dataBRparaISO(g.data)}T${g.hora}`,
+        mensagem_glosa:g.mensagem,
+        nota_id: mapaIdPorLoteNota[`${g.lote}_${g.nota}`] || null
+      }));
+      let glosasInseridas = 0;
+      if(glosasParaInserir.length){
+        const { error } = await supabaseClient.from('faturamento_glosas').insert(glosasParaInserir);
+        if(error) return {ok:false, erro:'Ao gravar glosas: '+error.message};
+        glosasInseridas = glosasParaInserir.length;
+
+        // Atualiza status_pagamento das notas glosadas
+        for(const g of glosasParaInserir){
+          if(!g.nota_id) continue;
+          await supabaseClient.from('faturamento_notas')
+            .update({status_pagamento:'glosado_parcial'}).eq('id', g.nota_id);
+        }
+      }
+
+      // 4) Resumo da competência
+      const resumoParaInserir = dados.resumo.map(r=>({
+        competencia, prestador_codigo:prestadorCodigo,
+        descricao_lancamento:r.descricao, quantidade:r.quantidade, valor:r.valor,
+        tipo_lancamento:r.tipo, saldo_liquido: dados.saldoLiquido
+      }));
+      let resumoInserido = 0;
+      if(resumoParaInserir.length){
+        const { error } = await supabaseClient.from('faturamento_resumo_competencia')
+          .upsert(resumoParaInserir, {onConflict:'competencia,prestador_codigo,descricao_lancamento'});
+        if(error) return {ok:false, erro:'Ao gravar resumo: '+error.message};
+        resumoInserido = resumoParaInserir.length;
+      }
+
+      return {ok:true, notasInseridas: idsNotas.length, servicosInseridos, glosasInseridas, resumoInserido};
+    }
+
+    case 'buscarFaturamento': {
+      const termo = dados.termo.trim();
+      let query = supabaseClient.from('faturamento_notas').select('*').limit(100);
+      if(/^\d+$/.test(termo)){
+        query = query.or(`nota.eq.${termo},cartao_beneficiario.ilike.%${termo}%`);
+      } else {
+        query = query.ilike('nome_beneficiario', `%${termo}%`);
+      }
+      const { data, error } = await query.order('data_atendimento', {ascending:false});
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, notas:data||[]};
+    }
+
+    case 'detalheNota': {
+      const { data, error } = await supabaseClient.from('faturamento_servicos').select('*').eq('nota_id', dados.notaId);
+      if(error) return {ok:false, erro:error.message};
+      const { data: glosasNota } = await supabaseClient.from('faturamento_glosas').select('*').eq('nota_id', dados.notaId);
+      return {ok:true, servicos:data||[], glosas:glosasNota||[]};
+    }
+
+    case 'listarCompetencias': {
+      const { data, error } = await supabaseClient.from('faturamento_resumo_competencia').select('competencia').order('competencia', {ascending:false});
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, competencias: Array.from(new Set((data||[]).map(d=>d.competencia)))};
+    }
+
+    case 'listarResumoCompetencia': {
+      const { data, error } = await supabaseClient.from('faturamento_resumo_competencia').select('*').eq('competencia', dados.competencia);
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, linhas:data||[]};
+    }
+
+    default: return {ok:false, erro:'Ação desconhecida: '+acao};
+  }
+}
+
+/* ---------------------------------------------------------------------
+   MODO DEMONSTRAÇÃO (sem Supabase configurado) — mock simples só pra
+   dá pra testar o parser/preview sem gravar nada de verdade.
+--------------------------------------------------------------------- */
+const demoFaturamento = { notas:[], servicos:[], glosas:[], resumo:[] };
+async function mockApi(acao, dados){
+  switch(acao){
+    case 'importarFaturamento':
+      demoFaturamento.notas.push(...dados.notas);
+      demoFaturamento.servicos.push(...dados.servicos);
+      demoFaturamento.glosas.push(...dados.glosas);
+      demoFaturamento.resumo.push(...dados.resumo);
+      return {ok:true, notasInseridas:dados.notas.length, servicosInseridos:dados.servicos.length, glosasInseridas:dados.glosas.length, resumoInserido:dados.resumo.length};
+    case 'buscarFaturamento': {
+      const termo = dados.termo.trim().toUpperCase();
+      const notas = demoFaturamento.notas.filter(n =>
+        (n.beneficiario||'').toUpperCase().includes(termo) || n.nota===termo || (n.cartao||'').includes(termo));
+      return {ok:true, notas};
+    }
+    default: return {ok:false, erro:'Ação não disponível no modo demonstração: '+acao};
+  }
+}
+
+/* =====================================================================
+   PARTE 5 — NAVEGAÇÃO ENTRE ABAS + CONSULTA
+===================================================================== */
+document.querySelectorAll('.aba').forEach(botao=>{
+  botao.addEventListener('click', ()=>{
+    document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b===botao));
+    document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativo'));
+    document.getElementById('painel-'+botao.dataset.aba).classList.add('ativo');
+    if(botao.dataset.aba==='resumo') carregarCompetencias();
+  });
+});
+
+document.getElementById('botao-buscar-faturamento').addEventListener('click', buscarFaturamento);
+document.getElementById('busca-faturamento').addEventListener('keydown', e=>{ if(e.key==='Enter') buscarFaturamento(); });
+
+async function buscarFaturamento(){
+  const termo = document.getElementById('busca-faturamento').value.trim();
+  const tabela = document.getElementById('tabela-consulta-notas');
+  if(!termo){ tabela.innerHTML = '<tr><td class="vazio">Digite um nome, cartão ou número de nota.</td></tr>'; return; }
+  tabela.innerHTML = '<tr><td class="vazio">Buscando...</td></tr>';
+  const resp = await api('buscarFaturamento', {termo});
+  if(!resp.ok){ tabela.innerHTML = `<tr><td class="vazio">${resp.erro}</td></tr>`; return; }
+  if(resp.notas.length===0){ tabela.innerHTML = '<tr><td class="vazio">Nenhum resultado.</td></tr>'; return; }
+  tabela.innerHTML = `
+    <thead><tr><th>Data</th><th>Nota</th><th>Beneficiário</th><th>Cartão</th><th>Plano</th><th>Total</th><th>Status</th><th></th></tr></thead>
+    <tbody>${resp.notas.map(n=>{
+      const tagStatus = n.status_pagamento==='glosado_parcial' || n.status_pagamento==='glosado_total'
+        ? `<span class="tag tag-alerta">Glosado</span>` : `<span class="tag">Pago</span>`;
+      return `<tr>
+        <td>${n.data_atendimento||''}</td><td class="mono">${n.nota}</td><td>${n.nome_beneficiario||''}</td>
+        <td class="mono">${n.cartao_beneficiario||''}</td><td>${n.plano||'—'}</td>
+        <td class="mono">${formatarMoeda(n.total_nota)}</td><td>${tagStatus}</td>
+        <td><button class="botao sutil pequeno" data-id="${n.id}">Ver serviços</button></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+  tabela.querySelectorAll('button[data-id]').forEach(b=>b.addEventListener('click', ()=>verDetalheNota(b.dataset.id, resp.notas)));
+}
+
+async function verDetalheNota(notaId, notas){
+  const nota = notas.find(n=>String(n.id)===String(notaId));
+  const resp = await api('detalheNota', {notaId});
+  const cartao = document.getElementById('cartao-detalhe-nota');
+  cartao.style.display = 'block';
+  document.getElementById('titulo-detalhe-nota').textContent = `Nota ${nota?.nota||''} — ${nota?.nome_beneficiario||''}`;
+  const tabela = document.getElementById('tabela-detalhe-servicos');
+  if(!resp.ok){ tabela.innerHTML = `<tr><td class="vazio">${resp.erro}</td></tr>`; return; }
+  const linhas = resp.servicos||[];
+  tabela.innerHTML = linhas.length===0 ? '<tr><td class="vazio">Sem linhas de serviço registradas.</td></tr>' : `
+    <thead><tr><th>Tipo</th><th>Código</th><th>Qt. cobrada</th><th>Qt. paga</th><th>Valor</th><th>Subtotal</th></tr></thead>
+    <tbody>${linhas.map(s=>`
+      <tr><td>${s.tipo}</td><td class="mono">${s.codigo}</td><td>${s.qt_cobrada}</td><td>${s.qt_paga}</td>
+      <td class="mono">${formatarMoeda(s.valor)}</td><td class="mono">${s.subtotal!=null?formatarMoeda(s.subtotal):'—'}</td></tr>`).join('')}
+    </tbody>`;
+  if((resp.glosas||[]).length){
+    tabela.innerHTML += `<tfoot><tr><td colspan="6" style="color:var(--danger);font-weight:600;">Glosa: ${resp.glosas.map(g=>g.mensagem_glosa).join('; ')}</td></tr></tfoot>`;
+  }
+}
+
+async function carregarCompetencias(){
+  const resp = await api('listarCompetencias', {});
+  const select = document.getElementById('select-competencia');
+  if(!resp.ok){ select.innerHTML = `<option>${resp.erro}</option>`; return; }
+  select.innerHTML = resp.competencias.map(c=>`<option value="${c}">${c}</option>`).join('') || '<option>Nenhuma competência importada ainda</option>';
+  select.onchange = () => carregarResumoCompetencia(select.value);
+  if(resp.competencias.length) carregarResumoCompetencia(resp.competencias[0]);
+}
+
+async function carregarResumoCompetencia(competencia){
+  const tabela = document.getElementById('tabela-resumo-competencia');
+  if(!competencia){ tabela.innerHTML = '<tr><td class="vazio">Nenhuma competência importada ainda.</td></tr>'; return; }
+  const resp = await api('listarResumoCompetencia', {competencia});
+  if(!resp.ok){ tabela.innerHTML = `<tr><td class="vazio">${resp.erro}</td></tr>`; return; }
+  const linhas = resp.linhas||[];
+  tabela.innerHTML = linhas.length===0 ? '<tr><td class="vazio">Sem dados.</td></tr>' : `
+    <thead><tr><th>Descrição</th><th>Quantidade</th><th>Valor</th><th>Tipo</th></tr></thead>
+    <tbody>${linhas.map(l=>`
+      <tr><td>${l.descricao_lancamento}</td><td>${l.quantidade}</td>
+      <td class="mono" style="color:${l.tipo_lancamento==='D'?'var(--danger)':'var(--teal-700)'};">${l.tipo_lancamento==='D'?'-':''}${formatarMoeda(l.valor)}</td>
+      <td>${l.tipo_lancamento==='D'?'Débito':'Crédito'}</td></tr>`).join('')}
+    <tr class="linha-total"><td colspan="2">Saldo líquido</td><td class="mono" colspan="2">${formatarMoeda(linhas[0]?.saldo_liquido)}</td></tr>
+    </tbody>`;
+}
+</script>
+</body>
+</html>
