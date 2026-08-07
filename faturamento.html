@@ -581,6 +581,7 @@ function dataBRparaISO(dataBR){
 ===================================================================== */
 let resultadoParseAtual = null;
 let arquivoSelecionado = null;
+let ultimasLinhasExtraidas = [];
 
 document.getElementById('botao-escolher-pdf').addEventListener('click', ()=>document.getElementById('input-pdf').click());
 document.getElementById('input-pdf').addEventListener('change', (ev)=>{
@@ -617,6 +618,7 @@ document.getElementById('botao-processar-pdf').addEventListener('click', async (
       barra.style.width = Math.round((pagina/total)*100)+'%';
       status.textContent = `Lendo página ${pagina} de ${total}...`;
     });
+    ultimasLinhasExtraidas = linhas;
     status.textContent = 'Interpretando o conteúdo...';
     resultadoParseAtual = parsearDemonstrativo(linhas);
     exibirConferencia(resultadoParseAtual);
@@ -654,6 +656,34 @@ function exibirConferencia(resultado){
   if(notas.length===0){
     linhasConferencia = '<div>⚠️ Nenhuma nota de serviço foi encontrada neste PDF (pode ser um arquivo só de glosas/resumo, ou o layout não bateu com o esperado).</div>';
     tudoBateu = false;
+  }
+
+  // ---- Depuração: quando não achar nenhuma nota, mostra as linhas brutas
+  // extraídas pelo pdf.js, pra dar pra copiar e mandar de volta pro ajuste
+  // do parser (a extração no navegador pode reconstruir o texto diferente
+  // do que foi validado no servidor). ----
+  const areaDebugAnterior = document.getElementById('area-debug-linhas');
+  if(areaDebugAnterior) areaDebugAnterior.remove();
+  if(notas.length===0 && ultimasLinhasExtraidas.length){
+    const divDebug = document.createElement('div');
+    divDebug.id = 'area-debug-linhas';
+    divDebug.style.marginTop = '14px';
+    const amostraDebug = ultimasLinhasExtraidas.slice(0, 300).join('\n');
+    divDebug.innerHTML = `
+      <details>
+        <summary style="cursor:pointer;color:var(--plum-700);font-weight:600;font-size:13.5px;">
+          Ver linhas brutas extraídas (depuração) — ${ultimasLinhasExtraidas.length} linhas no total, mostrando as primeiras 300
+        </summary>
+        <textarea readonly style="width:100%;height:260px;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:10px;border-radius:8px;border:1.5px solid var(--line);" id="textarea-debug-linhas">${amostraDebug.replace(/</g,'&lt;')}</textarea>
+        <button class="botao sutil pequeno" id="botao-copiar-debug" style="margin-top:8px;">Copiar linhas</button>
+      </details>`;
+    document.getElementById('caixa-conferencia-conteudo').parentElement.appendChild(divDebug);
+    document.getElementById('botao-copiar-debug').addEventListener('click', ()=>{
+      document.getElementById('textarea-debug-linhas').select();
+      document.execCommand('copy');
+      document.getElementById('botao-copiar-debug').textContent = 'Copiado ✓';
+      setTimeout(()=>{ document.getElementById('botao-copiar-debug').textContent = 'Copiar linhas'; }, 1500);
+    });
   }
 
   const caixa = document.getElementById('caixa-conferencia-conteudo');
