@@ -802,7 +802,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.6.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.7.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1629,25 +1629,10 @@ function mostrarErroInicializacao(mensagem){
    Agrupamento visual das abas internas em blocos, cada um com sua
    sub-navegação (mesmo padrão do faturamento.html: aba principal +
    sub-abas). "Faturamento" fica fora dos grupos, como link externo
-   pra faturamento.html — igual já era antes. As chaves de permissão
-   (a.chave) são as mesmas de PRODCLIN_DEFINICAO_ABAS (comum.js). */
-const PRODCLIN_GRUPOS_NAVEGACAO = [
-  {id:'lancamentos', rotulo:'Lançamentos', subabas:[
-    {id:'lancamento', rotulo:'Lançamento', chave:'ver_lancamento'},
-    {id:'editar',     rotulo:'Verificar',  chave:'ver_verificar'},
-    {id:'critica',    rotulo:'Crítica',    chave:'ver_critica'}
-  ]},
-  {id:'dashboards', rotulo:'Dashboards', subabas:[
-    {id:'dashboard', rotulo:'Dashboard', chave:'ver_dashboard'},
-    {id:'analises',  rotulo:'Análises',  chave:'ver_analises'},
-    {id:'rmr',       rotulo:'RMR',       chave:'ver_rmr'},
-    {id:'metas',     rotulo:'Metas',     chave:'ver_metas'}
-  ]},
-  {id:'configuracoes', rotulo:'Configurações', subabas:[
-    {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
-  ]}
-];
-
+   pra faturamento.html — igual já era antes. Os grupos (PRODCLIN_
+   GRUPOS_NAVEGACAO) e as chaves de permissão vêm de comum.js —
+   compartilhados com faturamento.html, pra nunca mais desincronizar.
+--------------------------------------------------------------------- */
 let gruposNavegacaoDisponiveis = [];
 
 function montarNavegacao(){
