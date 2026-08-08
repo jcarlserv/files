@@ -292,7 +292,7 @@
 
 </main>
 <footer class="rodape-sistema">
-  <span>ProdClin <b id="versao-sistema">v2.6.0</b></span>
+  <span>ProdClin <b id="versao-sistema">v2.7.0</b></span>
   <span class="separador-rodape">•</span>
   <span>Desenvolvido por <b>DSP Group</b></span>
 </footer>
@@ -337,14 +337,36 @@ if(sessao && !temPermissao('ver_faturamento')){
 function montarNavegacaoPrincipal(){
   const nav = document.getElementById('nav-abas');
   nav.innerHTML = '';
-  PRODCLIN_DEFINICAO_ABAS.filter(a=>temPermissao(a.chave)).forEach(a=>{
+
+  function renderizarBotaoGrupo(g){
+    const subabasPermitidas = g.subabas.filter(s => temPermissao(s.chave));
+    if(subabasPermitidas.length === 0) return;
     const botao = document.createElement('button');
-    const ehLocal = a.id === 'faturamento';
-    botao.className = 'aba' + (ehLocal ? ' ativa' : '');
-    botao.textContent = a.rotulo;
-    if(!ehLocal) botao.addEventListener('click', ()=>{ location.href = 'index.html#'+a.id; });
+    botao.className = 'aba';
+    botao.textContent = g.rotulo;
+    botao.addEventListener('click', ()=>{ location.href = 'index.html#'+subabasPermitidas[0].id; });
     nav.appendChild(botao);
-  });
+  }
+
+  // Mesma ordem do index.html: Lançamentos, Dashboards, Faturamento,
+  // Configurações. Aqui nenhum desses grupos tem painel local — clicar
+  // sempre navega pra index.html na primeira sub-aba permitida do grupo.
+  PRODCLIN_GRUPOS_NAVEGACAO
+    .filter(g => g.id !== 'configuracoes')
+    .forEach(renderizarBotaoGrupo);
+
+  // Faturamento é a própria página — sempre ativa, nunca navega.
+  const abaFaturamento = PRODCLIN_DEFINICAO_ABAS.find(a=>a.id==='faturamento');
+  if(abaFaturamento && temPermissao(abaFaturamento.chave)){
+    const botao = document.createElement('button');
+    botao.className = 'aba ativa';
+    botao.textContent = abaFaturamento.rotulo;
+    nav.appendChild(botao);
+  }
+
+  const grupoConfiguracoes = PRODCLIN_GRUPOS_NAVEGACAO.find(g => g.id === 'configuracoes');
+  if(grupoConfiguracoes) renderizarBotaoGrupo(grupoConfiguracoes);
+
   document.getElementById('nome-usuario-topo').textContent = sessao.nomeProfissional || sessao.usuario;
 }
 document.getElementById('botao-sair').addEventListener('click', ()=>{
