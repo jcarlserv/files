@@ -69,6 +69,21 @@ nav.abas{display:flex;gap:2px;padding-bottom:0;}
 .info-usuario span{font-size:13px;color:var(--plum-300);}
 .info-usuario span b{color:#fff;}
 
+/* Sub-navegação interna (segundo nível, dentro de uma aba principal já
+   selecionada em cima) — usada no Faturamento (Importar/Consultar/Resumo)
+   e no index.html (Lançamentos → Lançamento/Verificar/Crítica etc.). */
+nav.sub-abas{
+  display:flex;gap:6px;padding:14px 32px 0;max-width:1320px;margin:0 auto;width:100%;
+  box-sizing:border-box;
+}
+.sub-aba{
+  background:transparent;color:var(--ink-400);border:1.5px solid var(--line);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;padding:9px 18px;
+  border-radius:9px 9px 0 0;border-bottom:none;
+}
+.sub-aba.ativa{background:var(--card);color:var(--plum-900);border-color:var(--line);}
+.sub-aba:hover:not(.ativa){color:var(--plum-700);}
+
 main{flex:1;padding:32px;max-width:1320px;width:100%;margin:0 auto;}
 .painel{display:none;}
 .painel.ativo{display:block;animation:surgir .25s ease;}
