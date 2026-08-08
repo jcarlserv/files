@@ -186,6 +186,8 @@
     </div>
   </header>
 
+  <nav class="sub-abas" id="sub-abas"></nav>
+
   <main>
     <!-- ---------- LANÇAMENTO ---------- -->
     <section class="painel" id="painel-lancamento">
@@ -1463,46 +1465,107 @@ function mostrarErroInicializacao(mensagem){
 
 /* ---------------------------------------------------------------------
    NAVEGAÇÃO ENTRE ABAS
-   A lista de abas (id, rótulo, chave de permissão) vem de comum.js
-   (PRODCLIN_DEFINICAO_ABAS) — compartilhada com faturamento.html, pra
-   nunca mais desincronizar. Aqui, no index.html, "faturamento" é a
-   única que navega pra outro arquivo (location.href); as demais trocam
-   de painel internamente.
---------------------------------------------------------------------- */
+   Agrupamento visual das abas internas em blocos, cada um com sua
+   sub-navegação (mesmo padrão do faturamento.html: aba principal +
+   sub-abas). "Faturamento" fica fora dos grupos, como link externo
+   pra faturamento.html — igual já era antes. As chaves de permissão
+   (a.chave) são as mesmas de PRODCLIN_DEFINICAO_ABAS (comum.js). */
+const PRODCLIN_GRUPOS_NAVEGACAO = [
+  {id:'lancamentos', rotulo:'Lançamentos', subabas:[
+    {id:'lancamento', rotulo:'Lançamento', chave:'ver_lancamento'},
+    {id:'editar',     rotulo:'Verificar',  chave:'ver_verificar'},
+    {id:'critica',    rotulo:'Crítica',    chave:'ver_critica'}
+  ]},
+  {id:'dashboards', rotulo:'Dashboards', subabas:[
+    {id:'dashboard', rotulo:'Dashboard', chave:'ver_dashboard'},
+    {id:'analises',  rotulo:'Análises',  chave:'ver_analises'},
+    {id:'rmr',       rotulo:'RMR',       chave:'ver_rmr'},
+    {id:'metas',     rotulo:'Metas',     chave:'ver_metas'}
+  ]},
+  {id:'configuracoes', rotulo:'Configurações', subabas:[
+    {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
+  ]}
+];
+
+let gruposNavegacaoDisponiveis = [];
+
 function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
-  const abasDisponiveis = PRODCLIN_DEFINICAO_ABAS.filter(a => temPermissao(a.chave));
   nav.innerHTML = '';
-  abasDisponiveis.forEach((a,i)=>{
+
+  // Cada grupo só entra na barra principal se tiver ao menos 1 sub-aba
+  // que o usuário tenha permissão de ver.
+  gruposNavegacaoDisponiveis = PRODCLIN_GRUPOS_NAVEGACAO
+    .map(g => Object.assign({}, g, {subabas: g.subabas.filter(s => temPermissao(s.chave))}))
+    .filter(g => g.subabas.length > 0);
+
+  gruposNavegacaoDisponiveis.forEach(g=>{
     const botao = document.createElement('button');
-    const ehExterna = a.id === 'faturamento';
-    botao.className = 'aba' + (!ehExterna && i===0 ? ' ativa':'');
-    botao.textContent = a.rotulo;
-    botao.dataset.aba = a.id;
-    if(ehExterna){
-      botao.addEventListener('click', ()=>{ location.href = 'faturamento.html'; });
-    } else {
-      botao.addEventListener('click', ()=>trocarAba(a.id));
-    }
+    botao.className = 'aba';
+    botao.textContent = g.rotulo;
+    botao.dataset.grupo = g.id;
+    botao.addEventListener('click', ()=>ativarGrupo(g.id));
     nav.appendChild(botao);
   });
-  const primeiraInterna = abasDisponiveis.find(a=>a.id!=='faturamento');
-  estado.abaAtiva = primeiraInterna ? primeiraInterna.id : 'lancamento';
-  document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b.dataset.aba===estado.abaAtiva));
-  const painelAtivo = document.getElementById('painel-'+estado.abaAtiva);
-  if(painelAtivo) painelAtivo.classList.add('ativo');
 
-  const abaPelaHash = location.hash.replace('#','');
-  if(abaPelaHash && abasDisponiveis.some(a=>a.id===abaPelaHash && a.id!=='faturamento')){
-    trocarAba(abaPelaHash);
+  // Faturamento continua fora do agrupamento — sempre navega pro
+  // arquivo separado, nunca abre painel local aqui.
+  const abaFaturamento = PRODCLIN_DEFINICAO_ABAS.find(a=>a.id==='faturamento');
+  if(abaFaturamento && temPermissao(abaFaturamento.chave)){
+    const botao = document.createElement('button');
+    botao.className = 'aba';
+    botao.textContent = abaFaturamento.rotulo;
+    botao.addEventListener('click', ()=>{ location.href = 'faturamento.html'; });
+    nav.appendChild(botao);
   }
+
+  // Deep-link: se a página foi aberta com #editar, #rmr etc. (ex.: clicando
+  // num link a partir do faturamento.html), abre direto o grupo e a
+  // sub-aba correspondentes.
+  const idPelaHash = location.hash.replace('#','');
+  const grupoPelaHash = gruposNavegacaoDisponiveis.find(g => g.subabas.some(s=>s.id===idPelaHash));
+  if(grupoPelaHash){
+    ativarGrupo(grupoPelaHash.id, idPelaHash);
+  } else if(gruposNavegacaoDisponiveis.length){
+    ativarGrupo(gruposNavegacaoDisponiveis[0].id);
+  }
+}
+
+function ativarGrupo(idGrupo, idSubabaInicial){
+  const grupo = gruposNavegacaoDisponiveis.find(g=>g.id===idGrupo);
+  if(!grupo) return;
+
+  document.querySelectorAll('#nav-abas .aba').forEach(b=>b.classList.toggle('ativa', b.dataset.grupo===idGrupo));
+
+  const subNav = document.getElementById('sub-abas');
+  if(grupo.subabas.length <= 1){
+    // Só 1 sub-aba (ex.: Configurações) — não faz sentido mostrar uma
+    // barra de sub-navegação com um botão só.
+    subNav.style.display = 'none';
+    subNav.innerHTML = '';
+  } else {
+    subNav.style.display = '';
+    subNav.innerHTML = '';
+    grupo.subabas.forEach(s=>{
+      const botao = document.createElement('button');
+      botao.className = 'sub-aba';
+      botao.textContent = s.rotulo;
+      botao.dataset.suba = s.id;
+      botao.addEventListener('click', ()=>trocarAba(s.id));
+      subNav.appendChild(botao);
+    });
+  }
+
+  const idValido = grupo.subabas.some(s=>s.id===idSubabaInicial);
+  trocarAba(idValido ? idSubabaInicial : grupo.subabas[0].id);
 }
 
 async function trocarAba(idAba){
   estado.abaAtiva = idAba;
-  document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b.dataset.aba===idAba));
+  document.querySelectorAll('.sub-aba').forEach(b=>b.classList.toggle('ativa', b.dataset.suba===idAba));
   document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativo'));
-  document.getElementById('painel-'+idAba).classList.add('ativo');
+  const painel = document.getElementById('painel-'+idAba);
+  if(painel) painel.classList.add('ativo');
   await atualizarPainelAtivo();
 }
 
