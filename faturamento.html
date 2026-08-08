@@ -219,6 +219,10 @@
         <button class="botao secundario" id="botao-escolher-pdf">Escolher arquivo PDF</button>
         <p id="nome-arquivo-escolhido" style="margin:12px 0 0;color:var(--ink-400);font-size:13px;"></p>
       </div>
+      <div class="campo" style="max-width:220px;margin-bottom:14px;">
+        <label>Competência</label>
+        <input type="text" id="input-competencia" placeholder="Ex.: 2026/5/2-Q" />
+      </div>
       <button class="botao" id="botao-processar-pdf" disabled>Processar PDF</button>
       <div class="barra-import" id="barra-processamento" style="display:none;"><div id="barra-processamento-interna"></div></div>
       <p id="status-processamento" style="margin:10px 0 0;color:var(--ink-600);font-size:13px;"></p>
@@ -310,10 +314,6 @@ const formatarMoeda = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currenc
 
 /* =====================================================================
    SESSÃO COMPARTILHADA COM O index.html
-   Este arquivo não tem tela de login própria — ele lê a mesma sessão que
-   o index.html grava no localStorage (chave 'prodclin_sessao'), já que os
-   dois arquivos vivem no mesmo domínio (GitHub Pages). Se não achar
-   sessão nenhuma, manda a pessoa logar no index.html primeiro.
 ===================================================================== */
 const CHAVE_SESSAO = 'prodclin_sessao';
 function carregarSessaoSalva(){
@@ -326,8 +326,6 @@ const sessao = carregarSessaoSalva();
 if(!sessao || !sessao.usuario){
   location.href = 'index.html';
 }
-// Mesmo atalho de permissão do index.html: gerente sempre pode; outro
-// papel só se a permissão efetiva daquela chave estiver marcada.
 function temPermissao(chave){
   return sessao && (sessao.papel === 'gerente' || !!(sessao.permissoes||{})[chave]);
 }
@@ -342,11 +340,6 @@ if(sessao && !temPermissao('ver_faturamento')){
   throw new Error('Sem permissão ver_faturamento');
 }
 
-/* ---------------------------------------------------------------------
-   BARRA PRINCIPAL DE ABAS — mesma lista do index.html. Clicar em qualquer
-   uma que não seja "Faturamento" volta pro index.html naquela aba
-   (via #hash, que o index.html já sabe interpretar ao carregar).
---------------------------------------------------------------------- */
 function montarNavegacaoPrincipal(){
   const TODAS_ABAS = [
     {id:'lancamento', rotulo:'Lançamento', chave:'ver_lancamento'},
@@ -376,9 +369,6 @@ document.getElementById('botao-sair').addEventListener('click', ()=>{
 });
 if(sessao) montarNavegacaoPrincipal();
 
-/* ---------------------------------------------------------------------
-   SUB-ABAS internas do módulo (Importar / Consultar / Resumo)
---------------------------------------------------------------------- */
 document.querySelectorAll('.sub-aba').forEach(botao=>{
   botao.addEventListener('click', ()=>{
     document.querySelectorAll('.sub-aba').forEach(b=>b.classList.toggle('ativa', b===botao));
@@ -388,9 +378,6 @@ document.querySelectorAll('.sub-aba').forEach(botao=>{
   });
 });
 
-/* ---------------------------------------------------------------------
-   BARRA DE PROGRESSO GLOBAL (mesmo padrão do index.html)
---------------------------------------------------------------------- */
 let chamadasApiEmAndamento = 0;
 function mostrarBarraProgresso(mostrar){
   const el = document.getElementById('barra-progresso-topo');
@@ -400,7 +387,7 @@ function mostrarBarraProgresso(mostrar){
 async function api(acao, dados={}){
   mostrarBarraProgresso(true);
   try{
-    if(MODO_DEMO) return await mockApi(acao, dados);
+    if (MODO_DEMO) return await mockApi(acao, dados);
     return await supabaseApi(acao, dados);
   }catch(e){
     return {ok:false, erro:String((e&&e.message)||e)};
@@ -410,169 +397,259 @@ async function api(acao, dados={}){
 }
 
 /* =====================================================================
-   PARTE 1 — LEITURA DO PDF (pdf.js) → LINHAS DE TEXTO EM ORDEM DE LEITURA
-   Agrupa os itens de texto de cada página por coordenada Y (mesma linha
-   visual), ordena por X dentro da linha — reproduz o comportamento do
-   pdfplumber (usado para validar esse parser contra os PDFs reais da
-   Unimed antes de portar pra cá).
+   PARTE 1 — LEITURA DO PDF (pdf.js) → LISTA DE PÁGINAS, CADA UMA COM SUA
+   LISTA DE "LINHAS" (NA VERDADE, UM item.str POR CHAMADA DE TEXTO)
+
+   IMPORTANTE (descoberto e validado com dados reais — ver notas do
+   projeto): este relatório da Unimed é gerado por um motor que desenha
+   cada COLUNA da tabela como um único bloco de texto contínuo (todos os
+   valores de "Total Nota" de uma página, por exemplo, saem como UM ÚNICO
+   item do pdf.js, não um item por linha visual). Por isso NÃO fazemos
+   agrupamento por coordenada Y assumindo linha visual — isso foi tentado
+   antes e sempre resulta em 0 notas. Cada item.str do pdf.js já É,
+   efetivamente, uma "coluna" inteira da página, então usamos os itens na
+   ordem nativa em que o pdf.js os devolve.
 ===================================================================== */
-async function extrairLinhasPDF(arrayBuffer, aoProgredir){
+async function extrairPaginasPDF(arrayBuffer, aoProgredir){
   const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-  const linhas = [];
+  const paginas = [];
+  let totalLinhas = 0;
   for(let p=1; p<=pdf.numPages; p++){
     const page = await pdf.getPage(p);
     const conteudo = await page.getTextContent();
-    const grupos = agruparItensPorLinha(conteudo.items);
-    grupos.forEach(itens=>{
-      const texto = itens.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
-      if(texto) linhas.push(texto);
-    });
+    const linhas = conteudo.items.map(i=>String(i.str||'').trim()).filter(Boolean);
+    paginas.push(linhas);
+    totalLinhas += linhas.length;
     if(aoProgredir) aoProgredir(p, pdf.numPages);
   }
-  return linhas;
-}
-
-function agruparItensPorLinha(items, tolerancia=2){
-  const ordenados = items.slice().sort((a,b)=> b.transform[5]-a.transform[5]);
-  const linhas = [];
-  let atual = null, yRef = null;
-  ordenados.forEach(item=>{
-    const y = item.transform[5];
-    if(atual===null || Math.abs(y-yRef)>tolerancia){
-      atual = []; linhas.push(atual); yRef = y;
-    }
-    atual.push(item);
-  });
-  linhas.forEach(l=>l.sort((a,b)=>a.transform[4]-b.transform[4]));
-  return linhas;
+  return {paginas, totalLinhas};
 }
 
 /* =====================================================================
-   PARTE 2 — PARSER (portado e validado em Python contra 3 PDFs reais
-   da clínica antes de virar JS: bateu 692/692 notas e R$ 67.861,81
-   exatamente com os totais que o próprio PDF imprime no rodapé)
+   PARTE 2 — PARSER EM ORDEM DE COLUNA (validado contra PDF real da
+   Unimed: 20 notas em 2 páginas reais, incluindo o caso de uma nota com
+   2 códigos de Serviço sob o mesmo rótulo — ver processo de validação
+   no histórico do projeto, não redescobrir do zero).
 ===================================================================== */
-const RE_NOTA_HEADER = /^(\d{4,6})\s+(\d{5,12})\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+(\d{2,3}\.\d{6,12}[\s\-]\d)\s+(.+?)\s+([\d.]+,\d{2})$/;
-const RE_PLANO = /^Plano\s*(.*?)\s*Acomoda[cç][aã]o\s*(.*)$/i;
-const RE_LABEL_LINHA = /^(Taxas de Sala|Servi[cç]os|Materiais e Medicamentos)\s*([A-Za-z0-9\-]+)\s+(.*)$/;
-const RE_CONTINUACAO = /^([A-Za-z0-9\-]{3,20})\s+(\d+,\d{2}(?:\s+\d+,\d{2}){1,6})$/;
-const RE_NUM = /\d+,\d{2}/g;
-const RE_GLOSA_LINHA = /^(\d{4,6})\s+(\d{5,12})\s+(\d{2,3}\.\d{6,12})[\s\-](\d)\s+(.+?)\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+(.+)$/;
-const RE_RESUMO_LINHA = /^(.+?)\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})\s+([CD])$/;
-const RE_SALDO = /^Saldo L[ií]quido:\s*([\d.]+,\d{2})$/;
-const RE_RODAPE_SECAO = /^Qt\. de Notas:\s*(\d+)\s+Total Servi[cç]os:\s*([\d.]+,\d{2})\s+Total Taxas:\s*([\d.]+,\d{2})/;
-
-const LINHAS_IGNORAR_EXATO = new Set([
-  'DEMONSTRATIVO DE PAGAMENTO', 'Modelo Completo',
-  'DETALHAMENTO DOS SERVIÇOS PRESTADOS', 'SERVICOS DIVERSOS',
-  'ORTESES E PROTESES', 'DETALHAMENTO DE GLOSAS',
-  'MODELO ALTERNATIVO DE REMUNERAÇÃO', 'Valores expressos em Reais (R$)',
-  'Mensagens do Cooperado', 'Outras Mensagens', 'Aviso',
-  'AVISO / RESUMO DE PAGAMENTO'
-]);
-const PREFIXOS_IGNORAR = [
-  'Produção/Movimento', 'Cooperativa de Trabalho Médico', 'Prestador:',
-  'Especialidade Médica', 'Lote Nota Data', 'Código Qt. Cobr',
-  'Lote Nota Cartão', 'Quantidade de Notas', 'Descrição dos Lançamentos',
-  'Data de Emiss'
-];
-
 function numeroBR(txt){ return parseFloat(String(txt).replace(/\./g,'').replace(',', '.')); }
 
-function parsearDemonstrativo(linhas){
-  const notas = [];       // {secao, lote, nota, data, hora, cartao, beneficiario, total_nota, plano, acomodacao}
-  const servicos = [];    // {nota_idx, tipo, codigo, numeros:[...]}
-  const glosas = [];
-  const resumo = [];
-  const rodapesSecao = [];
-  let saldoLiquido = null;
-  let secaoAtual = 'SERVICOS DIVERSOS';
-  let notaAtualIdx = -1;
-  let modoAtual = null;
-  let emGlosas = false;
-  let emResumo = false;
-
-  for(const linhaOriginal of linhas){
-    const linha = linhaOriginal.trim();
-    if(!linha) continue;
-
-    if(LINHAS_IGNORAR_EXATO.has(linha)){
-      if(linha==='SERVICOS DIVERSOS') secaoAtual = 'SERVICOS DIVERSOS';
-      if(linha==='ORTESES E PROTESES') secaoAtual = 'ORTESES E PROTESES';
-      if(linha==='DETALHAMENTO DE GLOSAS') emGlosas = true;
-      if(linha==='AVISO / RESUMO DE PAGAMENTO') emResumo = true;
-      continue;
-    }
-    if(PREFIXOS_IGNORAR.some(p=>linha.startsWith(p))) continue;
-
-    const mRodape = linha.match(RE_RODAPE_SECAO);
-    if(mRodape){
-      rodapesSecao.push({secao:secaoAtual, qtdNotas:parseInt(mRodape[1],10), totalServicos:numeroBR(mRodape[2]), totalTaxas:numeroBR(mRodape[3])});
-      continue;
-    }
-    const mSaldo = linha.match(RE_SALDO);
-    if(mSaldo){ saldoLiquido = numeroBR(mSaldo[1]); continue; }
-
-    if(emResumo){
-      const mRes = linha.match(RE_RESUMO_LINHA);
-      if(mRes){
-        resumo.push({descricao:mRes[1].trim(), quantidade:numeroBR(mRes[2]), valor:numeroBR(mRes[3]), tipo:mRes[4]});
-        continue;
-      }
-    }
-    if(emGlosas){
-      const mGlosa = linha.match(RE_GLOSA_LINHA);
-      if(mGlosa){
-        glosas.push({
-          secao:secaoAtual, lote:mGlosa[1], nota:mGlosa[2],
-          cartao:`${mGlosa[3]}-${mGlosa[4]}`, nome:mGlosa[5].trim(),
-          data:mGlosa[6], hora:mGlosa[7], mensagem:mGlosa[8].trim()
-        });
-        continue;
-      }
-    }
-
-    const mHeader = linha.match(RE_NOTA_HEADER);
-    if(mHeader){
-      notas.push({
-        secao:secaoAtual, lote:mHeader[1], nota:mHeader[2], data:mHeader[3], hora:mHeader[4],
-        cartao:mHeader[5].replace(' ','-'), beneficiario:mHeader[6].trim(),
-        total_nota:numeroBR(mHeader[7]), plano:null, acomodacao:null
-      });
-      notaAtualIdx = notas.length-1;
-      modoAtual = null;
-      continue;
-    }
-
-    const mPlano = linha.match(RE_PLANO);
-    if(mPlano && notaAtualIdx>-1){
-      notas[notaAtualIdx].plano = mPlano[1].trim();
-      notas[notaAtualIdx].acomodacao = mPlano[2].trim();
-      continue;
-    }
-
-    const mLabel = linha.match(RE_LABEL_LINHA);
-    if(mLabel && notaAtualIdx>-1){
-      modoAtual = mLabel[1];
-      const numeros = (mLabel[3].match(RE_NUM)||[]).map(numeroBR);
-      servicos.push({nota_idx:notaAtualIdx, tipo:modoAtual, codigo:mLabel[2], numeros});
-      continue;
-    }
-
-    const mCont = linha.match(RE_CONTINUACAO);
-    if(mCont && notaAtualIdx>-1 && modoAtual){
-      const numeros = (mCont[2].match(RE_NUM)||[]).map(numeroBR);
-      servicos.push({nota_idx:notaAtualIdx, tipo:modoAtual, codigo:mCont[1], numeros});
-      continue;
-    }
-    // linha não reconhecida: ignorada silenciosamente (cabeçalhos/rodapés de página)
-  }
-
-  return {notas, servicos, glosas, resumo, saldoLiquido, rodapesSecao};
+function extrairNumeros(str){
+  const m = String(str||'').match(/-?[\d.]+,\d{2}/g) || [];
+  return m.map(numeroBR);
 }
 
-/* Converte data BR (dd/mm/aaaa) e hora (hh:mm:ss) pros formatos que o Postgres espera */
+// código de taxa: alfanumérico com hífen (ex.: TSI0-6002328). código de
+// serviço/material: só dígitos, 5 a 7 dígitos (ex.: 4020112, 5000047).
+const RE_CODIGO = /([A-Z]{2,5}\d-\d{6,10})|(?<![\w.-])(\d{5,7})(?!\d)/g;
+function ehCodigoTaxa(codigo){ return /^[A-Z]{2,5}\d-\d{6,10}$/.test(codigo); }
+
+/* Analisa UMA página (array de "linhas" = itens do pdf.js na ordem nativa)
+   e devolve {secao, notas:[...], servicos:[...], avisos:[...]} com
+   granularidade de nota + linha de serviço/taxa. */
+function parsearPaginaColunaMajor(linhas){
+  let secao = null, lotes = [], notasNum = [], cartoes = [], datasHoras = [], totaisNota = [];
+  let beneficiarioBlob = '';
+  let qtCobr = [], qtPaga = [];
+  let qtdCH = [], filme = [], individual = [], global_ = [];
+  let valorPorCodigo = null;
+
+  for(let i=0;i<linhas.length;i++){
+    const linha = linhas[i].trim();
+    if(!linha) continue;
+    let m;
+
+    if((m = linha.match(/^(SERVICOS DIVERSOS|ORTESES E PROTESES)\s+Lote\s+(.+)$/))){
+      secao = m[1]; lotes = m[2].trim().split(/\s+/); continue;
+    }
+    if((m = linha.match(/^Nota\s+(.+)$/))){ notasNum = m[1].trim().split(/\s+/); continue; }
+    if((m = linha.match(/N[uú]mero Cart[aã]o\s+(.+)$/))){ cartoes = m[1].match(/\d+\.\d+-\d/g) || []; continue; }
+    if((m = linha.match(/^Data\s+(.+)$/))){
+      const pares = [...m[1].matchAll(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})/g)];
+      datasHoras = pares.map(p=>({data:p[1], hora:p[2]}));
+      continue;
+    }
+    if((m = linha.match(/^Total Nota\s+(.+)$/))){ totaisNota = extrairNumeros(m[1]); continue; }
+    if((m = linha.match(/^Benefici[aá]rio C[oó]digo\s+(.+)$/))){ beneficiarioBlob = m[1]; continue; }
+    if((m = linha.match(/^Qt\.\s*Cobr\s+(.+)$/))){ qtCobr = extrairNumeros(m[1]); continue; }
+    if((m = linha.match(/^Qt\.\s*Paga\s+(.+)$/))){ qtPaga = extrairNumeros(m[1]); continue; }
+    if((m = linha.match(/^Qtd CH\s+(.+)$/))){ qtdCH = extrairNumeros(m[1]); continue; }
+    if((m = linha.match(/^Participa[cç][aã]o Filme\s+(.+)$/))){ filme = extrairNumeros(m[1]); continue; }
+    if((m = linha.match(/^Global\s+(.+)$/))){ global_ = extrairNumeros(m[1]); continue; }
+    if(linha === 'Individual'){
+      const proxima = (linhas[i+1]||'').trim();
+      if(proxima && /^[\d.,\s]+$/.test(proxima)){ individual = extrairNumeros(proxima); i++; }
+      continue;
+    }
+    // linha puramente numérica com o rótulo (Valor) vindo DEPOIS
+    if(/^[\d.,]+(\s+[\d.,]+)*$/.test(linha)){
+      const proxima = (linhas[i+1]||'').trim();
+      if(proxima === 'Valor'){ valorPorCodigo = extrairNumeros(linha); i++; }
+      // "Subtotal" também pode aparecer assim, mas não é usado na
+      // reconciliação (ver nota abaixo) — ignorado de propósito.
+      continue;
+    }
+  }
+
+  const codigosComPosicao = [...beneficiarioBlob.matchAll(RE_CODIGO)].map(m=>({codigo:m[0], indice:m.index}));
+  const codigos = codigosComPosicao.map(c=>c.codigo);
+  const M = codigos.length;
+  const N = totaisNota.length;
+
+  /* IMPORTANTE — descoberto testando contra PDF real: o "Subtotal"
+     impresso é por GRUPO de rótulo (Taxas de Sala/Serviços/Materiais e
+     Medicamentos), e um grupo pode ter mais de um código (ex.: duas
+     linhas de "Serviços" sob o mesmo rótulo). Por isso o Subtotal NÃO é
+     1-para-1 com os códigos e não pode ser usado para decidir quantos
+     códigos pertencem a cada nota. O que sempre fecha, código a código,
+     é: contribuição = Valor + (Filme, se for código de Serviço) —
+     porque Subtotal = Valor + Filme por definição. */
+  const notas = [];
+  const servicos = [];
+  const avisos = [];
+  let idxCodigo = 0, idxServico = 0;
+
+  for(let n=0; n<N; n++){
+    const alvo = totaisNota[n];
+    let soma = 0;
+    const codigosDestaNota = [];
+    const idxCodigoInicial = idxCodigo;
+
+    while(idxCodigo < M){
+      const codigo = codigos[idxCodigo];
+      const taxa = ehCodigoTaxa(codigo);
+      const valor = valorPorCodigo ? valorPorCodigo[idxCodigo] : undefined;
+      const filmeDoCodigo = taxa ? 0 : (filme[idxServico] || 0);
+      const contribuicao = (valor||0) + filmeDoCodigo;
+
+      const registro = {
+        tipo: taxa ? 'Taxas de Sala' : 'Serviços', codigo,
+        qt_cobrada: qtCobr[idxCodigo], qt_paga: qtPaga[idxCodigo], valor
+      };
+      if(!taxa){
+        registro.filme = filme[idxServico];
+        registro.qtd_ch = qtdCH[idxServico];
+        registro.valor_dimensao_individual = individual[idxServico];
+        registro.valor_dimensao_global = global_[idxServico];
+        idxServico++;
+      }
+      registro.subtotal = (registro.valor||0) + (registro.filme||0);
+      codigosDestaNota.push(registro);
+      soma += contribuicao;
+      idxCodigo++;
+      if(Math.abs(soma - alvo) < 0.02) break;
+    }
+
+    if(Math.abs(soma - alvo) >= 0.02){
+      avisos.push(`Nota ${notasNum[n]} (total esperado ${formatarMoeda(alvo)}) não bateu — soma parcial ${formatarMoeda(soma)} com ${codigosDestaNota.length} código(s).`);
+    }
+
+    const primeiroCodigo = codigosComPosicao[idxCodigoInicial];
+    const inicioTexto = idxCodigoInicial === 0 ? 0 : (codigosComPosicao[idxCodigoInicial-1].indice + codigosComPosicao[idxCodigoInicial-1].codigo.length);
+    const beneficiarioEPlano = primeiroCodigo ? beneficiarioBlob.slice(inicioTexto, primeiroCodigo.indice).trim() : '';
+
+    notas.push({
+      secao, lote: lotes[n], nota: notasNum[n],
+      data: datasHoras[n] ? datasHoras[n].data : null,
+      hora: datasHoras[n] ? datasHoras[n].hora : null,
+      cartao: cartoes[n] || null,
+      beneficiario_e_plano: beneficiarioEPlano,
+      total_nota: alvo,
+      _servicos: codigosDestaNota
+    });
+  }
+
+  return {secao, notas, avisos};
+}
+
+/* ---------------------------------------------------------------------
+   Glosas e Resumo — seções pequenas, no fim do PDF. Ainda não temos uma
+   amostra confirmada de como o pdf.js as extrai no navegador (podem sair
+   em ordem de coluna como o resto, ou de forma mais direta). Este parser
+   tenta casar tanto "tudo na mesma linha" quanto "valor numa linha,
+   descrição na linha adjacente" — o mesmo tipo de inversão valor-antes-
+   do-rótulo já visto na seção de Serviços. Se aparecer 0 glosas/resumo
+   num PDF que deveria ter, use o bloco de depuração (linhas brutas) desta
+   seção especificamente e ajuste este parser com uma amostra real — não
+   adivinhar mais uma vez.
+--------------------------------------------------------------------- */
+function parsearGlosas(linhas){
+  const glosas = [];
+  const RE_COMPLETA = /^(\d{4,6})\s+(\d{5,12})\s+(\d{2,3}\.\d{6,12})[\s-](\d)\s+(.+?)\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+(.+)$/;
+  for(const linhaOriginal of linhas){
+    const linha = linhaOriginal.trim();
+    const m = linha.match(RE_COMPLETA);
+    if(m){
+      glosas.push({
+        lote:m[1], nota:m[2], cartao:`${m[3]}-${m[4]}`, nome:m[5].trim(),
+        data:m[6], hora:m[7], mensagem:m[8].trim()
+      });
+    }
+  }
+  return glosas;
+}
+
+function parsearResumo(linhas){
+  const resumo = [];
+  let saldoLiquido = null;
+  const RE_LINHA_COMPLETA = /^(.+?)\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})\s+([CD])$/;
+  const RE_VALOR_TIPO = /^([\d.]+,\d{2})\s+([CD])$/;
+  const RE_DESC_QTD = /^(.+?)\s+([\d.]+,\d{2})$/;
+  const RE_SALDO_MESMA_LINHA = /^Saldo L[ií]quido:\s*([\d.]+,\d{2})$/;
+
+  for(let i=0;i<linhas.length;i++){
+    const linha = linhas[i].trim();
+    if(!linha) continue;
+    let m = linha.match(RE_SALDO_MESMA_LINHA);
+    if(m){ saldoLiquido = numeroBR(m[1]); continue; }
+    if(linha === 'Saldo Líquido:'){
+      const prox = (linhas[i+1]||'').trim();
+      if(/^[\d.]+,\d{2}$/.test(prox)){ saldoLiquido = numeroBR(prox); i++; }
+      continue;
+    }
+    m = linha.match(RE_LINHA_COMPLETA);
+    if(m){ resumo.push({descricao:m[1].trim(), quantidade:numeroBR(m[2]), valor:numeroBR(m[3]), tipo:m[4]}); continue; }
+    m = linha.match(RE_VALOR_TIPO);
+    if(m){
+      const prox = (linhas[i+1]||'').trim();
+      const mProx = prox.match(RE_DESC_QTD);
+      if(mProx){ resumo.push({descricao:mProx[1].trim(), quantidade:numeroBR(mProx[2]), valor:numeroBR(m[1]), tipo:m[2]}); i++; }
+      continue;
+    }
+  }
+  return {resumo, saldoLiquido};
+}
+
+/* Junta o parser por página (Serviços/Órteses) com Glosas/Resumo (que
+   olham o documento inteiro, já que ficam nas últimas páginas) num único
+   resultado, com nota_idx global (não por página) pra bater com o resto
+   do código (preview, importação). */
+function parsearDemonstrativo(paginas){
+  const notas = [];
+  const servicos = [];
+  const avisos = [];
+  let rodapesSecao = [];
+
+  paginas.forEach(linhasPagina=>{
+    const resultado = parsearPaginaColunaMajor(linhasPagina);
+    resultado.notas.forEach(n=>{
+      const notaIdx = notas.length;
+      n._servicos.forEach(s=>{ s.nota_idx = notaIdx; servicos.push(s); });
+      delete n._servicos;
+      notas.push(n);
+    });
+    avisos.push(...resultado.avisos);
+  });
+
+  const todasLinhas = paginas.flat();
+  const glosas = parsearGlosas(todasLinhas);
+  const {resumo, saldoLiquido} = parsearResumo(todasLinhas);
+
+  return {notas, servicos, glosas, resumo, saldoLiquido, avisos, rodapesSecao};
+}
+
+/* Converte data BR (dd/mm/aaaa) pro formato que o Postgres espera */
 function dataBRparaISO(dataBR){
+  if(!dataBR) return null;
   const [d,m,a] = dataBR.split('/');
   return `${a}-${m}-${d}`;
 }
@@ -582,7 +659,7 @@ function dataBRparaISO(dataBR){
 ===================================================================== */
 let resultadoParseAtual = null;
 let arquivoSelecionado = null;
-let ultimasLinhasExtraidas = [];
+let ultimasPaginasExtraidas = [];
 
 document.getElementById('botao-escolher-pdf').addEventListener('click', ()=>document.getElementById('input-pdf').click());
 document.getElementById('input-pdf').addEventListener('change', (ev)=>{
@@ -615,15 +692,15 @@ document.getElementById('botao-processar-pdf').addEventListener('click', async (
 
   try{
     const arrayBuffer = await arquivoSelecionado.arrayBuffer();
-    const linhas = await extrairLinhasPDF(arrayBuffer, (pagina, total)=>{
+    const {paginas, totalLinhas} = await extrairPaginasPDF(arrayBuffer, (pagina, total)=>{
       barra.style.width = Math.round((pagina/total)*100)+'%';
       status.textContent = `Lendo página ${pagina} de ${total}...`;
     });
-    ultimasLinhasExtraidas = linhas;
+    ultimasPaginasExtraidas = paginas;
     status.textContent = 'Interpretando o conteúdo...';
-    resultadoParseAtual = parsearDemonstrativo(linhas);
-    exibirConferencia(resultadoParseAtual);
-    status.textContent = `Leitura concluída: ${linhas.length} linhas de texto processadas.`;
+    resultadoParseAtual = parsearDemonstrativo(paginas);
+    exibirConferencia(resultadoParseAtual, totalLinhas);
+    status.textContent = `Leitura concluída: ${totalLinhas} itens de texto processados em ${paginas.length} página(s).`;
   }catch(e){
     status.textContent = 'Erro ao ler o PDF: ' + (e.message||e);
   }finally{
@@ -631,59 +708,58 @@ document.getElementById('botao-processar-pdf').addEventListener('click', async (
   }
 });
 
-function exibirConferencia(resultado){
-  const {notas, servicos, glosas, resumo, saldoLiquido, rodapesSecao} = resultado;
+function exibirConferencia(resultado, totalLinhas){
+  const {notas, servicos, glosas, resumo, saldoLiquido, avisos} = resultado;
   document.getElementById('cartao-conferencia').style.display = 'block';
 
-  // Cross-check: soma dos Total Nota (por seção) tem que bater com
-  // Total Serviços + Total Taxas impresso no rodapé da própria seção.
-  const secoes = Array.from(new Set(notas.map(n=>n.secao)));
-  let tudoBateu = true;
+  const tudoBateu = avisos.length===0 && notas.length>0;
   let linhasConferencia = '';
-  secoes.forEach(secao=>{
-    const notasDaSecao = notas.filter(n=>n.secao===secao);
-    const somaTotalNota = notasDaSecao.reduce((s,n)=>s+n.total_nota, 0);
-    const rodape = rodapesSecao.find(r=>r.secao===secao);
-    if(rodape){
-      const esperado = rodape.totalServicos + rodape.totalTaxas;
-      const bateu = Math.abs(esperado - somaTotalNota) < 0.02 && rodape.qtdNotas === notasDaSecao.length;
-      if(!bateu) tudoBateu = false;
-      linhasConferencia += `<div>${bateu?'✅':'⚠️'} <b>${secao}</b>: ${notasDaSecao.length} nota(s) lida(s) (PDF diz ${rodape.qtdNotas}) — soma ${formatarMoeda(somaTotalNota)} (PDF diz ${formatarMoeda(esperado)})</div>`;
-    } else {
-      linhasConferencia += `<div>⚠️ <b>${secao}</b>: ${notasDaSecao.length} nota(s) lida(s), mas não achei a linha de rodapé "Qt. de Notas" dessa seção pra conferir.</div>`;
-      tudoBateu = false;
-    }
-  });
   if(notas.length===0){
-    linhasConferencia = '<div>⚠️ Nenhuma nota de serviço foi encontrada neste PDF (pode ser um arquivo só de glosas/resumo, ou o layout não bateu com o esperado).</div>';
-    tudoBateu = false;
+    linhasConferencia = '<div>⚠️ Nenhuma nota de serviço foi encontrada neste PDF. Veja o bloco de depuração abaixo.</div>';
+  } else if(avisos.length){
+    linhasConferencia = avisos.slice(0,10).map(a=>`<div>⚠️ ${a}</div>`).join('') +
+      (avisos.length>10 ? `<div>...e mais ${avisos.length-10} aviso(s).</div>` : '');
+  } else {
+    linhasConferencia = `<div>✅ Todas as ${notas.length} nota(s) bateram (soma de Valor+Filme por código = Total Nota impresso, tolerância R$ 0,02).</div>`;
   }
+  linhasConferencia += `<div style="margin-top:6px;color:var(--ink-400);">Glosas e Resumo por competência são interpretados de forma independente das notas — confira os números abaixo mesmo se as notas baterem certinho.</div>`;
 
-  // ---- Depuração: quando não achar nenhuma nota, mostra as linhas brutas
-  // extraídas pelo pdf.js, pra dar pra copiar e mandar de volta pro ajuste
-  // do parser (a extração no navegador pode reconstruir o texto diferente
-  // do que foi validado no servidor). ----
   const areaDebugAnterior = document.getElementById('area-debug-linhas');
   if(areaDebugAnterior) areaDebugAnterior.remove();
-  if(notas.length===0 && ultimasLinhasExtraidas.length){
+  if((notas.length===0 || avisos.length>0 || glosas.length===0 || resumo.length===0) && ultimasPaginasExtraidas.length){
+    const todasLinhas = ultimasPaginasExtraidas.flat();
     const divDebug = document.createElement('div');
     divDebug.id = 'area-debug-linhas';
     divDebug.style.marginTop = '14px';
-    const amostraDebug = ultimasLinhasExtraidas.slice(0, 300).join('\n');
+    const amostraDebug = todasLinhas.slice(0, 300).join('\n');
+    const amostraFinal = todasLinhas.slice(-300).join('\n');
     divDebug.innerHTML = `
       <details>
         <summary style="cursor:pointer;color:var(--plum-700);font-weight:600;font-size:13.5px;">
-          Ver linhas brutas extraídas (depuração) — ${ultimasLinhasExtraidas.length} linhas no total, mostrando as primeiras 300
+          Ver linhas brutas extraídas (depuração) — ${todasLinhas.length} itens no total (primeiras 300 mostradas)
         </summary>
-        <textarea readonly style="width:100%;height:260px;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:10px;border-radius:8px;border:1.5px solid var(--line);" id="textarea-debug-linhas">${amostraDebug.replace(/</g,'&lt;')}</textarea>
-        <button class="botao sutil pequeno" id="botao-copiar-debug" style="margin-top:8px;">Copiar linhas</button>
+        <textarea readonly style="width:100%;height:220px;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:10px;border-radius:8px;border:1.5px solid var(--line);" id="textarea-debug-linhas">${amostraDebug.replace(/</g,'&lt;')}</textarea>
+        <button class="botao sutil pequeno" id="botao-copiar-debug" style="margin-top:8px;">Copiar primeiras 300</button>
+      </details>
+      <details style="margin-top:8px;">
+        <summary style="cursor:pointer;color:var(--plum-700);font-weight:600;font-size:13.5px;">
+          Ver últimas 300 linhas (útil pra depurar Glosas/Resumo, que ficam no fim do PDF)
+        </summary>
+        <textarea readonly style="width:100%;height:220px;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:10px;border-radius:8px;border:1.5px solid var(--line);" id="textarea-debug-linhas-final">${amostraFinal.replace(/</g,'&lt;')}</textarea>
+        <button class="botao sutil pequeno" id="botao-copiar-debug-final" style="margin-top:8px;">Copiar últimas 300</button>
       </details>`;
     document.getElementById('caixa-conferencia-conteudo').parentElement.appendChild(divDebug);
     document.getElementById('botao-copiar-debug').addEventListener('click', ()=>{
       document.getElementById('textarea-debug-linhas').select();
       document.execCommand('copy');
       document.getElementById('botao-copiar-debug').textContent = 'Copiado ✓';
-      setTimeout(()=>{ document.getElementById('botao-copiar-debug').textContent = 'Copiar linhas'; }, 1500);
+      setTimeout(()=>{ document.getElementById('botao-copiar-debug').textContent = 'Copiar primeiras 300'; }, 1500);
+    });
+    document.getElementById('botao-copiar-debug-final').addEventListener('click', ()=>{
+      document.getElementById('textarea-debug-linhas-final').select();
+      document.execCommand('copy');
+      document.getElementById('botao-copiar-debug-final').textContent = 'Copiado ✓';
+      setTimeout(()=>{ document.getElementById('botao-copiar-debug-final').textContent = 'Copiar últimas 300'; }, 1500);
     });
   }
 
@@ -691,24 +767,25 @@ function exibirConferencia(resultado){
   caixa.parentElement.querySelector('.caixa-conferencia')?.remove();
   const divCaixa = document.createElement('div');
   divCaixa.className = 'caixa-conferencia' + (tudoBateu ? ' ok' : '');
-  divCaixa.innerHTML = `<b>${tudoBateu ? 'Conferência bateu com os totais impressos no PDF ✓' : 'Atenção: revise antes de importar'}</b>${linhasConferencia}`;
+  divCaixa.innerHTML = `<b>${tudoBateu ? 'Conferência bateu ✓' : 'Atenção: revise antes de importar'}</b>${linhasConferencia}`;
   caixa.innerHTML = '';
   caixa.appendChild(divCaixa);
 
+  const somaResumo = resumo.reduce((s,r)=> s + (r.tipo==='C' ? r.valor : -r.valor), 0);
   document.getElementById('kpi-preview').innerHTML = `
     <div class="kpi"><div class="rotulo">Notas encontradas</div><div class="valor">${notas.length}</div></div>
     <div class="kpi"><div class="rotulo">Linhas de serviço/taxa</div><div class="valor">${servicos.length}</div></div>
     <div class="kpi"><div class="rotulo">Glosas encontradas</div><div class="valor gold">${glosas.length}</div></div>
-    <div class="kpi"><div class="rotulo">Saldo líquido da competência</div><div class="valor teal">${saldoLiquido!==null?formatarMoeda(saldoLiquido):'—'}</div></div>
+    <div class="kpi"><div class="rotulo">Saldo líquido do resumo</div><div class="valor teal">${saldoLiquido!==null?formatarMoeda(saldoLiquido):'—'}</div></div>
   `;
 
   const tabela = document.getElementById('tabela-preview-notas');
   const amostra = notas.slice(0, 25);
   tabela.innerHTML = amostra.length===0 ? '<tr><td class="vazio">Nenhuma nota pra exibir.</td></tr>' : `
-    <thead><tr><th>Lote</th><th>Nota</th><th>Data</th><th>Beneficiário</th><th>Plano</th><th>Total</th></tr></thead>
+    <thead><tr><th>Lote</th><th>Nota</th><th>Data</th><th>Beneficiário / Plano</th><th>Total</th></tr></thead>
     <tbody>${amostra.map(n=>`
-      <tr><td class="mono">${n.lote}</td><td class="mono">${n.nota}</td><td>${n.data}</td>
-      <td>${n.beneficiario}</td><td>${n.plano||'—'}</td><td class="mono">${formatarMoeda(n.total_nota)}</td></tr>`).join('')}
+      <tr><td class="mono">${n.lote}</td><td class="mono">${n.nota}</td><td>${n.data||'—'}</td>
+      <td>${n.beneficiario_e_plano||'—'}</td><td class="mono">${formatarMoeda(n.total_nota)}</td></tr>`).join('')}
     </tbody>`;
   if(notas.length>25){
     tabela.innerHTML += `<caption style="caption-side:bottom;text-align:left;padding:10px 12px;color:var(--ink-400);font-size:12.5px;">Mostrando as primeiras 25 de ${notas.length} notas.</caption>`;
@@ -717,13 +794,13 @@ function exibirConferencia(resultado){
 
 /* ---------------------------------------------------------------------
    CONFIRMAR IMPORTAÇÃO → grava no Supabase em lotes
-   (mesma técnica de importação em massa usada no index.html: lotes de
-   ~300 registros, sem sobrescrever nada que já exista)
 --------------------------------------------------------------------- */
 document.getElementById('botao-confirmar-importacao').addEventListener('click', async ()=>{
   if(!resultadoParseAtual || !resultadoParseAtual.notas.length){ alert('Nada pra importar ainda — processe um PDF primeiro.'); return; }
+  const competencia = document.getElementById('input-competencia').value.trim();
+  if(!competencia){ alert('Informe a competência (ex.: 2026/5/2-Q) antes de importar.'); return; }
   if(MODO_DEMO){ alert('A importação real só funciona conectado ao Supabase (configure SUPABASE_URL/SUPABASE_ANON_KEY no topo do arquivo).'); return; }
-  if(!confirm(`Confirma importar ${resultadoParseAtual.notas.length} nota(s), ${resultadoParseAtual.glosas.length} glosa(s) e o resumo financeiro desta competência?`)) return;
+  if(!confirm(`Confirma importar ${resultadoParseAtual.notas.length} nota(s), ${resultadoParseAtual.glosas.length} glosa(s) e o resumo financeiro da competência ${competencia}?`)) return;
 
   const status = document.getElementById('status-importacao');
   const barraWrap = document.getElementById('barra-importacao');
@@ -732,7 +809,7 @@ document.getElementById('botao-confirmar-importacao').addEventListener('click', 
   document.getElementById('botao-confirmar-importacao').disabled = true;
 
   try{
-    const resp = await api('importarFaturamento', resultadoParseAtual, (feitos, total)=>{
+    const resp = await api('importarFaturamento', Object.assign({competencia}, resultadoParseAtual), (feitos, total)=>{
       barra.style.width = Math.round((feitos/total)*100)+'%';
       status.textContent = `Importando... ${feitos}/${total}`;
     });
@@ -758,21 +835,24 @@ async function supabaseApi(acao, dados){
   switch(acao){
 
     case 'importarFaturamento': {
-      const {notas, servicos, glosas, resumo} = dados;
-      const competencia = document.title;
+      const {notas, servicos, glosas, resumo, saldoLiquido, competencia} = dados;
       const prestadorCodigo = null;
-
-      // 1) Insere as notas em lotes e guarda o id retornado pra cada uma
-      //    (necessário pra depois linkar os serviços via nota_id)
-      const idsNotas = [];
       const TAMANHO_LOTE = 200;
+
+      // 1) Notas — em lotes, guardando o id retornado pra linkar serviços/glosas
+      const idsNotas = [];
       for(let i=0;i<notas.length;i+=TAMANHO_LOTE){
         const lote = notas.slice(i,i+TAMANHO_LOTE).map(n=>({
           competencia, prestador_codigo: prestadorCodigo,
           lote:n.lote, nota:n.nota, secao:n.secao,
           data_atendimento: dataBRparaISO(n.data), hora_atendimento:n.hora,
-          cartao_beneficiario:n.cartao, nome_beneficiario:n.beneficiario,
-          plano:n.plano, acomodacao:n.acomodacao, total_nota:n.total_nota
+          cartao_beneficiario:n.cartao,
+          // Limitação conhecida e documentada: não separamos nome do
+          // beneficiário do texto do plano com confiança — guardamos o
+          // texto combinado em nome_beneficiario e deixamos plano/acomodacao
+          // em branco, em vez de arriscar uma heurística não testada.
+          nome_beneficiario:n.beneficiario_e_plano, plano:null, acomodacao:null,
+          total_nota:n.total_nota
         }));
         const { data, error } = await supabaseClient.from('faturamento_notas')
           .upsert(lote, {onConflict:'lote,nota,competencia'}).select('id, lote, nota');
@@ -780,30 +860,20 @@ async function supabaseApi(acao, dados){
         data.forEach(d=>idsNotas.push(d));
       }
 
-      // mapa lote+nota -> id, pra linkar serviços e glosas
       const mapaIdPorLoteNota = {};
       idsNotas.forEach(d=>{ mapaIdPorLoteNota[`${d.lote}_${d.nota}`] = d.id; });
 
-      // 2) Serviços — remonta nota_id a partir do índice original salvo no parser
+      // 2) Serviços — os campos já saem do parser com os nomes certos
       const servicosParaInserir = servicos.map(s=>{
         const notaOriginal = notas[s.nota_idx];
         const nota_id = mapaIdPorLoteNota[`${notaOriginal.lote}_${notaOriginal.nota}`];
-        // convenção de posições dos números conforme o tipo de linha (validada nos PDFs reais):
-        // 'Taxas de Sala': [qtcobr, qtpaga, valor, subtotal?]
-        // 'Serviços':      [qtcobr, qtpaga, valor, filme, qtdch, subtotal?, dimGlobal?, dimIndividual?]
-        // 'Materiais e Medicamentos': [qtcobr, qtpaga, valor, subtotal?]
-        const n = s.numeros;
-        const registro = { nota_id, tipo:s.tipo, codigo:s.codigo };
-        if(s.tipo === 'Serviços' && n.length>=5){
-          registro.qt_cobrada=n[0]; registro.qt_paga=n[1]; registro.valor=n[2];
-          registro.filme=n[3]; registro.qtd_ch=n[4];
-          if(n.length>=6) registro.subtotal=n[5];
-          if(n.length>=8){ registro.valor_dimensao_global=n[6]; registro.valor_dimensao_individual=n[7]; }
-        } else {
-          registro.qt_cobrada=n[0]; registro.qt_paga=n[1]; registro.valor=n[2];
-          if(n.length>=4) registro.subtotal=n[3];
-        }
-        return registro;
+        return {
+          nota_id, tipo:s.tipo, codigo:s.codigo,
+          qt_cobrada:s.qt_cobrada, qt_paga:s.qt_paga, valor:s.valor,
+          filme:s.filme, qtd_ch:s.qtd_ch, subtotal:s.subtotal,
+          valor_dimensao_global:s.valor_dimensao_global,
+          valor_dimensao_individual:s.valor_dimensao_individual
+        };
       }).filter(r=>r.nota_id);
 
       let servicosInseridos = 0;
@@ -814,11 +884,13 @@ async function supabaseApi(acao, dados){
         servicosInseridos += lote.length;
       }
 
-      // 3) Glosas
+      // 3) Glosas — SEM o campo "secao" (a tabela faturamento_glosas não
+      // tem essa coluna; incluir isso aqui já causou erro do Postgres
+      // antes — ver histórico do projeto).
       const glosasParaInserir = glosas.map(g=>({
-        competencia, secao:g.secao, lote:g.lote, nota:g.nota,
+        competencia, lote:g.lote, nota:g.nota,
         cartao_beneficiario:g.cartao, nome_beneficiario:g.nome,
-        data_glosa: `${dataBRparaISO(g.data)}T${g.hora}`,
+        data_glosa: g.data ? `${dataBRparaISO(g.data)}T${g.hora||'00:00:00'}` : null,
         mensagem_glosa:g.mensagem,
         nota_id: mapaIdPorLoteNota[`${g.lote}_${g.nota}`] || null
       }));
@@ -827,20 +899,17 @@ async function supabaseApi(acao, dados){
         const { error } = await supabaseClient.from('faturamento_glosas').insert(glosasParaInserir);
         if(error) return {ok:false, erro:'Ao gravar glosas: '+error.message};
         glosasInseridas = glosasParaInserir.length;
-
-        // Atualiza status_pagamento das notas glosadas
         for(const g of glosasParaInserir){
           if(!g.nota_id) continue;
-          await supabaseClient.from('faturamento_notas')
-            .update({status_pagamento:'glosado_parcial'}).eq('id', g.nota_id);
+          await supabaseClient.from('faturamento_notas').update({status_pagamento:'glosado_parcial'}).eq('id', g.nota_id);
         }
       }
 
       // 4) Resumo da competência
-      const resumoParaInserir = dados.resumo.map(r=>({
+      const resumoParaInserir = resumo.map(r=>({
         competencia, prestador_codigo:prestadorCodigo,
         descricao_lancamento:r.descricao, quantidade:r.quantidade, valor:r.valor,
-        tipo_lancamento:r.tipo, saldo_liquido: dados.saldoLiquido
+        tipo_lancamento:r.tipo, saldo_liquido: saldoLiquido
       }));
       let resumoInserido = 0;
       if(resumoParaInserir.length){
@@ -889,10 +958,6 @@ async function supabaseApi(acao, dados){
   }
 }
 
-/* ---------------------------------------------------------------------
-   MODO DEMONSTRAÇÃO (sem Supabase configurado) — mock simples só pra
-   dá pra testar o parser/preview sem gravar nada de verdade.
---------------------------------------------------------------------- */
 const demoFaturamento = { notas:[], servicos:[], glosas:[], resumo:[] };
 async function mockApi(acao, dados){
   switch(acao){
@@ -905,7 +970,7 @@ async function mockApi(acao, dados){
     case 'buscarFaturamento': {
       const termo = dados.termo.trim().toUpperCase();
       const notas = demoFaturamento.notas.filter(n =>
-        (n.beneficiario||'').toUpperCase().includes(termo) || n.nota===termo || (n.cartao||'').includes(termo));
+        (n.beneficiario_e_plano||'').toUpperCase().includes(termo) || n.nota===termo || (n.cartao||'').includes(termo));
       return {ok:true, notas};
     }
     default: return {ok:false, erro:'Ação não disponível no modo demonstração: '+acao};
@@ -913,8 +978,7 @@ async function mockApi(acao, dados){
 }
 
 /* =====================================================================
-   PARTE 5 — CONSULTA (a troca de sub-abas já é tratada mais acima,
-   junto do carregamento de sessão/permissões)
+   PARTE 5 — CONSULTA
 ===================================================================== */
 document.getElementById('botao-buscar-faturamento').addEventListener('click', buscarFaturamento);
 document.getElementById('busca-faturamento').addEventListener('keydown', e=>{ if(e.key==='Enter') buscarFaturamento(); });
@@ -928,13 +992,13 @@ async function buscarFaturamento(){
   if(!resp.ok){ tabela.innerHTML = `<tr><td class="vazio">${resp.erro}</td></tr>`; return; }
   if(resp.notas.length===0){ tabela.innerHTML = '<tr><td class="vazio">Nenhum resultado.</td></tr>'; return; }
   tabela.innerHTML = `
-    <thead><tr><th>Data</th><th>Nota</th><th>Beneficiário</th><th>Cartão</th><th>Plano</th><th>Total</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Data</th><th>Nota</th><th>Beneficiário</th><th>Cartão</th><th>Total</th><th>Status</th><th></th></tr></thead>
     <tbody>${resp.notas.map(n=>{
       const tagStatus = n.status_pagamento==='glosado_parcial' || n.status_pagamento==='glosado_total'
         ? `<span class="tag tag-alerta">Glosado</span>` : `<span class="tag">Pago</span>`;
       return `<tr>
         <td>${n.data_atendimento||''}</td><td class="mono">${n.nota}</td><td>${n.nome_beneficiario||''}</td>
-        <td class="mono">${n.cartao_beneficiario||''}</td><td>${n.plano||'—'}</td>
+        <td class="mono">${n.cartao_beneficiario||''}</td>
         <td class="mono">${formatarMoeda(n.total_nota)}</td><td>${tagStatus}</td>
         <td><button class="botao sutil pequeno" data-id="${n.id}">Ver serviços</button></td>
       </tr>`;
