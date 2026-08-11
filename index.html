@@ -292,7 +292,7 @@
 
 <!-- ===================== APLICAÇÃO ===================== -->
 <div id="app">
-  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — preencha SUPABASE_URL e SUPABASE_ANON_KEY no início do script para usar dados reais</div>
+  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — conecte o Google Sheets em CONFIG.API_URL para usar dados reais (veja o GUIA_DE_CONFIGURACAO.md)</div>
   <header class="topo">
     <div class="marca-topo">
       <div class="selo">C</div>
@@ -359,12 +359,18 @@
               <label>Profissional</label>
               <select id="filtro-prof-gerencial"><option value="">Todos</option></select>
             </div>
-            <div class="campo">
-              <label>Andar</label>
-              <select id="filtro-andar-gerencial"><option value="">Todos</option></select>
-            </div>
             <button class="botao secundario" id="botao-novo-registro-gerencial">+ Novo registro</button>
           </div>
+        </div>
+      </div>
+
+      <div class="cartao" id="cartao-config-financeira" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h3 style="margin:0 0 4px;">Configuração financeira — <span id="config-financeira-prof-nome"></span></h3>
+            <p id="config-financeira-resumo" style="margin:0;color:var(--ink-400);font-size:13px;">Nenhuma configuração salva para este profissional neste período.</p>
+          </div>
+          <button class="botao sutil pequeno" id="botao-ver-editar-config-financeira">Ver / editar configuração</button>
         </div>
       </div>
 
@@ -429,64 +435,6 @@
       </div>
     </section>
 
-    <!-- ---------- FINANCEIRA ---------- -->
-    <section class="painel" id="painel-financeira">
-      <div class="cartao">
-        <div class="cabecalho-painel" style="margin-bottom:0;">
-          <div>
-            <h2>Financeira — Coparticipados</h2>
-            <p>Cálculo mensal de taxa e rateio (Clínica × Coparticipado) sobre a produção do período.</p>
-          </div>
-          <div class="filtros">
-            <div class="campo">
-              <label>Mês</label>
-              <select id="filtro-mes-financeira"></select>
-            </div>
-            <div class="campo">
-              <label>Ano</label>
-              <select id="filtro-ano-financeira"></select>
-            </div>
-            <div class="campo">
-              <label>Profissional</label>
-              <select id="filtro-prof-financeira"><option value="">Todos</option></select>
-            </div>
-            <div class="campo">
-              <label>Andar</label>
-              <select id="filtro-andar-financeira"><option value="">Todos</option></select>
-            </div>
-            <button class="botao secundario" id="botao-nova-config-financeira">+ Nova configuração</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:18px;">
-          <h3 style="margin:0;">Período de datas (opcional)</h3>
-          <div class="filtros">
-            <div class="campo">
-              <label>Buscar de</label>
-              <input type="date" id="filtro-data-inicio-financeira" />
-            </div>
-            <div class="campo">
-              <label>Até</label>
-              <input type="date" id="filtro-data-fim-financeira" />
-            </div>
-            <button class="botao sutil pequeno" id="botao-limpar-periodo-financeira">Limpar período</button>
-            <span id="aviso-filtro-periodo-financeira" style="font-size:12.5px;color:var(--gold-600);font-weight:600;align-self:center;"></span>
-          </div>
-        </div>
-      </div>
-
-      <div id="resumo-financeira-container"></div>
-
-      <div class="cartao">
-        <h3 id="titulo-tabela-financeira">Pacientes atendidos no período</h3>
-        <div class="tabela-scroll">
-          <table id="tabela-financeira"></table>
-        </div>
-      </div>
-    </section>
-
     <!-- ---------- METAS ---------- -->
     <section class="painel" id="painel-metas">
       <div class="cabecalho-painel">
@@ -535,10 +483,6 @@
           <div class="campo">
             <label>Ano</label>
             <select id="filtro-ano-dashboard"></select>
-          </div>
-          <div class="campo">
-            <label>Andar</label>
-            <select id="filtro-andar-dashboard"><option value="">Todos</option></select>
           </div>
         </div>
       </div>
@@ -603,10 +547,6 @@
             <label>Ano</label>
             <select id="filtro-ano-analises"></select>
           </div>
-          <div class="campo">
-            <label>Andar</label>
-            <select id="filtro-andar-analises"><option value="">Todos</option></select>
-          </div>
         </div>
       </div>
 
@@ -656,7 +596,6 @@
         <div class="filtros">
           <div class="campo"><label>Mês</label><select id="rmr-mes"></select></div>
           <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
-          <div class="campo"><label>Andar</label><select id="rmr-andar"><option value="">Todos</option></select></div>
           <button class="botao sutil pequeno" id="rmr-botao-imprimir">Imprimir / PDF</button>
         </div>
       </div>
@@ -749,7 +688,7 @@
     </section>
   </main>
   <footer style="display:flex;justify-content:center;align-items:center;gap:8px;padding:16px 24px;color:var(--ink-400);font-size:12px;border-top:1px solid var(--line);">
-    <span>ProdClin <b id="versao-sistema" style="color:var(--ink-600);font-weight:600;">v1.4.0</b></span>
+    <span>ProdClin <b id="versao-sistema" style="color:var(--ink-600);font-weight:600;">v1.5.0</b></span>
   </footer>
 </div>
 
@@ -768,40 +707,36 @@
   </div>
 </div>
 
-<!-- ===================== MODAL DE CONFIGURAÇÃO DE COPARTICIPADO ===================== -->
-<div class="sobreposicao" id="sobreposicao-financeira">
-  <div class="modal" style="max-width:480px;">
-    <h3 id="titulo-modal-financeira">Configuração de coparticipado</h3>
-    <form id="form-financeira">
-      <div class="grade-form" id="grade-modal-financeira"></div>
+<!-- ===================== MODAL DE CONFIGURAÇÃO FINANCEIRA ===================== -->
+<div class="sobreposicao" id="sobreposicao-config-financeira">
+  <div class="modal" style="max-width:460px;">
+    <h3 id="titulo-modal-config-financeira">Configuração financeira</h3>
+    <form id="form-config-financeira">
+      <div class="grade-form" id="grade-modal-config-financeira"></div>
       <p style="margin:2px 0 14px;color:var(--ink-400);font-size:12px;">
-        A soma do rateio da Clínica com o do Coparticipado não precisa ser 100% — os dois campos são independentes e podem ser ajustados livremente.
+        Esses valores ficam só como referência/configuração — nenhum cálculo automático é feito nas telas com base neles.
       </p>
       <div class="modal-acoes">
-        <button type="button" class="botao sutil" id="botao-cancelar-financeira">Cancelar</button>
+        <button type="button" class="botao sutil" id="botao-cancelar-config-financeira">Cancelar</button>
         <button type="submit" class="botao">Salvar configuração</button>
       </div>
     </form>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* =====================================================================
-   CONFIGURAÇÃO — Supabase
-   Depois de rodar o script SQL (criar_tabelas.sql) no seu projeto
-   Supabase, cole aqui a URL do projeto e a chave anônima (Project
-   Settings → API). Enquanto estiverem vazias, o sistema roda em MODO
-   DEMONSTRAÇÃO com dados de exemplo guardados só nesta sessão.
+   CONFIGURAÇÃO
+   Depois de publicar o Apps Script (ver GUIA_DE_CONFIGURACAO.md), cole
+   a URL do Web App aqui. Enquanto estiver vazio, o sistema roda em
+   MODO DEMONSTRAÇÃO com dados de exemplo guardados só nesta sessão.
 ===================================================================== */
-const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
-const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+const CONFIG = {
+  API_URL: "https://script.google.com/macros/s/AKfycbz1B_WssQpX3ei8SMiRQM-aKUN4CUHSYfRzVyImu0iHietcuBsddTVlrazyGlJUh2xCfA/exec" // <-- cole aqui a URL do seu Web App do Apps Script
+};
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const MODO_DEMO = !supabaseClient;
+const MODO_DEMO = !CONFIG.API_URL;
 
 /* ---------------------------------------------------------------------
    ESTADO
@@ -813,7 +748,7 @@ const estado = {
 };
 
 /* ---------------------------------------------------------------------
-   DADOS DE DEMONSTRAÇÃO (usados só quando SUPABASE_URL/SUPABASE_ANON_KEY estiverem vazios)
+   DADOS DE DEMONSTRAÇÃO (usados só quando CONFIG.API_URL estiver vazio)
 --------------------------------------------------------------------- */
 const demo = {
   configuracoes: { nome_clinica: 'Clínica Cliza' },
@@ -825,7 +760,6 @@ const demo = {
   ],
   listas:{
     profissionais:['ANGELINA','AYANE CARNEIRO','CARLOTA','CLEIA','DANIELE ERTHAL','DR CARLOS AUGUSTO','DR CHARLES USG','DR MARCELO','DR MARCELO USG','DR MAURICIO','DR MAURICIO EXAMES','DR OSMAR','DRA AMANDA USG','DRA IVNA','DRA RICARLA USG','GABRIELE','ISABELLE','IZADORA ZARA','JAQUELANE PONTE','JOSEANE','KÁTIA RODRIGUES','KIMBERLY','LIA BRITO','LISIENE','MARILIA','RAFAELA MORAIS','RENATA','RONALDO GILDO','VALERIA','VICTOR MOREIRA'],
-    andares:['TÉRREO','COPARTICIPADOS'],
     convenios:['ASSEFAZ','BRADESCO','CAFAZ','CAMED','CAPESESP','CASSI','CORREIOS','FUNSA','GEAP','ISSEC','NF PLANO ABA','PARTICULAR','PREF CARIRÉ','PREF SOBRAL','SÃO CAMILO','SAÚDE CAIXA','SINDICATO','SULAMERICA','UNIMED','AMIL'],
     procedimentos:['SESSÃO','BIOIMPEDÂNCIA','CONSULTA','EXAMES','PROCEDIMENTO','USG','POLIPECTOMIA','MUCOSECTOMIA','PREPARO','RETORNO','OUTRO','MATERIAL','PHOPOSNEMA','CIRURGIA','ANESTESISTA','ANESTESISTA CONVÊNIO'],
     atendentes:['KAILLANY','ADRIELE','SOCORRO','GERMANA','LETICIA','ROBERTA','KEROLAINE','GLEIDY MARA'],
@@ -835,20 +769,20 @@ const demo = {
     exames:['MAMAS','ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)','ABDOME SUPERIOR (FÍGADO, VIAS BILIARES, VESÍCULA, PÂNCREAS E BAÇO)','ABDOME INFERIOR MASCULINO (BEXIGA, PRÓSTATA E VESÍCULAS SEMINAIS)','ABDOME INFERIOR FEMININO (BEXIGA, ÚTERO, OVÁRIO E ANEXOS)','DERMATOLÓGICO - PELE E SUBCUTÂNEO','ÓRGÃOS SUPERFICIAIS (TIREÓIDE OU ESCROTO OU PÊNIS OU CRÂNIO)','ARTICULAR (POR ARTICULAÇÃO)','OBSTÉTRICA','OBSTÉTRICA COM DOPPLER','OBSTÉTRICA MORFOLÓGICA','TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)','PRÓSTATA TRANSRETAL (NÃO INCLUI ABDOME INFERIOR MASCULINO)','PRÓSTATA (VIA ABDOMINAL)','APARELHO URINÁRIO (RINS, URETERES E BEXIGA)','PUNÇÃO BIÓPSIA/ASPIRATIVA DE ÓRGÃO OU ESTRUTURA SUPERFICIAL ORIENTADA POR US','COLONOSCOPIA','ENDOSCOPIA','AXILA','DOPPLER','PREPARO COLONOSCOPIA','POLIPECTOMIA DE EDA','POLIPECTOMIA DE COLON','PÉLVICA','CERVICAL','PAREDE ABDOMINAL','PARTES MOLES','MANOMETRIA','PHMETRIA','DOPPLER DE CARÓTIDAS']
   },
   producao:[
-    {id:'d1',andar:'TÉRREO',prof:'ANGELINA',data:'2026-05-04',turno:'M',paciente:'YSE DE QUEIROZ PONTE',protocolo:'206774113',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d2',andar:'TÉRREO',prof:'ANGELINA',data:'2026-05-05',turno:'M',paciente:'LARA PAULA PESSOA ARAUJO',protocolo:'206861817',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d3',andar:'TÉRREO',prof:'LISIENE',data:'2026-05-04',turno:'T',paciente:'KHYO RAMON ANJOS CUNHA',protocolo:'206632649',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d4',andar:'TÉRREO',prof:'LISIENE',data:'2026-05-06',turno:'T',paciente:'MIRYAN LIRA VIANA',protocolo:'',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'',valor:120,forma_pagamento:'ESPÉCIE',atendente:'KAILLANY',mes:'Maio',ano:2026},
-    {id:'d5',andar:'TÉRREO',prof:'RENATA',data:'2026-05-07',turno:'M',paciente:'MARIA CLARA SILVA ARAUJO',protocolo:'207794248',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'ADRIELE',mes:'Maio',ano:2026},
-    {id:'d6',andar:'COPARTICIPADOS',prof:'DR MARCELO USG',data:'2026-05-08',turno:'T',paciente:'FRANCISCO M G NOBRE JR',protocolo:'207751609',procedimento:'USG',exames:'ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)',biopsias:'',convenio:'UNIMED',valor:120,forma_pagamento:'CONVÊNIO',atendente:'SOCORRO',mes:'Maio',ano:2026},
-    {id:'d7',andar:'COPARTICIPADOS',prof:'DR CHARLES USG',data:'2026-05-08',turno:'M',paciente:'JOÃO PEDRO LIMA',protocolo:'207751610',procedimento:'USG',exames:'TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)',biopsias:'',convenio:'CASSI',valor:140,forma_pagamento:'CONVÊNIO',atendente:'ROBERTA',mes:'Maio',ano:2026},
-    {id:'d8',andar:'COPARTICIPADOS',prof:'DR MAURICIO EXAMES',data:'2026-05-09',turno:'M',paciente:'MARIA EDUARDA COSTA',protocolo:'207751611',procedimento:'PROCEDIMENTO',exames:'COLONOSCOPIA',biopsias:'2 FRASCOS',convenio:'BRADESCO',valor:850,forma_pagamento:'CONVÊNIO',atendente:'GERMANA',mes:'Maio',ano:2026},
-    {id:'d9',andar:'COPARTICIPADOS',prof:'DR MAURICIO',data:'2026-05-09',turno:'T',paciente:'PEDRO HENRIQUE ALVES',protocolo:'207751612',procedimento:'PROCEDIMENTO',exames:'ENDOSCOPIA',biopsias:'1 FRASCO',convenio:'UNIMED',valor:620,forma_pagamento:'CONVÊNIO',atendente:'LETICIA',mes:'Maio',ano:2026},
-    {id:'d10',andar:'TÉRREO',prof:'GABRIELE',data:'2026-05-10',turno:'M',paciente:'ANA CLARA MENDES',protocolo:'',procedimento:'BIOIMPEDÂNCIA',exames:'',biopsias:'',convenio:'',valor:80,forma_pagamento:'PIX',atendente:'ADRIELE',mes:'Maio',ano:2026},
-    {id:'d11',andar:'TÉRREO',prof:'ISABELLE',data:'2026-05-11',turno:'T',paciente:'LUCAS GABRIEL SOUZA',protocolo:'207751613',procedimento:'CONSULTA',exames:'',biopsias:'',convenio:'SÃO CAMILO',valor:250,forma_pagamento:'CONVÊNIO',atendente:'KEROLAINE',mes:'Maio',ano:2026},
-    {id:'d12',andar:'COPARTICIPADOS',prof:'DRA RICARLA USG',data:'2026-05-11',turno:'M',paciente:'BEATRIZ OLIVEIRA',protocolo:'207751614',procedimento:'USG',exames:'OBSTÉTRICA MORFOLÓGICA',biopsias:'',convenio:'PARTICULAR',valor:380,forma_pagamento:'CARTÃO',atendente:'ROBERTA',mes:'Maio',ano:2026},
-    {id:'d13',andar:'COPARTICIPADOS',prof:'DR MARCELO',data:'2026-05-12',turno:'T',paciente:'RAFAEL COSTA LIMA',protocolo:'207751615',procedimento:'RETORNO',exames:'',biopsias:'',convenio:'GEAP',valor:60,forma_pagamento:'CONVÊNIO',atendente:'GLEIDY MARA',mes:'Maio',ano:2026},
-    {id:'d14',andar:'COPARTICIPADOS',prof:'DRA AMANDA USG',data:'2026-05-12',turno:'M',paciente:'CAMILA FERREIRA',protocolo:'',procedimento:'USG',exames:'MAMAS',biopsias:'',convenio:'',valor:180,forma_pagamento:'ESPÉCIE',atendente:'SOCORRO',mes:'Maio',ano:2026}
+    {id:'d1',prof:'ANGELINA',data:'2026-05-04',turno:'M',paciente:'YSE DE QUEIROZ PONTE',protocolo:'206774113',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d2',prof:'ANGELINA',data:'2026-05-05',turno:'M',paciente:'LARA PAULA PESSOA ARAUJO',protocolo:'206861817',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026,verificado_financeiro:true},
+    {id:'d3',prof:'LISIENE',data:'2026-05-04',turno:'T',paciente:'KHYO RAMON ANJOS CUNHA',protocolo:'206632649',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'KAILLANY',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d4',prof:'LISIENE',data:'2026-05-06',turno:'T',paciente:'MIRYAN LIRA VIANA',protocolo:'',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'',valor:120,forma_pagamento:'ESPÉCIE',atendente:'KAILLANY',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d5',prof:'RENATA',data:'2026-05-07',turno:'M',paciente:'MARIA CLARA SILVA ARAUJO',protocolo:'207794248',procedimento:'SESSÃO',exames:'',biopsias:'',convenio:'UNIMED',valor:35,forma_pagamento:'CONVÊNIO',atendente:'ADRIELE',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d6',prof:'DR MARCELO USG',data:'2026-05-08',turno:'T',paciente:'FRANCISCO M G NOBRE JR',protocolo:'207751609',procedimento:'USG',exames:'ABDOME TOTAL (ABDOME SUPERIOR, RINS, BEXIGA, AORTA, VEIA CAVA INFERIOR E ADRENAIS)',biopsias:'',convenio:'UNIMED',valor:120,forma_pagamento:'CONVÊNIO',atendente:'SOCORRO',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d7',prof:'DR CHARLES USG',data:'2026-05-08',turno:'M',paciente:'JOÃO PEDRO LIMA',protocolo:'207751610',procedimento:'USG',exames:'TRANSVAGINAL (ÚTERO, OVÁRIO, ANEXOS E VAGINA)',biopsias:'',convenio:'CASSI',valor:140,forma_pagamento:'CONVÊNIO',atendente:'ROBERTA',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d8',prof:'DR MAURICIO EXAMES',data:'2026-05-09',turno:'M',paciente:'MARIA EDUARDA COSTA',protocolo:'207751611',procedimento:'PROCEDIMENTO',exames:'COLONOSCOPIA',biopsias:'2 FRASCOS',convenio:'BRADESCO',valor:850,forma_pagamento:'CONVÊNIO',atendente:'GERMANA',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d9',prof:'DR MAURICIO',data:'2026-05-09',turno:'T',paciente:'PEDRO HENRIQUE ALVES',protocolo:'207751612',procedimento:'PROCEDIMENTO',exames:'ENDOSCOPIA',biopsias:'1 FRASCO',convenio:'UNIMED',valor:620,forma_pagamento:'CONVÊNIO',atendente:'LETICIA',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d10',prof:'GABRIELE',data:'2026-05-10',turno:'M',paciente:'ANA CLARA MENDES',protocolo:'',procedimento:'BIOIMPEDÂNCIA',exames:'',biopsias:'',convenio:'',valor:80,forma_pagamento:'PIX',atendente:'ADRIELE',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d11',prof:'ISABELLE',data:'2026-05-11',turno:'T',paciente:'LUCAS GABRIEL SOUZA',protocolo:'207751613',procedimento:'CONSULTA',exames:'',biopsias:'',convenio:'SÃO CAMILO',valor:250,forma_pagamento:'CONVÊNIO',atendente:'KEROLAINE',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d12',prof:'DRA RICARLA USG',data:'2026-05-11',turno:'M',paciente:'BEATRIZ OLIVEIRA',protocolo:'207751614',procedimento:'USG',exames:'OBSTÉTRICA MORFOLÓGICA',biopsias:'',convenio:'PARTICULAR',valor:380,forma_pagamento:'CARTÃO',atendente:'ROBERTA',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d13',prof:'DR MARCELO',data:'2026-05-12',turno:'T',paciente:'RAFAEL COSTA LIMA',protocolo:'207751615',procedimento:'RETORNO',exames:'',biopsias:'',convenio:'GEAP',valor:60,forma_pagamento:'CONVÊNIO',atendente:'GLEIDY MARA',mes:'Maio',ano:2026,verificado_financeiro:false},
+    {id:'d14',prof:'DRA AMANDA USG',data:'2026-05-12',turno:'M',paciente:'CAMILA FERREIRA',protocolo:'',procedimento:'USG',exames:'MAMAS',biopsias:'',convenio:'',valor:180,forma_pagamento:'ESPÉCIE',atendente:'SOCORRO',mes:'Maio',ano:2026,verificado_financeiro:false}
   ],
   metas:[
     {prof:'ANGELINA', mes:'Maio', ano:2026, turnos_disponibilizados:6, meta_valor:1764, meta_qtd:55},
@@ -857,11 +791,11 @@ const demo = {
     {prof:'DR MARCELO USG', mes:'Maio', ano:2026, turnos_disponibilizados:16, meta_valor:15000, meta_qtd:158}
   ],
   notas:{},
-  coparticipados:[]
+  configFinanceira:[]
 };
 
 /* ---------------------------------------------------------------------
-   CAMADA DE API — chama o Supabase de verdade, ou o mock de demo
+   CAMADA DE API — chama o Apps Script de verdade, ou o mock de demo
 --------------------------------------------------------------------- */
 let chamadasApiEmAndamento = 0;
 function mostrarBarraProgresso(mostrar){
@@ -878,201 +812,14 @@ async function api(acao, dados={}) {
   mostrarBarraProgresso(true);
   try {
     if (MODO_DEMO) return await mockApi(acao, dados);
-    return await supabaseApi(acao, dados);
-  } catch(e) {
-    return {ok:false, erro: String((e&&e.message)||e)};
+    const resposta = await fetch(CONFIG.API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS no Apps Script
+      body: JSON.stringify({action:acao, data:dados})
+    });
+    return await resposta.json();
   } finally {
     mostrarBarraProgresso(false);
-  }
-}
-
-/* ---------------------------------------------------------------------
-   Auxiliar: anexa mes/ano (nome do mês + ano) a um registro de produção
-   a partir da coluna "data" (date do Postgres, formato aaaa-mm-dd) —
-   assim listarProducao pode filtrar por mês/ano igual já filtrava no
-   Apps Script, sem precisar de colunas mes/ano redundantes na tabela.
---------------------------------------------------------------------- */
-function anexarMesAnoPelaData(registro){
-  if(registro && registro.data){
-    const [ano, mes] = String(registro.data).slice(0,10).split('-');
-    registro.mes = MESES[Number(mes)-1] || '';
-    registro.ano = Number(ano);
-  }
-  return registro;
-}
-
-/* ---------------------------------------------------------------------
-   Auxiliar: conversão de mês nome <-> número — as tabelas "metas" e
-   "notas" já existentes no banco guardam o mês como número (1-12), não
-   como texto ("Maio"). O resto do sistema (telas, filtros) trabalha só
-   com o nome do mês, então convertemos nas duas pontas aqui.
---------------------------------------------------------------------- */
-function nomeMesParaNumero(nome){
-  const i = MESES.indexOf(nome);
-  return i>-1 ? i+1 : null;
-}
-function numeroMesParaNome(num){
-  return MESES[Number(num)-1] || '';
-}
-
-/* ---------------------------------------------------------------------
-   CAMADA SUPABASE — substitui as chamadas que antes iam pro Apps Script
---------------------------------------------------------------------- */
-async function supabaseApi(acao, dados) {
-  switch(acao){
-    case 'login': {
-      const { data, error } = await supabaseClient.from('usuarios').select('*')
-        .eq('usuario', dados.usuario).eq('senha', dados.senha).maybeSingle();
-      if(error) return {ok:false, erro:error.message};
-      if(!data) return {ok:false, erro:'Usuário ou senha inválidos.'};
-      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional};
-    }
-
-    case 'listarListas': {
-      const { data, error } = await supabaseClient.from('listas').select('*').order('ordem');
-      if(error) return {ok:false, erro:error.message};
-      const listas = {};
-      (data||[]).forEach(item=>{
-        if(!listas[item.tipo]) listas[item.tipo] = [];
-        listas[item.tipo].push(item.valor);
-      });
-      return {ok:true, listas};
-    }
-
-    case 'listarProducao': {
-      let query = supabaseClient.from('producao').select('*');
-      if(dados.dataInicio) query = query.gte('data', dados.dataInicio);
-      if(dados.dataFim) query = query.lte('data', dados.dataFim);
-      if(!dados.dataInicio && !dados.dataFim && dados.ano){
-        query = query.gte('data', `${dados.ano}-01-01`).lte('data', `${dados.ano}-12-31`);
-      }
-      if(dados.prof) query = query.eq('prof', dados.prof);
-      if(dados.andar) query = query.eq('andar', dados.andar);
-      const { data, error } = await query.order('data', {ascending:false});
-      if(error) return {ok:false, erro:error.message};
-      let registros = (data||[]).map(anexarMesAnoPelaData);
-      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
-      return {ok:true, registros};
-    }
-
-    case 'adicionarProducao': {
-      const registro = Object.assign({}, dados);
-      delete registro.id; delete registro.mes; delete registro.ano;
-      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
-      const { error } = await supabaseClient.from('producao').insert(registro);
-      return error ? {ok:false, erro:error.message} : {ok:true};
-    }
-
-    case 'atualizarProducao': {
-      const registro = Object.assign({}, dados.registro);
-      delete registro.id; delete registro.mes; delete registro.ano;
-      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
-      const { error } = await supabaseClient.from('producao').update(registro).eq('id', dados.id);
-      return error ? {ok:false, erro:error.message} : {ok:true};
-    }
-
-    case 'excluirProducao': {
-      const { error } = await supabaseClient.from('producao').delete().eq('id', dados.id);
-      return error ? {ok:false, erro:error.message} : {ok:true};
-    }
-
-    case 'listarMetas': {
-      let query = supabaseClient.from('metas').select('*');
-      if(dados.mes) query = query.eq('mes', nomeMesParaNumero(dados.mes));
-      if(dados.ano) query = query.eq('ano', dados.ano);
-      const { data, error } = await query;
-      if(error) return {ok:false, erro:error.message};
-      const metas = (data||[]).map(m=>Object.assign({}, m, {mes:numeroMesParaNome(m.mes)}));
-      return {ok:true, metas};
-    }
-
-    case 'salvarMeta': {
-      const registro = {
-        prof: dados.prof, mes: nomeMesParaNumero(dados.mes), ano: Number(dados.ano),
-        turnos_disponibilizados: Math.round(Number(dados.turnos_disponibilizados)||0),
-        meta_valor: Number(dados.meta_valor)||0,
-        meta_qtd: Number(dados.meta_qtd)||0
-      };
-      const { error } = await supabaseClient.from('metas').upsert(registro, {onConflict:'prof,mes,ano'});
-      return error ? {ok:false, erro:error.message} : {ok:true};
-    }
-
-    case 'obterNota': {
-      const { data, error } = await supabaseClient.from('notas').select('texto')
-        .eq('mes', nomeMesParaNumero(dados.mes)).eq('ano', dados.ano).maybeSingle();
-      if(error) return {ok:false, erro:error.message};
-      return {ok:true, texto: data ? data.texto : ''};
-    }
-
-    case 'salvarNota': {
-      const { error } = await supabaseClient.from('notas').upsert(
-        {mes:nomeMesParaNumero(dados.mes), ano:Number(dados.ano), texto:dados.texto}, {onConflict:'mes,ano'}
-      );
-      return error ? {ok:false, erro:error.message} : {ok:true};
-    }
-
-    case 'obterConfiguracoes': {
-      const { data, error } = await supabaseClient.from('configuracoes').select('*');
-      if(error) return {ok:false, erro:error.message};
-      const configuracoes = {};
-      (data||[]).forEach(c=>configuracoes[c.chave]=c.valor);
-      return {ok:true, configuracoes};
-    }
-
-    case 'salvarConfiguracao': {
-      const { error } = await supabaseClient.from('configuracoes').upsert({chave:dados.chave, valor:dados.valor});
-      return error ? {ok:false, erro:error.message} : {ok:true};
-    }
-
-    case 'listarCoparticipados': {
-      let query = supabaseClient.from('coparticipados').select('*');
-      if(dados.mes) query = query.eq('mes', dados.mes);
-      if(dados.ano) query = query.eq('ano', dados.ano);
-      if(dados.prof) query = query.eq('prof', dados.prof);
-      const { data, error } = await query;
-      if(error) return {ok:false, erro:error.message};
-      return {ok:true, coparticipados:data||[]};
-    }
-
-    case 'salvarCoparticipado': {
-      const registro = {
-        prof: dados.prof, mes: dados.mes, ano: Number(dados.ano),
-        taxa: Number(dados.taxa)||0,
-        rateio_clinica: Number(dados.rateio_clinica)||0,
-        rateio_coparticipado: Number(dados.rateio_coparticipado)||0
-      };
-      const { error } = await supabaseClient.from('coparticipados').upsert(registro, {onConflict:'prof,mes,ano'});
-      return error ? {ok:false, erro:error.message} : {ok:true};
-    }
-
-    case 'dashboard': {
-      const respProd = await supabaseApi('listarProducao', {mes:dados.mes, ano:dados.ano, andar:dados.andar});
-      if(!respProd.ok) return respProd;
-      const registros = respProd.registros;
-      const porProfissional = {}, porConvenio = {};
-      let totalValor = 0;
-      registros.forEach(r=>{
-        const prof = r.prof || 'Não informado';
-        const conv = r.convenio || 'PARTICULAR';
-        const valor = Number(r.valor)||0;
-        if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
-        porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
-        if(!porConvenio[conv]) porConvenio[conv]=0;
-        porConvenio[conv]+=valor;
-        totalValor+=valor;
-      });
-      const respMetas = await supabaseApi('listarMetas', {mes:dados.mes, ano:dados.ano});
-      const metas = respMetas.ok ? respMetas.metas : [];
-      const metaPorProf = {}; metas.forEach(m=>metaPorProf[m.prof]=m);
-      const comparativo = Object.keys(porProfissional).map(prof=>{
-        const m = metaPorProf[prof]||{};
-        return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
-                metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
-      });
-      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, comparativo};
-    }
-
-    default: return {ok:false, erro:'Ação desconhecida (Supabase): '+acao};
   }
 }
 
@@ -1094,12 +841,11 @@ function mockApi(acao, dados) {
         if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
       }
       if(dados.prof) registros = registros.filter(r=>r.prof.toUpperCase()===dados.prof.toUpperCase());
-      if(dados.andar) registros = registros.filter(r=>String(r.andar||'').toUpperCase()===dados.andar.toUpperCase());
       return {ok:true, registros};
     }
     case 'adicionarProducao': {
       const d = new Date(dados.data+'T00:00:00');
-      const novo = Object.assign({id:'d'+Math.random().toString(36).slice(2,9)}, dados, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
+      const novo = Object.assign({id:'d'+Math.random().toString(36).slice(2,9), verificado_financeiro:false}, dados, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
       demo.producao.unshift(novo);
       return {ok:true};
     }
@@ -1140,29 +886,34 @@ function mockApi(acao, dados) {
       demo.configuracoes[dados.chave] = dados.valor;
       return {ok:true};
     }
-    case 'listarCoparticipados': {
-      let linhas = demo.coparticipados.slice();
+    case 'listarConfigFinanceira': {
+      let linhas = demo.configFinanceira.slice();
       if(dados.mes) linhas = linhas.filter(c=>c.mes===dados.mes);
       if(dados.ano) linhas = linhas.filter(c=>String(c.ano)===String(dados.ano));
       if(dados.prof) linhas = linhas.filter(c=>c.prof.toUpperCase()===dados.prof.toUpperCase());
-      return {ok:true, coparticipados:linhas};
+      return {ok:true, configuracoesFinanceiras:linhas};
     }
-    case 'salvarCoparticipado': {
-      const idx = demo.coparticipados.findIndex(c=>c.prof===dados.prof && c.mes===dados.mes && String(c.ano)===String(dados.ano));
+    case 'salvarConfigFinanceira': {
+      const idx = demo.configFinanceira.findIndex(c=>c.prof===dados.prof && c.mes===dados.mes && String(c.ano)===String(dados.ano));
       const registro = {
-        prof: dados.prof, mes: dados.mes, ano: dados.ano,
-        taxa: Number(dados.taxa)||0,
-        rateio_clinica: Number(dados.rateio_clinica)||0,
-        rateio_coparticipado: Number(dados.rateio_coparticipado)||0
+        prof:dados.prof, mes:dados.mes, ano:Number(dados.ano),
+        taxa:Number(dados.taxa)||0,
+        rateio_clinica:Number(dados.rateio_clinica)||0,
+        rateio_coparticipado:Number(dados.rateio_coparticipado)||0
       };
-      if(idx>-1) demo.coparticipados[idx] = registro; else demo.coparticipados.push(registro);
+      if(idx>-1) demo.configFinanceira[idx] = registro; else demo.configFinanceira.push(registro);
+      return {ok:true};
+    }
+    case 'atualizarVerificacaoFinanceira': {
+      const idx = demo.producao.findIndex(r=>r.id===dados.id);
+      if(idx===-1) return {ok:false, erro:'Não encontrado'};
+      demo.producao[idx].verificado_financeiro = !!dados.verificado;
       return {ok:true};
     }
     case 'dashboard': {
       let registros = demo.producao.slice();
       if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
       if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
-      if(dados.andar) registros = registros.filter(r=>String(r.andar||'').toUpperCase()===dados.andar.toUpperCase());
       const porProfissional = {}, porConvenio = {};
       let totalValor = 0;
       registros.forEach(r=>{
@@ -1193,7 +944,6 @@ function mockApi(acao, dados) {
 --------------------------------------------------------------------- */
 const formatarMoeda = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const arredondar1 = v => Math.round((Number(v)||0)*10)/10;
-const arredondar2 = v => Math.round((Number(v)||0)*100)/100;
 
 /* =====================================================================
    MINI-BIBLIOTECA DE GRÁFICOS PRÓPRIA (SVG puro, sem dependência externa)
@@ -1409,7 +1159,7 @@ async function iniciarApp(){
     if(!listasResp.ok) throw new Error(listasResp.erro || 'A planilha não respondeu como esperado.');
     estado.listas = listasResp.listas || {};
   }catch(e){
-    mostrarErroInicializacao('Não foi possível carregar as listas do banco (' + (e.message||e) + '). Confira se SUPABASE_URL e SUPABASE_ANON_KEY estão corretos e se as políticas de RLS estão liberando leitura na tabela "listas".');
+    mostrarErroInicializacao('Não foi possível carregar as listas da planilha (' + (e.message||e) + '). Confira se o Code.gs foi republicado (Implantar → Gerenciar implantações → Nova versão) e se a URL em CONFIG.API_URL está correta.');
     return;
   }
 
@@ -1443,7 +1193,6 @@ function montarNavegacao(){
   const abasDisponiveis = [{id:'lancamento', rotulo:'Lançamento'}, {id:'critica', rotulo:'Crítica'}];
   if(estado.papel === 'gerente'){
     abasDisponiveis.splice(1, 0, {id:'editar', rotulo:'Editar'});
-    abasDisponiveis.push({id:'financeira', rotulo:'Financeira'});
     abasDisponiveis.push({id:'metas', rotulo:'Metas'});
     abasDisponiveis.push({id:'dashboard', rotulo:'Dashboard'});
     abasDisponiveis.push({id:'analises', rotulo:'Análises'});
@@ -1475,7 +1224,6 @@ async function atualizarPainelAtivo(){
   if(estado.abaAtiva==='lancamento') await atualizarMeusLancamentos();
   if(estado.abaAtiva==='editar') await atualizarEditar();
   if(estado.abaAtiva==='critica') await atualizarCritica();
-  if(estado.abaAtiva==='financeira') await atualizarFinanceira();
   if(estado.abaAtiva==='metas') await atualizarMetas();
   if(estado.abaAtiva==='dashboard') await atualizarDashboard();
   if(estado.abaAtiva==='analises') await atualizarAnalises();
@@ -1488,7 +1236,6 @@ async function atualizarPainelAtivo(){
 --------------------------------------------------------------------- */
 const DIMENSOES_ANALISE = [
   {chave:'prof', rotulo:'Profissional'},
-  {chave:'andar', rotulo:'Andar'},
   {chave:'convenio', rotulo:'Convênio'},
   {chave:'procedimento', rotulo:'Procedimento'},
   {chave:'atendente', rotulo:'Atendente'},
@@ -1500,7 +1247,6 @@ const DIMENSOES_ANALISE = [
 
 const CAMPOS_CRITICOS = [
   {chave:'prof', rotulo:'Profissional'},
-  {chave:'andar', rotulo:'Andar'},
   {chave:'data', rotulo:'Data'},
   {chave:'turno', rotulo:'Turno'},
   {chave:'paciente', rotulo:'Paciente'},
@@ -1526,12 +1272,12 @@ function preencherSelectsPeriodo(){
   const anoAtual = hoje.getFullYear();
   const anos = [anoAtual-1, anoAtual, anoAtual+1];
 
-  [['filtro-mes-gerencial'],['filtro-mes-dashboard'],['filtro-mes-analises'],['filtro-mes-metas'],['filtro-mes-critica'],['filtro-mes-financeira']].forEach(([id])=>{
+  [['filtro-mes-gerencial'],['filtro-mes-dashboard'],['filtro-mes-analises'],['filtro-mes-metas'],['filtro-mes-critica']].forEach(([id])=>{
     const sel = document.getElementById(id);
     sel.innerHTML = MESES.map(m=>`<option value="${m}" ${m===mesAtual?'selected':''}>${m}</option>`).join('');
     sel.addEventListener('change', atualizarPainelAtivo);
   });
-  [['filtro-ano-gerencial'],['filtro-ano-dashboard'],['filtro-ano-analises'],['filtro-ano-metas'],['filtro-ano-critica'],['filtro-ano-financeira']].forEach(([id])=>{
+  [['filtro-ano-gerencial'],['filtro-ano-dashboard'],['filtro-ano-analises'],['filtro-ano-metas'],['filtro-ano-critica']].forEach(([id])=>{
     const sel = document.getElementById(id);
     sel.innerHTML = anos.map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('');
     sel.addEventListener('change', atualizarPainelAtivo);
@@ -1540,12 +1286,7 @@ function preencherSelectsPeriodo(){
   const filtroProf = document.getElementById('filtro-prof-gerencial');
   filtroProf.innerHTML = '<option value="">Todos</option>' +
     (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
-  filtroProf.addEventListener('change', atualizarPainelAtivo);
-
-  const filtroProfFinanceira = document.getElementById('filtro-prof-financeira');
-  filtroProfFinanceira.innerHTML = '<option value="">Todos</option>' +
-    (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
-  filtroProfFinanceira.addEventListener('change', atualizarPainelAtivo);
+  filtroProf.addEventListener('change', atualizarEditar);
 
   const filtroProfCritica = document.getElementById('filtro-prof-critica');
   if(estado.papel==='profissional'){
@@ -1561,19 +1302,6 @@ function preencherSelectsPeriodo(){
     (estado.listas.profissionais||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
   filtroProfEvolucao.addEventListener('change', atualizarEvolucaoAno);
 
-  // Filtros de Andar (Editar, Dashboard, Análises, Financeira, RMR)
-  ['filtro-andar-gerencial','filtro-andar-dashboard','filtro-andar-analises','filtro-andar-financeira','rmr-andar'].forEach(id=>{
-    const sel = document.getElementById(id);
-    if(!sel) return;
-    sel.innerHTML = '<option value="">Todos</option>' +
-      (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
-  });
-  document.getElementById('filtro-andar-gerencial').addEventListener('change', atualizarEditar);
-  document.getElementById('filtro-andar-dashboard').addEventListener('change', atualizarPainelAtivo);
-  document.getElementById('filtro-andar-analises').addEventListener('change', atualizarPainelAtivo);
-  document.getElementById('filtro-andar-financeira').addEventListener('change', atualizarFinanceira);
-  document.getElementById('rmr-andar').addEventListener('change', atualizarRMR);
-
   document.getElementById('botao-novo-registro-gerencial').addEventListener('click', ()=>abrirModal(null));
   document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
 
@@ -1585,14 +1313,7 @@ function preencherSelectsPeriodo(){
     atualizarEditar();
   });
 
-  document.getElementById('filtro-data-inicio-financeira').addEventListener('change', atualizarFinanceira);
-  document.getElementById('filtro-data-fim-financeira').addEventListener('change', atualizarFinanceira);
-  document.getElementById('botao-limpar-periodo-financeira').addEventListener('click', ()=>{
-    document.getElementById('filtro-data-inicio-financeira').value = '';
-    document.getElementById('filtro-data-fim-financeira').value = '';
-    atualizarFinanceira();
-  });
-  document.getElementById('botao-nova-config-financeira').addEventListener('click', ()=>abrirModalFinanceira());
+  document.getElementById('botao-ver-editar-config-financeira').addEventListener('click', abrirModalConfigFinanceira);
 }
 
 /* ---------------------------------------------------------------------
@@ -1603,7 +1324,6 @@ function definicaoCampos(){
   return [
     {chave:'prof', rotulo:'Profissional', tipo:'select', opcoes:L.profissionais, obrigatorio:true,
       travado: estado.papel==='profissional'},
-    {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
     {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos},
     {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
@@ -1612,7 +1332,6 @@ function definicaoCampos(){
     {chave:'exames', rotulo:'Exame', tipo:'select', opcoes:L.exames},
     {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
     {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios},
-    {chave:'carteirinha', rotulo:'Carteirinha', tipo:'text'},
     {chave:'valor', rotulo:'Valor (R$)', tipo:'number', obrigatorio:true},
     {chave:'forma_pagamento', rotulo:'Forma de pagamento', tipo:'select', opcoes:L.formas_pagamento},
     {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes}
@@ -1698,12 +1417,15 @@ function formatarDataExibicao(iso){
 
 /* ---------------------------------------------------------------------
    PAINEL: EDITAR (lançamentos do período)
+   Inclui a verificação financeira (checkbox por lançamento) e o acesso
+   à configuração de taxa/rateio por profissional — essa configuração é
+   só uma referência salva; nenhuma tela calcula ou divide valores
+   automaticamente com base nela.
 --------------------------------------------------------------------- */
 async function atualizarEditar(){
   const mes = document.getElementById('filtro-mes-gerencial').value;
   const ano = document.getElementById('filtro-ano-gerencial').value;
   const prof = document.getElementById('filtro-prof-gerencial').value;
-  const andar = document.getElementById('filtro-andar-gerencial').value;
   const dataInicio = document.getElementById('filtro-data-inicio').value;
   const dataFim = document.getElementById('filtro-data-fim').value;
   const filtrandoPorData = !!(dataInicio || dataFim);
@@ -1714,26 +1436,27 @@ async function atualizarEditar(){
   document.getElementById('aviso-filtro-periodo').textContent = filtrandoPorData ? 'Filtrando por intervalo de datas' : '';
   document.getElementById('tabela-gerencial').innerHTML = '<tr><td class="vazio">Carregando lançamentos...</td></tr>';
 
-  const resp = await api('listarProducao', {mes, ano, prof, andar, dataInicio, dataFim});
+  await atualizarCardConfigFinanceira(prof, mes, ano);
+
+  const resp = await api('listarProducao', {mes, ano, prof, dataInicio, dataFim});
   const registros = resp.registros||[];
   const tabela = document.getElementById('tabela-gerencial');
   if(registros.length===0){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
   } else {
     tabela.innerHTML = `
-      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Carteirinha</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th><th></th></tr></thead>
+      <thead><tr><th>Data</th><th>Profissional</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th><th>Verificação Financeira</th><th></th></tr></thead>
       <tbody>${registros.map(r=>`
         <tr>
           <td>${formatarDataExibicao(r.data)}</td>
           <td>${r.prof||''}</td>
-          <td>${r.andar? `<span class="tag">${r.andar}</span>` : '—'}</td>
           <td>${r.paciente||''}</td>
           <td>${r.procedimento||''}</td>
           <td>${r.convenio||'—'}</td>
-          <td class="mono">${r.carteirinha||'—'}</td>
           <td>${r.forma_pagamento||'—'}</td>
           <td class="mono">${formatarMoeda(r.valor)}</td>
           <td>${r.atendente||''}</td>
+          <td style="text-align:center;"><input type="checkbox" class="chk-verificacao-financeira" data-id="${r.id}" ${r.verificado_financeiro?'checked':''} title="Marcar como verificado pelo financeiro"></td>
           <td class="celula-acoes"><button class="botao sutil pequeno" data-id="${r.id}">Editar</button></td>
         </tr>`).join('')}</tbody>`;
     tabela.querySelectorAll('button[data-id]').forEach(b=>{
@@ -1742,8 +1465,105 @@ async function atualizarEditar(){
         abrirModal(registro);
       });
     });
+    tabela.querySelectorAll('.chk-verificacao-financeira').forEach(chk=>{
+      chk.addEventListener('change', async ()=>{
+        chk.disabled = true;
+        const resp = await api('atualizarVerificacaoFinanceira', {id: chk.dataset.id, verificado: chk.checked});
+        chk.disabled = false;
+        if(!resp || !resp.ok){
+          alert('Não foi possível salvar a verificação: ' + ((resp && resp.erro) || 'erro desconhecido.'));
+          chk.checked = !chk.checked;
+        }
+      });
+    });
   }
 }
+
+/* ---------------------------------------------------------------------
+   CONFIGURAÇÃO FINANCEIRA (taxa / rateio) — visualização + edição manual
+   por profissional e mês/ano. Só fica salvo como referência; não entra
+   em nenhum cálculo automático das telas.
+--------------------------------------------------------------------- */
+async function atualizarCardConfigFinanceira(prof, mes, ano){
+  const cartao = document.getElementById('cartao-config-financeira');
+  if(!prof){
+    cartao.style.display = 'none';
+    return;
+  }
+  cartao.style.display = 'block';
+  document.getElementById('config-financeira-prof-nome').textContent = prof;
+  document.getElementById('config-financeira-resumo').textContent = 'Carregando configuração...';
+
+  const resp = await api('listarConfigFinanceira', {prof, mes, ano});
+  const config = (resp.configuracoesFinanceiras||[])[0];
+  if(config){
+    document.getElementById('config-financeira-resumo').textContent =
+      `Taxa: ${config.taxa}% · Rateio Clínica: ${config.rateio_clinica}% · Rateio Coparticipado: ${config.rateio_coparticipado}%`;
+  } else {
+    document.getElementById('config-financeira-resumo').textContent = 'Nenhuma configuração salva para este profissional neste período.';
+  }
+}
+
+function definicaoCamposConfigFinanceira(){
+  return [
+    {chave:'taxa', rotulo:'Taxa (%)', tipo:'number', obrigatorio:true},
+    {chave:'rateio_clinica', rotulo:'Rateio Clínica (%)', tipo:'number', obrigatorio:true},
+    {chave:'rateio_coparticipado', rotulo:'Rateio Coparticipado (%)', tipo:'number', obrigatorio:true}
+  ];
+}
+
+let configFinanceiraAtual = null;
+async function abrirModalConfigFinanceira(){
+  const prof = document.getElementById('filtro-prof-gerencial').value;
+  const mes = document.getElementById('filtro-mes-gerencial').value;
+  const ano = document.getElementById('filtro-ano-gerencial').value;
+  if(!prof){ alert('Selecione um profissional específico no filtro antes de abrir a configuração.'); return; }
+
+  document.getElementById('titulo-modal-config-financeira').textContent = `Configuração financeira — ${prof} (${mes}/${ano})`;
+
+  const resp = await api('listarConfigFinanceira', {prof, mes, ano});
+  configFinanceiraAtual = (resp.configuracoesFinanceiras||[])[0] || {taxa:18, rateio_clinica:40, rateio_coparticipado:60};
+
+  document.getElementById('grade-modal-config-financeira').innerHTML =
+    definicaoCamposConfigFinanceira().map(c=>renderizarCampo(c, configFinanceiraAtual[c.chave], 'config_financeira_')).join('');
+
+  document.getElementById('sobreposicao-config-financeira').classList.add('aberta');
+}
+function fecharModalConfigFinanceira(){
+  document.getElementById('sobreposicao-config-financeira').classList.remove('aberta');
+}
+document.getElementById('botao-cancelar-config-financeira').addEventListener('click', fecharModalConfigFinanceira);
+document.getElementById('sobreposicao-config-financeira').addEventListener('click', (ev)=>{ if(ev.target.id==='sobreposicao-config-financeira') fecharModalConfigFinanceira(); });
+
+document.getElementById('form-config-financeira').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const prof = document.getElementById('filtro-prof-gerencial').value;
+  const mes = document.getElementById('filtro-mes-gerencial').value;
+  const ano = document.getElementById('filtro-ano-gerencial').value;
+
+  const botaoSalvar = ev.target.querySelector('button[type="submit"]');
+  const rotuloOriginal = botaoSalvar.textContent;
+  botaoSalvar.disabled = true;
+  botaoSalvar.textContent = 'Salvando...';
+
+  const resp = await api('salvarConfigFinanceira', {
+    prof, mes, ano,
+    taxa: document.getElementById('config_financeira_taxa').value,
+    rateio_clinica: document.getElementById('config_financeira_rateio_clinica').value,
+    rateio_coparticipado: document.getElementById('config_financeira_rateio_coparticipado').value
+  });
+
+  botaoSalvar.disabled = false;
+  botaoSalvar.textContent = rotuloOriginal;
+
+  if(!resp || !resp.ok){
+    alert('Não foi possível salvar: ' + ((resp && resp.erro) || 'erro desconhecido.'));
+    return;
+  }
+
+  fecharModalConfigFinanceira();
+  await atualizarCardConfigFinanceira(prof, mes, ano);
+});
 
 /* ---------------------------------------------------------------------
    PAINEL: CRÍTICA (lançamentos com campos obrigatórios em branco)
@@ -1789,236 +1609,6 @@ async function atualizarCritica(){
     });
   });
 }
-
-/* =====================================================================
-   PAINEL: FINANCEIRA — COPARTICIPADOS
-   Cálculo mensal de taxa e rateio sobre a produção do(s) profissional(is)
-   selecionado(s). Regra de cálculo (confirmada com o usuário):
-     valorBruto   = soma dos valores de atendimento do período
-     valorTaxa    = valorBruto * (taxa / 100)              [ex.: 18%]
-     valorLiquido = valorBruto - valorTaxa
-     valorClinica       = valorLiquido * (rateio_clinica / 100)       [padrão 40%]
-     valorCoparticipado = valorLiquido * (rateio_coparticipado / 100) [padrão 60%]
-   Taxa e rateio são configuráveis por profissional + mês/ano (tabela
-   "coparticipados", uma linha por prof+mes+ano) e podem ser diferentes
-   a cada mês. Se não houver configuração salva para aquele prof+período,
-   usam-se os padrões 18% / 40% / 60% só para exibir a estimativa — nada
-   é salvo automaticamente.
-===================================================================== */
-const COPARTICIPADO_PADRAO = { taxa: 18, rateio_clinica: 40, rateio_coparticipado: 60 };
-
-function calcularFinanceiro(valorBruto, config){
-  const taxa = Number(config.taxa)||0;
-  const rateioClinica = Number(config.rateio_clinica)||0;
-  const rateioCoparticipado = Number(config.rateio_coparticipado)||0;
-  const valorTaxa = arredondar2(valorBruto * (taxa/100));
-  const valorLiquido = arredondar2(valorBruto - valorTaxa);
-  const valorClinica = arredondar2(valorLiquido * (rateioClinica/100));
-  const valorCoparticipado = arredondar2(valorLiquido * (rateioCoparticipado/100));
-  return {taxa, rateioClinica, rateioCoparticipado, valorBruto, valorTaxa, valorLiquido, valorClinica, valorCoparticipado};
-}
-
-async function atualizarFinanceira(){
-  const mes = document.getElementById('filtro-mes-financeira').value;
-  const ano = document.getElementById('filtro-ano-financeira').value;
-  const prof = document.getElementById('filtro-prof-financeira').value;
-  const andar = document.getElementById('filtro-andar-financeira').value;
-  const dataInicio = document.getElementById('filtro-data-inicio-financeira').value;
-  const dataFim = document.getElementById('filtro-data-fim-financeira').value;
-  const filtrandoPorData = !!(dataInicio || dataFim);
-
-  document.getElementById('filtro-mes-financeira').disabled = filtrandoPorData;
-  document.getElementById('filtro-ano-financeira').disabled = filtrandoPorData;
-  document.getElementById('aviso-filtro-periodo-financeira').textContent = filtrandoPorData ? 'Filtrando por intervalo de datas' : '';
-
-  document.getElementById('resumo-financeira-container').innerHTML = '<p class="vazio">Carregando...</p>';
-  document.getElementById('tabela-financeira').innerHTML = '<tr><td class="vazio">Carregando lançamentos...</td></tr>';
-
-  const [respProd, respCoparticipados] = await Promise.all([
-    api('listarProducao', {mes, ano, prof, andar, dataInicio, dataFim}),
-    api('listarCoparticipados', {mes, ano, prof})
-  ]);
-  const registros = respProd.registros || [];
-  const configsSalvas = respCoparticipados.coparticipados || [];
-
-  if(prof){
-    // Profissional específico: um único bloco de KPIs + tabela de pacientes dele.
-    document.getElementById('titulo-tabela-financeira').textContent = `Pacientes atendidos — ${prof}`;
-    const config = configsSalvas.find(c=>c.prof===prof) || Object.assign({prof}, COPARTICIPADO_PADRAO);
-    const valorBruto = registros.reduce((s,r)=>s+(Number(r.valor)||0),0);
-    const calc = calcularFinanceiro(valorBruto, config);
-    const temConfigSalva = configsSalvas.some(c=>c.prof===prof);
-
-    document.getElementById('resumo-financeira-container').innerHTML = `
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-          <h3 style="margin:0;">Resumo — ${prof}</h3>
-          <div style="display:flex;align-items:center;gap:10px;">
-            ${!temConfigSalva ? '<span class="tag tag-alerta">Usando taxa/rateio padrão — ainda não configurado</span>' : ''}
-            <button class="botao secundario pequeno" id="botao-editar-config-financeira">${temConfigSalva ? 'Editar configuração' : 'Configurar agora'}</button>
-          </div>
-        </div>
-        <div class="grade-kpi" style="margin-bottom:0;">
-          <div class="kpi"><div class="rotulo">Atendimentos</div><div class="valor">${registros.length}</div></div>
-          <div class="kpi"><div class="rotulo">Valor bruto</div><div class="valor teal">${formatarMoeda(calc.valorBruto)}</div></div>
-          <div class="kpi"><div class="rotulo">Taxa (${calc.taxa}%)</div><div class="valor gold">${formatarMoeda(calc.valorTaxa)}</div></div>
-          <div class="kpi"><div class="rotulo">Valor líquido</div><div class="valor">${formatarMoeda(calc.valorLiquido)}</div></div>
-          <div class="kpi"><div class="rotulo">Clínica (${calc.rateioClinica}%)</div><div class="valor teal">${formatarMoeda(calc.valorClinica)}</div></div>
-          <div class="kpi"><div class="rotulo">Coparticipado (${calc.rateioCoparticipado}%)</div><div class="valor teal">${formatarMoeda(calc.valorCoparticipado)}</div></div>
-        </div>
-      </div>`;
-
-    document.getElementById('botao-editar-config-financeira').addEventListener('click', ()=>abrirModalFinanceira(config));
-  } else {
-    // Todos os profissionais: tabela-resumo com o cálculo de cada um que
-    // tiver ao menos 1 atendimento no período.
-    document.getElementById('titulo-tabela-financeira').textContent = 'Pacientes atendidos no período (todos os profissionais)';
-    const porProf = {};
-    registros.forEach(r=>{
-      const p = r.prof || 'Não informado';
-      porProf[p] = (porProf[p]||0) + (Number(r.valor)||0);
-    });
-    const linhasResumo = Object.keys(porProf).sort().map(p=>{
-      const config = configsSalvas.find(c=>c.prof===p) || Object.assign({prof:p}, COPARTICIPADO_PADRAO);
-      const temConfigSalva = configsSalvas.some(c=>c.prof===p);
-      return Object.assign({prof:p, temConfigSalva}, calcularFinanceiro(porProf[p], config));
-    });
-
-    const totalBruto = linhasResumo.reduce((s,l)=>s+l.valorBruto,0);
-    const totalTaxa = linhasResumo.reduce((s,l)=>s+l.valorTaxa,0);
-    const totalLiquido = linhasResumo.reduce((s,l)=>s+l.valorLiquido,0);
-    const totalClinica = linhasResumo.reduce((s,l)=>s+l.valorClinica,0);
-    const totalCoparticipado = linhasResumo.reduce((s,l)=>s+l.valorCoparticipado,0);
-
-    const containerResumo = document.getElementById('resumo-financeira-container');
-    if(linhasResumo.length===0){
-      containerResumo.innerHTML = '<div class="cartao"><p class="vazio">Nenhum atendimento no período.</p></div>';
-    } else {
-      containerResumo.innerHTML = `
-        <div class="grade-kpi">
-          <div class="kpi"><div class="rotulo">Atendimentos no período</div><div class="valor">${registros.length}</div></div>
-          <div class="kpi"><div class="rotulo">Valor bruto total</div><div class="valor teal">${formatarMoeda(totalBruto)}</div></div>
-          <div class="kpi"><div class="rotulo">Total de taxa</div><div class="valor gold">${formatarMoeda(totalTaxa)}</div></div>
-          <div class="kpi"><div class="rotulo">Total líquido</div><div class="valor">${formatarMoeda(totalLiquido)}</div></div>
-          <div class="kpi"><div class="rotulo">Total Clínica</div><div class="valor teal">${formatarMoeda(totalClinica)}</div></div>
-          <div class="kpi"><div class="rotulo">Total Coparticipados</div><div class="valor teal">${formatarMoeda(totalCoparticipado)}</div></div>
-        </div>
-        <div class="cartao">
-          <h3>Cálculo por profissional</h3>
-          <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">Cada linha usa a taxa/rateio configurados para aquele profissional no período — quem ainda não tem configuração salva aparece com o padrão (18% / 40% / 60%) só como estimativa.</p>
-          <div class="tabela-scroll">
-            <table>
-              <thead><tr><th>Profissional</th><th>Valor bruto</th><th>Taxa</th><th>Valor taxa</th><th>Valor líquido</th><th>Clínica</th><th>Coparticipado</th><th></th></tr></thead>
-              <tbody>${linhasResumo.map(l=>`
-                <tr>
-                  <td>${l.prof}${!l.temConfigSalva?' <span class="tag tag-alerta">padrão</span>':''}</td>
-                  <td class="mono">${formatarMoeda(l.valorBruto)}</td>
-                  <td>${l.taxa}%</td>
-                  <td class="mono">${formatarMoeda(l.valorTaxa)}</td>
-                  <td class="mono">${formatarMoeda(l.valorLiquido)}</td>
-                  <td class="mono">${formatarMoeda(l.valorClinica)} <span style="color:var(--ink-400);">(${l.rateioClinica}%)</span></td>
-                  <td class="mono">${formatarMoeda(l.valorCoparticipado)} <span style="color:var(--ink-400);">(${l.rateioCoparticipado}%)</span></td>
-                  <td class="celula-acoes"><button class="botao sutil pequeno botao-config-linha-financeira" data-prof="${l.prof}">${l.temConfigSalva?'Editar':'Configurar'}</button></td>
-                </tr>`).join('')}</tbody>
-            </table>
-          </div>
-        </div>`;
-      containerResumo.querySelectorAll('.botao-config-linha-financeira').forEach(b=>{
-        b.addEventListener('click', ()=>{
-          const linha = linhasResumo.find(l=>l.prof===b.dataset.prof);
-          abrirModalFinanceira({prof: linha.prof, taxa: linha.taxa, rateio_clinica: linha.rateioClinica, rateio_coparticipado: linha.rateioCoparticipado});
-        });
-      });
-    }
-  }
-
-  // Tabela de pacientes atendidos no período (sempre exibida, com ou sem
-  // profissional específico selecionado — igual à aba Verificar).
-  const tabela = document.getElementById('tabela-financeira');
-  if(registros.length===0){
-    tabela.innerHTML = '<tr><td class="vazio">Nenhum atendimento neste período.</td></tr>';
-  } else {
-    tabela.innerHTML = `
-      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Convênio</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th></tr></thead>
-      <tbody>${registros.map(r=>`
-        <tr>
-          <td>${formatarDataExibicao(r.data)}</td>
-          <td>${r.prof||''}</td>
-          <td>${r.andar? `<span class="tag">${r.andar}</span>` : '—'}</td>
-          <td>${r.paciente||''}</td>
-          <td>${r.procedimento||''}</td>
-          <td>${r.convenio||'—'}</td>
-          <td>${r.forma_pagamento||'—'}</td>
-          <td class="mono">${formatarMoeda(r.valor)}</td>
-          <td>${r.atendente||''}</td>
-        </tr>`).join('')}</tbody>`;
-  }
-}
-
-/* ---------------------------------------------------------------------
-   MODAL: CONFIGURAÇÃO DE COPARTICIPADO (taxa + rateio, por prof/mês/ano)
---------------------------------------------------------------------- */
-function definicaoCamposFinanceira(){
-  return [
-    {chave:'prof', rotulo:'Coparticipado (profissional)', tipo:'select', opcoes:estado.listas.profissionais, obrigatorio:true},
-    {chave:'taxa', rotulo:'Taxa (%)', tipo:'number', obrigatorio:true},
-    {chave:'rateio_clinica', rotulo:'Rateio Clínica (%)', tipo:'number', obrigatorio:true},
-    {chave:'rateio_coparticipado', rotulo:'Rateio Coparticipado (%)', tipo:'number', obrigatorio:true}
-  ];
-}
-
-function abrirModalFinanceira(registroExistente){
-  const mes = document.getElementById('filtro-mes-financeira').value;
-  const ano = document.getElementById('filtro-ano-financeira').value;
-  const profFiltroAtual = document.getElementById('filtro-prof-financeira').value;
-
-  const valores = registroExistente || Object.assign(
-    {prof: profFiltroAtual || ''}, COPARTICIPADO_PADRAO
-  );
-
-  document.getElementById('titulo-modal-financeira').textContent =
-    `Configuração de coparticipado — ${mes}/${ano}`;
-  document.getElementById('grade-modal-financeira').innerHTML =
-    definicaoCamposFinanceira().map(c=>renderizarCampo(c, valores[c.chave], 'financeira_')).join('');
-
-  document.getElementById('sobreposicao-financeira').classList.add('aberta');
-}
-function fecharModalFinanceira(){
-  document.getElementById('sobreposicao-financeira').classList.remove('aberta');
-}
-document.getElementById('botao-cancelar-financeira').addEventListener('click', fecharModalFinanceira);
-document.getElementById('sobreposicao-financeira').addEventListener('click', (ev)=>{ if(ev.target.id==='sobreposicao-financeira') fecharModalFinanceira(); });
-
-document.getElementById('form-financeira').addEventListener('submit', async (ev)=>{
-  ev.preventDefault();
-  const mes = document.getElementById('filtro-mes-financeira').value;
-  const ano = document.getElementById('filtro-ano-financeira').value;
-  const prof = document.getElementById('financeira_prof').value;
-  if(!prof){ alert('Selecione o coparticipado.'); return; }
-
-  const botaoSalvar = ev.target.querySelector('button[type="submit"]');
-  const rotuloOriginal = botaoSalvar.textContent;
-  botaoSalvar.disabled = true;
-  botaoSalvar.textContent = 'Salvando...';
-
-  const resp = await api('salvarCoparticipado', {
-    prof, mes, ano,
-    taxa: document.getElementById('financeira_taxa').value,
-    rateio_clinica: document.getElementById('financeira_rateio_clinica').value,
-    rateio_coparticipado: document.getElementById('financeira_rateio_coparticipado').value
-  });
-
-  botaoSalvar.disabled = false;
-  botaoSalvar.textContent = rotuloOriginal;
-
-  if(!resp || !resp.ok){
-    alert('Não foi possível salvar: ' + ((resp && resp.erro) || 'erro desconhecido. Tente novamente.'));
-    return;
-  }
-
-  fecharModalFinanceira();
-  await atualizarFinanceira();
-});
 
 /* ---------------------------------------------------------------------
    PAINEL: METAS (metas do período + sugestões de melhoria)
@@ -2138,14 +1728,13 @@ document.getElementById('botao-excluir-modal').addEventListener('click', async (
 async function atualizarDashboard(){
   const mes = document.getElementById('filtro-mes-dashboard').value;
   const ano = document.getElementById('filtro-ano-dashboard').value;
-  const andar = document.getElementById('filtro-andar-dashboard').value;
   ['kpi-atendimentos','kpi-valor','kpi-ticket','kpi-meta'].forEach(id=>document.getElementById(id).textContent='…');
   document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
   let resp;
   try{
-    resp = await api('dashboard', {mes, ano, andar});
+    resp = await api('dashboard', {mes, ano});
   }catch(e){
-    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o Supabase. Confira SUPABASE_URL e SUPABASE_ANON_KEY.</td></tr>';
+    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o servidor. Confira a CONFIG.API_URL.</td></tr>';
     return;
   }
   if(!resp.ok){
@@ -2319,8 +1908,7 @@ async function atualizarAnalises(){
   document.getElementById('tabela-correlacao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
   const mes = document.getElementById('filtro-mes-analises').value;
   const ano = document.getElementById('filtro-ano-analises').value;
-  const andar = document.getElementById('filtro-andar-analises').value;
-  const resp = await api('listarProducao', {mes, ano, andar});
+  const resp = await api('listarProducao', {mes, ano});
   estado.registrosDashboard = resp.registros || [];
   atualizarAnaliseDimensao();
   atualizarCorrelacao();
@@ -2424,14 +2012,13 @@ async function atualizarRMR(){
   const mes = document.getElementById('rmr-mes').value;
   const ano = Number(document.getElementById('rmr-ano').value);
   const anoAnterior = ano - 1;
-  const andar = document.getElementById('rmr-andar').value;
-  document.getElementById('rmr-legenda-periodo').textContent = `Referência: ${mes} de ${ano} · comparativo com ${mes} de ${anoAnterior}` + (andar ? ` · Andar: ${andar}` : '');
+  document.getElementById('rmr-legenda-periodo').textContent = `Referência: ${mes} de ${ano} · comparativo com ${mes} de ${anoAnterior}`;
 
   let prodAno, prodAnoAnterior, metasAno, metasAnoAnterior, nota;
   try{
     [prodAno, prodAnoAnterior, metasAno, metasAnoAnterior, nota] = await Promise.all([
-      api('listarProducao', {ano, andar}),
-      api('listarProducao', {ano:anoAnterior, andar}),
+      api('listarProducao', {ano}),
+      api('listarProducao', {ano:anoAnterior}),
       api('listarMetas', {ano}),
       api('listarMetas', {ano:anoAnterior}),
       api('obterNota', {mes, ano})
