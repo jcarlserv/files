@@ -292,7 +292,7 @@
 
 <!-- ===================== APLICAÇÃO ===================== -->
 <div id="app">
-  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — conecte o Google Sheets em CONFIG.API_URL para usar dados reais (veja o GUIA_DE_CONFIGURACAO.md)</div>
+  <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — preencha SUPABASE_URL e SUPABASE_ANON_KEY no início do script para usar dados reais</div>
   <header class="topo">
     <div class="marca-topo">
       <div class="selo">C</div>
@@ -688,7 +688,7 @@
     </section>
   </main>
   <footer style="display:flex;justify-content:center;align-items:center;gap:8px;padding:16px 24px;color:var(--ink-400);font-size:12px;border-top:1px solid var(--line);">
-    <span>ProdClin <b id="versao-sistema" style="color:var(--ink-600);font-weight:600;">v1.5.0</b></span>
+    <span>ProdClin <b id="versao-sistema" style="color:var(--ink-600);font-weight:600;">v2.0.0</b></span>
   </footer>
 </div>
 
@@ -724,19 +724,20 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* =====================================================================
-   CONFIGURAÇÃO
-   Depois de publicar o Apps Script (ver GUIA_DE_CONFIGURACAO.md), cole
-   a URL do Web App aqui. Enquanto estiver vazio, o sistema roda em
-   MODO DEMONSTRAÇÃO com dados de exemplo guardados só nesta sessão.
+   CONFIGURAÇÃO — Supabase (backend único e definitivo do sistema —
+   Google Sheets/Apps Script não é mais usado por este arquivo)
 ===================================================================== */
-const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbz1B_WssQpX3ei8SMiRQM-aKUN4CUHSYfRzVyImu0iHietcuBsddTVlrazyGlJUh2xCfA/exec" // <-- cole aqui a URL do seu Web App do Apps Script
-};
+const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
+const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const MODO_DEMO = !CONFIG.API_URL;
+const MODO_DEMO = !supabaseClient;
 
 /* ---------------------------------------------------------------------
    ESTADO
@@ -748,7 +749,7 @@ const estado = {
 };
 
 /* ---------------------------------------------------------------------
-   DADOS DE DEMONSTRAÇÃO (usados só quando CONFIG.API_URL estiver vazio)
+   DADOS DE DEMONSTRAÇÃO (usados só quando SUPABASE_URL/SUPABASE_ANON_KEY estiverem vazios)
 --------------------------------------------------------------------- */
 const demo = {
   configuracoes: { nome_clinica: 'Clínica Cliza' },
@@ -795,7 +796,7 @@ const demo = {
 };
 
 /* ---------------------------------------------------------------------
-   CAMADA DE API — chama o Apps Script de verdade, ou o mock de demo
+   CAMADA DE API — chama o Supabase de verdade, ou o mock de demo
 --------------------------------------------------------------------- */
 let chamadasApiEmAndamento = 0;
 function mostrarBarraProgresso(mostrar){
@@ -812,14 +813,203 @@ async function api(acao, dados={}) {
   mostrarBarraProgresso(true);
   try {
     if (MODO_DEMO) return await mockApi(acao, dados);
-    const resposta = await fetch(CONFIG.API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS no Apps Script
-      body: JSON.stringify({action:acao, data:dados})
-    });
-    return await resposta.json();
+    return await supabaseApi(acao, dados);
+  } catch(e) {
+    return {ok:false, erro: String((e&&e.message)||e)};
   } finally {
     mostrarBarraProgresso(false);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Auxiliares: anexa mes/ano a partir da coluna "data", e converte mês
+   nome<->número (as tabelas "metas" e "notas" guardam mês como
+   integer 1-12; "producao" e "coparticipados" não têm essa coluna —
+   mes/ano de produção vem da data, e "coparticipados" já guarda mês
+   como texto, sem precisar converter).
+--------------------------------------------------------------------- */
+function anexarMesAnoPelaData(registro){
+  if(registro && registro.data){
+    const [ano, mes] = String(registro.data).slice(0,10).split('-');
+    registro.mes = MESES[Number(mes)-1] || '';
+    registro.ano = Number(ano);
+  }
+  return registro;
+}
+function nomeMesParaNumero(nome){
+  const i = MESES.indexOf(nome);
+  return i>-1 ? i+1 : null;
+}
+function numeroMesParaNome(num){
+  return MESES[Number(num)-1] || '';
+}
+
+/* ---------------------------------------------------------------------
+   CAMADA SUPABASE
+--------------------------------------------------------------------- */
+async function supabaseApi(acao, dados) {
+  switch(acao){
+    case 'login': {
+      const { data, error } = await supabaseClient.from('usuarios').select('*')
+        .eq('usuario', dados.usuario).eq('senha', dados.senha).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      if(!data) return {ok:false, erro:'Usuário ou senha inválidos.'};
+      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional};
+    }
+
+    case 'listarListas': {
+      const { data, error } = await supabaseClient.from('listas').select('*').order('ordem');
+      if(error) return {ok:false, erro:error.message};
+      const listas = {};
+      (data||[]).forEach(item=>{
+        if(!listas[item.tipo]) listas[item.tipo] = [];
+        listas[item.tipo].push(item.valor);
+      });
+      return {ok:true, listas};
+    }
+
+    case 'listarProducao': {
+      let query = supabaseClient.from('producao').select('*');
+      if(dados.dataInicio) query = query.gte('data', dados.dataInicio);
+      if(dados.dataFim) query = query.lte('data', dados.dataFim);
+      if(!dados.dataInicio && !dados.dataFim && dados.ano){
+        query = query.gte('data', `${dados.ano}-01-01`).lte('data', `${dados.ano}-12-31`);
+      }
+      if(dados.prof) query = query.eq('prof', dados.prof);
+      const { data, error } = await query.order('data', {ascending:false});
+      if(error) return {ok:false, erro:error.message};
+      let registros = (data||[]).map(anexarMesAnoPelaData);
+      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+      return {ok:true, registros};
+    }
+
+    case 'adicionarProducao': {
+      const registro = Object.assign({}, dados);
+      delete registro.id; delete registro.mes; delete registro.ano;
+      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
+      const { error } = await supabaseClient.from('producao').insert(registro);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'atualizarProducao': {
+      const registro = Object.assign({}, dados.registro);
+      delete registro.id; delete registro.mes; delete registro.ano;
+      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
+      const { error } = await supabaseClient.from('producao').update(registro).eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'excluirProducao': {
+      const { error } = await supabaseClient.from('producao').delete().eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'atualizarVerificacaoFinanceira': {
+      const { error } = await supabaseClient.from('producao')
+        .update({verificado_financeiro: !!dados.verificado}).eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'listarMetas': {
+      let query = supabaseClient.from('metas').select('*');
+      if(dados.mes) query = query.eq('mes', nomeMesParaNumero(dados.mes));
+      if(dados.ano) query = query.eq('ano', dados.ano);
+      const { data, error } = await query;
+      if(error) return {ok:false, erro:error.message};
+      const metas = (data||[]).map(m=>Object.assign({}, m, {mes:numeroMesParaNome(m.mes)}));
+      return {ok:true, metas};
+    }
+
+    case 'salvarMeta': {
+      const registro = {
+        prof: dados.prof, mes: nomeMesParaNumero(dados.mes), ano: Number(dados.ano),
+        turnos_disponibilizados: Math.round(Number(dados.turnos_disponibilizados)||0),
+        meta_valor: Number(dados.meta_valor)||0,
+        meta_qtd: Number(dados.meta_qtd)||0
+      };
+      const { error } = await supabaseClient.from('metas').upsert(registro, {onConflict:'prof,mes,ano'});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'obterNota': {
+      const { data, error } = await supabaseClient.from('notas').select('texto')
+        .eq('mes', nomeMesParaNumero(dados.mes)).eq('ano', dados.ano).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, texto: data ? data.texto : ''};
+    }
+
+    case 'salvarNota': {
+      const { error } = await supabaseClient.from('notas').upsert(
+        {mes:nomeMesParaNumero(dados.mes), ano:Number(dados.ano), texto:dados.texto}, {onConflict:'mes,ano'}
+      );
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'obterConfiguracoes': {
+      const { data, error } = await supabaseClient.from('configuracoes').select('*');
+      if(error) return {ok:false, erro:error.message};
+      const configuracoes = {};
+      (data||[]).forEach(c=>configuracoes[c.chave]=c.valor);
+      return {ok:true, configuracoes};
+    }
+
+    case 'salvarConfiguracao': {
+      const { error } = await supabaseClient.from('configuracoes').upsert({chave:dados.chave, valor:dados.valor});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    // Configuração financeira (taxa/rateio) reaproveita a tabela
+    // "coparticipados" já existente no banco — mesma estrutura
+    // (prof, mes texto, ano, taxa, rateio_clinica, rateio_coparticipado).
+    case 'listarConfigFinanceira': {
+      let query = supabaseClient.from('coparticipados').select('*');
+      if(dados.mes) query = query.eq('mes', dados.mes);
+      if(dados.ano) query = query.eq('ano', dados.ano);
+      if(dados.prof) query = query.eq('prof', dados.prof);
+      const { data, error } = await query;
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, configuracoesFinanceiras:data||[]};
+    }
+
+    case 'salvarConfigFinanceira': {
+      const registro = {
+        prof: dados.prof, mes: dados.mes, ano: Number(dados.ano),
+        taxa: Number(dados.taxa)||0,
+        rateio_clinica: Number(dados.rateio_clinica)||0,
+        rateio_coparticipado: Number(dados.rateio_coparticipado)||0
+      };
+      const { error } = await supabaseClient.from('coparticipados').upsert(registro, {onConflict:'prof,mes,ano'});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'dashboard': {
+      const respProd = await supabaseApi('listarProducao', {mes:dados.mes, ano:dados.ano});
+      if(!respProd.ok) return respProd;
+      const registros = respProd.registros;
+      const porProfissional = {}, porConvenio = {};
+      let totalValor = 0;
+      registros.forEach(r=>{
+        const prof = r.prof || 'Não informado';
+        const conv = r.convenio || 'PARTICULAR';
+        const valor = Number(r.valor)||0;
+        if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
+        porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
+        if(!porConvenio[conv]) porConvenio[conv]=0;
+        porConvenio[conv]+=valor;
+        totalValor+=valor;
+      });
+      const respMetas = await supabaseApi('listarMetas', {mes:dados.mes, ano:dados.ano});
+      const metas = respMetas.ok ? respMetas.metas : [];
+      const metaPorProf = {}; metas.forEach(m=>metaPorProf[m.prof]=m);
+      const comparativo = Object.keys(porProfissional).map(prof=>{
+        const m = metaPorProf[prof]||{};
+        return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
+                metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
+      });
+      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, comparativo};
+    }
+
+    default: return {ok:false, erro:'Ação desconhecida (Supabase): '+acao};
   }
 }
 
@@ -1159,7 +1349,7 @@ async function iniciarApp(){
     if(!listasResp.ok) throw new Error(listasResp.erro || 'A planilha não respondeu como esperado.');
     estado.listas = listasResp.listas || {};
   }catch(e){
-    mostrarErroInicializacao('Não foi possível carregar as listas da planilha (' + (e.message||e) + '). Confira se o Code.gs foi republicado (Implantar → Gerenciar implantações → Nova versão) e se a URL em CONFIG.API_URL está correta.');
+    mostrarErroInicializacao('Não foi possível carregar as listas do banco (' + (e.message||e) + '). Confira se SUPABASE_URL e SUPABASE_ANON_KEY estão corretos e se as políticas de RLS estão liberando leitura na tabela "listas".');
     return;
   }
 
@@ -1734,7 +1924,7 @@ async function atualizarDashboard(){
   try{
     resp = await api('dashboard', {mes, ano});
   }catch(e){
-    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o servidor. Confira a CONFIG.API_URL.</td></tr>';
+    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o Supabase. Confira SUPABASE_URL e SUPABASE_ANON_KEY.</td></tr>';
     return;
   }
   if(!resp.ok){
