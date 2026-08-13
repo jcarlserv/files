@@ -470,6 +470,10 @@
               <label>Forma de pagamento</label>
               <select id="filtro-forma-pagamento-gerencial"><option value="">Todas</option></select>
             </div>
+            <div class="campo">
+              <label>Exame</label>
+              <select id="filtro-exame-gerencial"><option value="">Todos</option></select>
+            </div>
             <button class="botao secundario" id="botao-novo-registro-gerencial">+ Novo registro</button>
             <button class="botao sutil pequeno" id="botao-limpar-periodo">Limpar período</button>
             <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
@@ -940,7 +944,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.9.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.10.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1032,6 +1036,9 @@
             últimos lançamentos" (aba Lançamento) e "Atendimentos por
             convênio" (aba RMR) — nessa última, a busca por texto também
             passou a considerar o exame.
+   v2.10.0 — Aba Verificar: novo filtro "Exame" (select), junto dos
+             filtros de Profissional/Andar/Convênio/Forma de pagamento —
+             também resetado pelo botão "Limpar período".
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -2188,6 +2195,12 @@ function preencherSelectsPeriodo(){
   filtroFormaPagamentoGerencial.addEventListener('change', atualizarEditar);
 
 
+  const filtroExameGerencial = document.getElementById('filtro-exame-gerencial');
+  filtroExameGerencial.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.exames||[]).map(e=>`<option value="${e}">${e}</option>`).join('');
+  filtroExameGerencial.addEventListener('change', atualizarEditar);
+
+
   const filtroProfCritica = document.getElementById('filtro-prof-critica');
   if(estado.papel==='profissional'){
     document.getElementById('campo-prof-critica').style.display = 'none';
@@ -2226,6 +2239,7 @@ function preencherSelectsPeriodo(){
     document.querySelectorAll('#painel-filtro-convenio input[type="checkbox"]').forEach(chk=>chk.checked=false);
     document.getElementById('botao-filtro-convenio').textContent = 'Todos';
     document.getElementById('filtro-forma-pagamento-gerencial').value = '';
+    document.getElementById('filtro-exame-gerencial').value = '';
     atualizarEditar();
   });
 
@@ -2687,6 +2701,7 @@ async function atualizarEditar(){
   const prof = document.getElementById('filtro-prof-gerencial').value;
   const andar = document.getElementById('filtro-andar-gerencial').value;
   const formaPagamento = document.getElementById('filtro-forma-pagamento-gerencial').value;
+  const exame = document.getElementById('filtro-exame-gerencial').value;
   const dataInicio = document.getElementById('filtro-data-inicio').value;
   const dataFim = document.getElementById('filtro-data-fim').value;
 
@@ -2703,6 +2718,9 @@ async function atualizarEditar(){
   if(estado.conveniosSelecionados.length){
     const selecionadosUpper = estado.conveniosSelecionados.map(c=>c.trim().toUpperCase());
     registros = registros.filter(r => selecionadosUpper.includes(String(r.convenio||'').trim().toUpperCase()));
+  }
+  if(exame){
+    registros = registros.filter(r => String(r.exames||'').trim().toUpperCase() === exame.trim().toUpperCase());
   }
   // Se o registro tem pagamento dividido (formas_pagamento preenchido),
   // considera cada parte separadamente; senão trata como uma única "parte"
