@@ -940,7 +940,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.7.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.8.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1024,6 +1024,9 @@
             soma das partes. Requer a coluna nova `formas_pagamento`
             (jsonb) na tabela `producao` do Supabase — ver instrução no
             final da resposta que introduziu esta versão.
+   v2.8.0 — Tela Lançamento: campo "Atendente" vem travado com o nome do
+            próprio usuário quando o papel logado é atendente (só nessa
+            tela; no modal de edição continua livre).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -2415,6 +2418,16 @@ function montarFormularioLancamento(){
   if(estado.papel==='profissional'){
     const selProf = document.getElementById('campo_prof');
     selProf.innerHTML = `<option value="${estado.nomeProfissional}" selected>${estado.nomeProfissional}</option>`;
+  }
+  // Atendente: trava com o nome do próprio usuário logado, só nesta tela
+  // (Lançamento) — no modal de edição (Verificar/Crítica) continua livre
+  // pra escolher qualquer atendente, como já era antes.
+  if(estado.papel==='atendente'){
+    const selAtendente = document.getElementById('campo_atendente');
+    if(selAtendente){
+      selAtendente.innerHTML = `<option value="${estado.nomeProfissional}" selected>${estado.nomeProfissional}</option>`;
+      selAtendente.disabled = true;
+    }
   }
   const hoje = new Date().toISOString().slice(0,10);
   const campoData = document.getElementById('campo_data');
