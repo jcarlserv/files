@@ -214,21 +214,12 @@
   .grade-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
 
 
-  /* Seção "Forma de pagamento" com múltiplas linhas (pagamento dividido) */
-  .linhas-pagamento{display:flex;flex-direction:column;gap:8px;}
-  .linha-pagamento{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-  .linha-pagamento select{
-    flex:1;min-width:150px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);
-    font-size:14px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink-900);
-  }
-  .linha-pagamento input[type="number"]{
-    width:140px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);
-    font-size:14px;font-family:'Inter',sans-serif;
-  }
-  .linha-pagamento select:focus, .linha-pagamento input:focus{outline:none;border-color:var(--plum-500);}
+  /* Seção "Forma de pagamento" com múltiplas linhas (pagamento dividido).
+     Cada linha usa .campo normal, então ela cai nas MESMAS colunas do
+     formulário — não é um bloco visualmente separado. */
   .botao-remover-pagamento{
     flex-shrink:0;background:transparent;border:1.5px solid var(--line);border-radius:7px;
-    color:var(--ink-400);cursor:pointer;width:34px;height:34px;font-size:15px;line-height:1;
+    color:var(--ink-400);cursor:pointer;width:30px;height:30px;font-size:15px;line-height:1;
   }
   .botao-remover-pagamento:hover{border-color:var(--danger);color:var(--danger);}
 
@@ -940,7 +931,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.8.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.9.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1027,6 +1018,11 @@
    v2.8.0 — Tela Lançamento: campo "Atendente" vem travado com o nome do
             próprio usuário quando o papel logado é atendente (só nessa
             tela; no modal de edição continua livre).
+   v2.9.0 — Formulário de Lançamento/Modal: "Forma de pagamento" e "Valor"
+            deixaram de ser um bloco separado e viraram colunas normais da
+            grade (mesma formatação de Convênio/Atendente etc.), com o
+            botão "+ Adicionar forma de pagamento" e o Total sempre ao
+            lado da última linha.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -2264,77 +2260,113 @@ function definicaoCampos(){
    parte em dinheiro, parte no cartão) dentro do MESMO lançamento — sem
    duplicar o procedimento. O valor total do lançamento é sempre a soma
    das linhas preenchidas.
+
+   Cada linha usa .campo normal (mesma formatação de Convênio, Atendente
+   etc.) e o container fica com display:contents — isso tira o container
+   da formatação visual mas mantém os filhos participando do MESMO grid
+   do formulário, então "Forma de pagamento" e "Valor" caem como colunas
+   comuns da grade, não um bloco separado.
 --------------------------------------------------------------------- */
-function htmlSecaoFormaPagamento(prefixo, destacar=false){
-  return `<div class="campo${destacar?' campo-pendente':''}" style="grid-column:1/-1;">
-    <label>Forma de pagamento *${destacar?' <span class="tag tag-alerta" style="margin-left:4px;">preencher</span>':''}</label>
-    <div id="${prefixo}pagamentos-linhas" class="linhas-pagamento"></div>
-    <div style="display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap;">
-      <button type="button" class="botao sutil pequeno" id="${prefixo}botao-add-pagamento">+ Adicionar forma de pagamento</button>
-      <span style="font-size:13px;color:var(--ink-600);">Total: <b class="mono" id="${prefixo}pagamento-total">R$ 0,00</b></span>
+function htmlSecaoFormaPagamento(prefixo){
+  return `<div id="${prefixo}pagamentos-linhas" style="display:contents;"></div>`;
+}
+
+
+function criarLinhaPagamentoHTML(forma='', valor='', primeira=false, ultima=false, destacar=false){
+  const opcoes = (estado.listas.formas_pagamento||[])
+    .map(f=>`<option value="${f}" ${f===forma?'selected':''}>${f}</option>`).join('');
+  const podeRemover = !primeira; // a primeira linha nunca pode ser removida
+  return `<div class="linha-pagamento-grid" style="display:contents;">
+    <div class="campo${(primeira&&destacar)?' campo-pendente':''}">
+      ${primeira?`<label>Forma de pagamento *${destacar?' <span class="tag tag-alerta" style="margin-left:4px;">preencher</span>':''}</label>`:''}
+      <select class="input-pagamento-forma"><option value="">Selecionar...</option>${opcoes}</select>
+    </div>
+    <div class="campo">
+      ${primeira?'<label>Valor</label>':''}
+      <input type="number" step="0.01" class="input-pagamento-valor" placeholder="Valor R$" value="${valor!==''&&valor!==undefined&&valor!==null?valor:''}">
+    </div>
+    <div class="campo" style="display:flex;align-items:${primeira?'flex-end':'center'};gap:10px;flex-wrap:wrap;">
+      ${ultima?'<button type="button" class="botao sutil pequeno botao-add-pagamento">+ Adicionar forma de pagamento</button>':''}
+      <span style="font-size:13px;color:var(--ink-600);white-space:nowrap;">Total: <b class="mono pagamento-total">R$ 0,00</b></span>
+      ${podeRemover?'<button type="button" class="botao-remover-pagamento" title="Remover">×</button>':''}
     </div>
   </div>`;
 }
 
 
-function criarLinhaPagamentoHTML(forma='', valor=''){
-  const opcoes = (estado.listas.formas_pagamento||[])
-    .map(f=>`<option value="${f}" ${f===forma?'selected':''}>${f}</option>`).join('');
-  return `<div class="linha-pagamento">
-    <select class="input-pagamento-forma"><option value="">Selecionar...</option>${opcoes}</select>
-    <input type="number" step="0.01" class="input-pagamento-valor" placeholder="Valor (R$)" value="${valor!==''&&valor!==undefined&&valor!==null?valor:''}">
-    <button type="button" class="botao-remover-pagamento" title="Remover">×</button>
-  </div>`;
+function renderizarLinhasPagamento(prefixo, linhas, destacar){
+  const container = document.getElementById(prefixo+'pagamentos-linhas');
+  if(!container) return;
+  container.innerHTML = linhas.map((l,i)=>criarLinhaPagamentoHTML(
+    l.forma, l.valor, i===0, i===linhas.length-1, destacar
+  )).join('');
+  atualizarTotalPagamento(prefixo);
+}
+
+
+// Lê o estado atual das linhas direto do DOM, SEM filtrar as vazias — usado
+// só internamente pra preservar o que o usuário já digitou ao adicionar ou
+// remover uma linha (antes de re-renderizar a seção inteira).
+function lerLinhasPagamentoBruto(prefixo){
+  const container = document.getElementById(prefixo+'pagamentos-linhas');
+  const linhas = container
+    ? Array.from(container.querySelectorAll('.linha-pagamento-grid')).map(linha=>({
+        forma: linha.querySelector('.input-pagamento-forma').value,
+        valor: linha.querySelector('.input-pagamento-valor').value
+      }))
+    : [];
+  return linhas.length ? linhas : [{forma:'', valor:''}];
 }
 
 
 // Monta a seção com as linhas iniciais (array de {forma, valor}, ou uma
 // linha vazia por padrão) e liga os eventos por DELEGAÇÃO no container —
 // assim adicionar/remover linha nunca duplica listener nas linhas antigas.
-function montarSecaoPagamento(prefixo, formasIniciais){
+function montarSecaoPagamento(prefixo, formasIniciais, destacar=false){
   const container = document.getElementById(prefixo+'pagamentos-linhas');
   if(!container) return;
   const linhas = (formasIniciais && formasIniciais.length) ? formasIniciais : [{forma:'', valor:''}];
-  container.innerHTML = linhas.map(l=>criarLinhaPagamentoHTML(l.forma, l.valor)).join('');
+  renderizarLinhasPagamento(prefixo, linhas, destacar);
+
 
   container.addEventListener('input', (ev)=>{
     if(ev.target.classList.contains('input-pagamento-valor')) atualizarTotalPagamento(prefixo);
   });
   container.addEventListener('click', (ev)=>{
-    const botao = ev.target.closest('.botao-remover-pagamento');
-    if(!botao) return;
-    if(container.querySelectorAll('.linha-pagamento').length<=1) return; // sempre deixa pelo menos 1 linha
-    botao.closest('.linha-pagamento').remove();
-    atualizarTotalPagamento(prefixo);
+    if(ev.target.closest('.botao-add-pagamento')){
+      const atuais = lerLinhasPagamentoBruto(prefixo);
+      atuais.push({forma:'', valor:''});
+      renderizarLinhasPagamento(prefixo, atuais, false);
+      return;
+    }
+    const botaoRemover = ev.target.closest('.botao-remover-pagamento');
+    if(botaoRemover){
+      const linhaEl = botaoRemover.closest('.linha-pagamento-grid');
+      const indice = Array.from(container.querySelectorAll('.linha-pagamento-grid')).indexOf(linhaEl);
+      if(indice > 0){ // nunca remove a primeira linha
+        const atuais = lerLinhasPagamentoBruto(prefixo);
+        atuais.splice(indice, 1);
+        renderizarLinhasPagamento(prefixo, atuais, false);
+      }
+    }
   });
-
-  atualizarTotalPagamento(prefixo);
 }
 
 
-function adicionarLinhaPagamento(prefixo){
-  const container = document.getElementById(prefixo+'pagamentos-linhas');
-  if(!container) return;
-  container.insertAdjacentHTML('beforeend', criarLinhaPagamentoHTML());
-}
-
-
+// Versão "limpa" pra validação/salvamento: só linhas com forma selecionada
+// e valor > 0 (linhas em branco não contam nem travam o salvamento).
 function lerLinhasPagamento(prefixo){
-  const container = document.getElementById(prefixo+'pagamentos-linhas');
-  if(!container) return [];
-  return Array.from(container.querySelectorAll('.linha-pagamento'))
-    .map(linha=>({
-      forma: linha.querySelector('.input-pagamento-forma').value,
-      valor: Number(linha.querySelector('.input-pagamento-valor').value)||0
-    }))
+  return lerLinhasPagamentoBruto(prefixo)
+    .map(l=>({forma:l.forma, valor:Number(l.valor)||0}))
     .filter(l=>l.forma && l.valor>0);
 }
 
 
 function atualizarTotalPagamento(prefixo){
+  const container = document.getElementById(prefixo+'pagamentos-linhas');
+  if(!container) return;
   const total = lerLinhasPagamento(prefixo).reduce((s,l)=>s+l.valor,0);
-  const el = document.getElementById(prefixo+'pagamento-total');
-  if(el) el.textContent = formatarMoeda(total);
+  container.querySelectorAll('.pagamento-total').forEach(el=>{ el.textContent = formatarMoeda(total); });
 }
 
 
@@ -2435,7 +2467,6 @@ function montarFormularioLancamento(){
 
 
   montarSecaoPagamento('campo_', null);
-  document.getElementById('campo_botao-add-pagamento').addEventListener('click', ()=>adicionarLinhaPagamento('campo_'));
 }
 
 
@@ -3349,7 +3380,7 @@ function abrirModal(registro, camposPendentes, contexto){
   const destacarPagamento = pendentes.includes('valor') || pendentes.includes('forma_pagamento');
   document.getElementById('grade-modal').innerHTML = definicaoCampos()
     .map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_', pendentes.includes(c.chave)))
-    .join('') + htmlSecaoFormaPagamento('modal_', destacarPagamento);
+    .join('') + htmlSecaoFormaPagamento('modal_');
 
 
   // Pré-preenche a seção de pagamento: se o registro tem formas_pagamento
@@ -3360,8 +3391,7 @@ function abrirModal(registro, camposPendentes, contexto){
         ? registro.formas_pagamento
         : (registro.forma_pagamento ? [{forma:registro.forma_pagamento, valor:registro.valor}] : null))
     : null;
-  montarSecaoPagamento('modal_', formasIniciais);
-  document.getElementById('modal_botao-add-pagamento').addEventListener('click', ()=>adicionarLinhaPagamento('modal_'));
+  montarSecaoPagamento('modal_', formasIniciais, destacarPagamento);
 
 
   // Excluir depende da permissão do contexto de onde o modal foi aberto:
