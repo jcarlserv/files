@@ -911,7 +911,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.4.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.5.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -974,6 +974,16 @@
    "Publishable key", nunca a "Secret key"). Enquanto SUPABASE_URL
    estiver vazio, o sistema roda em MODO DEMONSTRAÇÃO com dados de
    exemplo guardados só nesta sessão.
+===================================================================== */
+/* =====================================================================
+   CONTROLE DE VERSÃO — atualizar o número abaixo (e a <span id="versao-
+   sistema"> no rodapé) a cada alteração entregue neste arquivo, para que
+   o rodapé do sistema sempre reflita a versão realmente publicada.
+
+   v2.5.0 — Aba Verificar: novo card "Repasse de coparticipados" (taxa de
+            18% + rateio 40% clínica / 60% coparticipado), calculado sobre
+            os lançamentos filtrados e salvo por mês na tabela
+            `coparticipados` do Supabase.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
