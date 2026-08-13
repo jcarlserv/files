@@ -421,8 +421,9 @@
 
     <!-- ---------- GERENCIAL ---------- -->
     <section class="painel" id="painel-editar">
+      <!-- Card 1: Filtros -->
       <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;">
           <h3 style="margin:0;">Lançamentos do período</h3>
           <div class="filtros">
             <div class="campo">
@@ -455,17 +456,10 @@
             <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
           </div>
         </div>
-
-
-        <div class="grade-kpi" id="resumo-financeiro-editar" style="margin-bottom:18px;"></div>
-
-
-        <div class="tabela-scroll">
-          <table id="tabela-gerencial"></table>
-        </div>
       </div>
 
 
+      <!-- Card 2: Repasse de coparticipados -->
       <div class="cartao" id="cartao-repasse-coparticipados" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:18px;">
           <div>
@@ -497,6 +491,22 @@
           <div class="kpi"><div class="rotulo">Valor líquido</div><div class="valor" id="repasse-valor-liquido">—</div></div>
           <div class="kpi"><div class="rotulo">Repasse clínica</div><div class="valor teal" id="repasse-valor-clinica">—</div></div>
           <div class="kpi"><div class="rotulo">Repasse coparticipado</div><div class="valor teal" id="repasse-valor-coparticipado">—</div></div>
+        </div>
+      </div>
+
+
+      <!-- Card 3: Resumo financeiro -->
+      <div class="cartao" id="cartao-resumo-financeiro-editar">
+        <h3>Resumo financeiro</h3>
+        <div class="grade-kpi" id="resumo-financeiro-editar" style="margin-bottom:0;"></div>
+      </div>
+
+
+      <!-- Card 4: Tabela de lançamentos -->
+      <div class="cartao">
+        <h3>Lançamentos</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-gerencial"></table>
         </div>
       </div>
     </section>
@@ -911,7 +921,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.5.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.6.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -984,6 +994,10 @@
             18% + rateio 40% clínica / 60% coparticipado), calculado sobre
             os lançamentos filtrados e salvo por mês na tabela
             `coparticipados` do Supabase.
+   v2.6.0 — Aba Verificar: reorganizada em 4 cards separados, na ordem
+            Filtros → Repasse de coparticipados → Resumo financeiro →
+            Tabela de lançamentos (antes tudo ficava junto num só card,
+            com o Repasse isolado no fim da aba).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -2531,9 +2545,12 @@ async function atualizarEditar(){
     totalGeral += valor;
   });
   const podeVerFinanceiro = temPermissao('ver_financeiro_verificar');
+  const cartaoResumoFinanceiro = document.getElementById('cartao-resumo-financeiro-editar');
   if(!podeVerFinanceiro){
+    if(cartaoResumoFinanceiro) cartaoResumoFinanceiro.style.display = 'none';
     document.getElementById('resumo-financeiro-editar').innerHTML = '';
   } else {
+    if(cartaoResumoFinanceiro) cartaoResumoFinanceiro.style.display = '';
     const rotuloConvenios = estado.conveniosSelecionados.length===1 ? ` (${estado.conveniosSelecionados[0]})`
       : estado.conveniosSelecionados.length>1 ? ` (${estado.conveniosSelecionados.length} convênios)` : '';
     document.getElementById('resumo-financeiro-editar').innerHTML = `
