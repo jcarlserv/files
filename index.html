@@ -214,6 +214,25 @@
   .grade-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
 
 
+  /* Seção "Forma de pagamento" com múltiplas linhas (pagamento dividido) */
+  .linhas-pagamento{display:flex;flex-direction:column;gap:8px;}
+  .linha-pagamento{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .linha-pagamento select{
+    flex:1;min-width:150px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);
+    font-size:14px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink-900);
+  }
+  .linha-pagamento input[type="number"]{
+    width:140px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);
+    font-size:14px;font-family:'Inter',sans-serif;
+  }
+  .linha-pagamento select:focus, .linha-pagamento input:focus{outline:none;border-color:var(--plum-500);}
+  .botao-remover-pagamento{
+    flex-shrink:0;background:transparent;border:1.5px solid var(--line);border-radius:7px;
+    color:var(--ink-400);cursor:pointer;width:34px;height:34px;font-size:15px;line-height:1;
+  }
+  .botao-remover-pagamento:hover{border-color:var(--danger);color:var(--danger);}
+
+
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   thead th{
     text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);
@@ -921,7 +940,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.6.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.7.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -998,6 +1017,13 @@
             Filtros → Repasse de coparticipados → Resumo financeiro →
             Tabela de lançamentos (antes tudo ficava junto num só card,
             com o Repasse isolado no fim da aba).
+   v2.7.0 — Lançamento/Verificar: forma de pagamento agora pode ser
+            dividida em mais de uma forma no mesmo lançamento (ex.: parte
+            em dinheiro, parte no cartão), sem duplicar o procedimento. O
+            "Valor (R$)" passou a ser calculado automaticamente como a
+            soma das partes. Requer a coluna nova `formas_pagamento`
+            (jsonb) na tabela `producao` do Supabase — ver instrução no
+            final da resposta que introduziu esta versão.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -2220,10 +2246,92 @@ function definicaoCampos(){
     {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
     {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios, obrigatorio:true},
     {chave:'carteirinha', rotulo:'Carteirinha', tipo:'text'},
-    {chave:'valor', rotulo:'Valor (R$)', tipo:'number', obrigatorio:true},
-    {chave:'forma_pagamento', rotulo:'Forma de pagamento', tipo:'select', opcoes:L.formas_pagamento, obrigatorio:true},
     {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes, obrigatorio:true}
+    // "valor" e "forma_pagamento" saíram daqui — agora são calculados a partir
+    // da seção de "Forma de pagamento" (que suporta pagamento dividido em mais
+    // de uma forma). Ver htmlSecaoFormaPagamento / lerLinhasPagamento abaixo.
   ];
+}
+
+
+/* ---------------------------------------------------------------------
+   FORMA DE PAGAMENTO — seção com uma ou mais linhas de "forma + valor",
+   compartilhada entre o formulário de Lançamento (prefixo 'campo_') e o
+   modal de edição (prefixo 'modal_'). Permite pagamento dividido (ex.:
+   parte em dinheiro, parte no cartão) dentro do MESMO lançamento — sem
+   duplicar o procedimento. O valor total do lançamento é sempre a soma
+   das linhas preenchidas.
+--------------------------------------------------------------------- */
+function htmlSecaoFormaPagamento(prefixo, destacar=false){
+  return `<div class="campo${destacar?' campo-pendente':''}" style="grid-column:1/-1;">
+    <label>Forma de pagamento *${destacar?' <span class="tag tag-alerta" style="margin-left:4px;">preencher</span>':''}</label>
+    <div id="${prefixo}pagamentos-linhas" class="linhas-pagamento"></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap;">
+      <button type="button" class="botao sutil pequeno" id="${prefixo}botao-add-pagamento">+ Adicionar forma de pagamento</button>
+      <span style="font-size:13px;color:var(--ink-600);">Total: <b class="mono" id="${prefixo}pagamento-total">R$ 0,00</b></span>
+    </div>
+  </div>`;
+}
+
+
+function criarLinhaPagamentoHTML(forma='', valor=''){
+  const opcoes = (estado.listas.formas_pagamento||[])
+    .map(f=>`<option value="${f}" ${f===forma?'selected':''}>${f}</option>`).join('');
+  return `<div class="linha-pagamento">
+    <select class="input-pagamento-forma"><option value="">Selecionar...</option>${opcoes}</select>
+    <input type="number" step="0.01" class="input-pagamento-valor" placeholder="Valor (R$)" value="${valor!==''&&valor!==undefined&&valor!==null?valor:''}">
+    <button type="button" class="botao-remover-pagamento" title="Remover">×</button>
+  </div>`;
+}
+
+
+// Monta a seção com as linhas iniciais (array de {forma, valor}, ou uma
+// linha vazia por padrão) e liga os eventos por DELEGAÇÃO no container —
+// assim adicionar/remover linha nunca duplica listener nas linhas antigas.
+function montarSecaoPagamento(prefixo, formasIniciais){
+  const container = document.getElementById(prefixo+'pagamentos-linhas');
+  if(!container) return;
+  const linhas = (formasIniciais && formasIniciais.length) ? formasIniciais : [{forma:'', valor:''}];
+  container.innerHTML = linhas.map(l=>criarLinhaPagamentoHTML(l.forma, l.valor)).join('');
+
+  container.addEventListener('input', (ev)=>{
+    if(ev.target.classList.contains('input-pagamento-valor')) atualizarTotalPagamento(prefixo);
+  });
+  container.addEventListener('click', (ev)=>{
+    const botao = ev.target.closest('.botao-remover-pagamento');
+    if(!botao) return;
+    if(container.querySelectorAll('.linha-pagamento').length<=1) return; // sempre deixa pelo menos 1 linha
+    botao.closest('.linha-pagamento').remove();
+    atualizarTotalPagamento(prefixo);
+  });
+
+  atualizarTotalPagamento(prefixo);
+}
+
+
+function adicionarLinhaPagamento(prefixo){
+  const container = document.getElementById(prefixo+'pagamentos-linhas');
+  if(!container) return;
+  container.insertAdjacentHTML('beforeend', criarLinhaPagamentoHTML());
+}
+
+
+function lerLinhasPagamento(prefixo){
+  const container = document.getElementById(prefixo+'pagamentos-linhas');
+  if(!container) return [];
+  return Array.from(container.querySelectorAll('.linha-pagamento'))
+    .map(linha=>({
+      forma: linha.querySelector('.input-pagamento-forma').value,
+      valor: Number(linha.querySelector('.input-pagamento-valor').value)||0
+    }))
+    .filter(l=>l.forma && l.valor>0);
+}
+
+
+function atualizarTotalPagamento(prefixo){
+  const total = lerLinhasPagamento(prefixo).reduce((s,l)=>s+l.valor,0);
+  const el = document.getElementById(prefixo+'pagamento-total');
+  if(el) el.textContent = formatarMoeda(total);
 }
 
 
@@ -2235,14 +2343,25 @@ function camposObrigatoriosFaltando(prefixo){
   const dispensarCobranca = ehProcedimentoRetorno(elProcedimento ? elProcedimento.value : '');
 
 
-  return definicaoCampos()
+  const faltando = definicaoCampos()
     .filter(c => c.obrigatorio)
-    .filter(c => !(dispensarCobranca && CAMPOS_DISPENSADOS_NO_RETORNO.includes(c.chave)))
     .filter(c => {
       const el = document.getElementById(prefixo+c.chave);
       return !el || String(el.value||'').trim()==='';
     })
     .map(c => c.rotulo);
+
+
+  // "Forma de pagamento" agora é validada à parte (precisa de pelo menos uma
+  // linha com forma selecionada e valor > 0), exceto quando o procedimento é
+  // RETORNO — mesma dispensa que já existia para valor/forma_pagamento antes.
+  if(!dispensarCobranca){
+    const total = lerLinhasPagamento(prefixo).reduce((s,l)=>s+l.valor,0);
+    if(total<=0) faltando.push('Forma de pagamento');
+  }
+
+
+  return faltando;
 }
 
 
@@ -2265,6 +2384,24 @@ function lerValoresCampos(prefixo='campo_'){
     const el = document.getElementById(prefixo+c.chave);
     registro[c.chave] = el ? el.value : '';
   });
+
+
+  // Valor total = soma das linhas de pagamento preenchidas. Com uma linha só,
+  // continua salvando exatamente como antes (forma_pagamento simples, sem
+  // detalhamento) — só grava "MISTO" + o array formas_pagamento quando há
+  // de fato mais de uma forma na mesma nota, pra não inflar o banco à toa.
+  const linhasPagamento = lerLinhasPagamento(prefixo);
+  registro.valor = linhasPagamento.reduce((s,l)=>s+l.valor,0);
+  if(linhasPagamento.length===0){
+    registro.forma_pagamento = '';
+    registro.formas_pagamento = null;
+  } else if(linhasPagamento.length===1){
+    registro.forma_pagamento = linhasPagamento[0].forma;
+    registro.formas_pagamento = null;
+  } else {
+    registro.forma_pagamento = 'MISTO';
+    registro.formas_pagamento = linhasPagamento;
+  }
   return registro;
 }
 
@@ -2274,7 +2411,7 @@ function lerValoresCampos(prefixo='campo_'){
 --------------------------------------------------------------------- */
 function montarFormularioLancamento(){
   const grade = document.getElementById('grade-lancamento');
-  grade.innerHTML = definicaoCampos().map(c=>renderizarCampo(c, '', 'campo_')).join('');
+  grade.innerHTML = definicaoCampos().map(c=>renderizarCampo(c, '', 'campo_')).join('') + htmlSecaoFormaPagamento('campo_');
   if(estado.papel==='profissional'){
     const selProf = document.getElementById('campo_prof');
     selProf.innerHTML = `<option value="${estado.nomeProfissional}" selected>${estado.nomeProfissional}</option>`;
@@ -2282,6 +2419,10 @@ function montarFormularioLancamento(){
   const hoje = new Date().toISOString().slice(0,10);
   const campoData = document.getElementById('campo_data');
   if(campoData) campoData.value = hoje;
+
+
+  montarSecaoPagamento('campo_', null);
+  document.getElementById('campo_botao-add-pagamento').addEventListener('click', ()=>adicionarLinhaPagamento('campo_'));
 }
 
 
@@ -2335,6 +2476,19 @@ function formatarDataExibicao(iso){
   if(!iso) return '—';
   const [ano,mes,dia] = String(iso).slice(0,10).split('-');
   return dia && mes ? `${dia}/${mes}` : iso;
+}
+
+
+/* Quebra um registro de produção em "partes" de pagamento: se tiver
+   formas_pagamento (pagamento dividido em mais de uma forma), devolve o
+   array salvo; senão devolve uma única parte com forma_pagamento + valor
+   (formato antigo / pagamento simples). Usado em qualquer lugar que precise
+   somar/filtrar valores por forma de pagamento com precisão. */
+function partesPagamentoDe(registro){
+  if(registro && registro.formas_pagamento && registro.formas_pagamento.length){
+    return registro.formas_pagamento;
+  }
+  return [{ forma: registro ? registro.forma_pagamento : '', valor: registro ? registro.valor : 0 }];
 }
 
 
@@ -2531,18 +2685,24 @@ async function atualizarEditar(){
     const selecionadosUpper = estado.conveniosSelecionados.map(c=>c.trim().toUpperCase());
     registros = registros.filter(r => selecionadosUpper.includes(String(r.convenio||'').trim().toUpperCase()));
   }
+  // Se o registro tem pagamento dividido (formas_pagamento preenchido),
+  // considera cada parte separadamente; senão trata como uma única "parte"
+  // usando forma_pagamento + valor (comportamento de sempre).
   if(formaPagamento){
-    registros = registros.filter(r => String(r.forma_pagamento||'').trim().toUpperCase() === formaPagamento.trim().toUpperCase());
+    const alvo = formaPagamento.trim().toUpperCase();
+    registros = registros.filter(r => partesPagamentoDe(r).some(p => String(p.forma||'').trim().toUpperCase() === alvo));
   }
 
 
   const porFormaPagamento = { 'CONVÊNIO':0, 'PIX':0, 'ESPÉCIE':0, 'CARTÃO':0 };
   let totalGeral = 0;
   registros.forEach(r=>{
-    const forma = String(r.forma_pagamento||'').trim().toUpperCase();
-    const valor = Number(r.valor)||0;
-    if(porFormaPagamento.hasOwnProperty(forma)) porFormaPagamento[forma] += valor;
-    totalGeral += valor;
+    partesPagamentoDe(r).forEach(p=>{
+      const forma = String(p.forma||'').trim().toUpperCase();
+      const valor = Number(p.valor)||0;
+      if(porFormaPagamento.hasOwnProperty(forma)) porFormaPagamento[forma] += valor;
+      totalGeral += valor;
+    });
   });
   const podeVerFinanceiro = temPermissao('ver_financeiro_verificar');
   const cartaoResumoFinanceiro = document.getElementById('cartao-resumo-financeiro-editar');
@@ -3172,9 +3332,25 @@ function abrirModal(registro, camposPendentes, contexto){
   estado.editandoAno = registro ? registro.ano : null;
   estado.editandoContexto = contexto || 'verificar';
   document.getElementById('titulo-modal').textContent = registro ? 'Editar registro' : 'Novo registro';
+  const pendentes = camposPendentes||[];
+  const destacarPagamento = pendentes.includes('valor') || pendentes.includes('forma_pagamento');
   document.getElementById('grade-modal').innerHTML = definicaoCampos()
-    .map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_', (camposPendentes||[]).includes(c.chave)))
-    .join('');
+    .map(c=>renderizarCampo(c, registro? registro[c.chave] : '', 'modal_', pendentes.includes(c.chave)))
+    .join('') + htmlSecaoFormaPagamento('modal_', destacarPagamento);
+
+
+  // Pré-preenche a seção de pagamento: se o registro tem formas_pagamento
+  // (pagamento dividido), usa o detalhamento; senão monta uma linha única a
+  // partir de forma_pagamento + valor (formato antigo, ou pagamento simples).
+  const formasIniciais = registro
+    ? ((registro.formas_pagamento && registro.formas_pagamento.length)
+        ? registro.formas_pagamento
+        : (registro.forma_pagamento ? [{forma:registro.forma_pagamento, valor:registro.valor}] : null))
+    : null;
+  montarSecaoPagamento('modal_', formasIniciais);
+  document.getElementById('modal_botao-add-pagamento').addEventListener('click', ()=>adicionarLinhaPagamento('modal_'));
+
+
   // Excluir depende da permissão do contexto de onde o modal foi aberto:
   // excluir_verificar (aba Verificar) ou excluir_critica (aba Crítica).
   const chaveExcluir = estado.editandoContexto === 'critica' ? 'excluir_critica' : 'excluir_verificar';
@@ -3835,23 +4011,38 @@ function rmrRenderTurnos(doMesAtual, metasDoMes){
 
 
 function rmrRenderFaturamentoParticular(doMesAtual){
-  const particular = doMesAtual.filter(r=>r.forma_pagamento && r.forma_pagamento!=='CONVÊNIO');
+  // Soma só a PARTE particular de cada lançamento — num pagamento dividido
+  // (ex.: metade convênio, metade dinheiro), só a metade em dinheiro entra
+  // aqui, não o valor cheio do lançamento.
   const porProf = {};
-  particular.forEach(r=>{ porProf[r.prof]=(porProf[r.prof]||0)+(Number(r.valor)||0); });
+  doMesAtual.forEach(r=>{
+    const valorParticular = partesPagamentoDe(r)
+      .filter(p=>p.forma && p.forma!=='CONVÊNIO')
+      .reduce((s,p)=>s+(Number(p.valor)||0),0);
+    if(valorParticular>0) porProf[r.prof] = (porProf[r.prof]||0) + valorParticular;
+  });
   const rotulos = Object.keys(porProf).sort((a,b)=>porProf[b]-porProf[a]);
   miniGraficoBarras('rmr-grafico-particular', rotulos, rotulos.map(r=>porProf[r]), '#8A3D79');
 }
 
 
 function rmrRenderMatrizConvenio(doMesAtual){
-  const comConvenio = doMesAtual.filter(r=>r.forma_pagamento==='CONVÊNIO' && r.convenio);
-  const profissionais = Array.from(new Set(comConvenio.map(r=>r.prof))).sort();
-  const convenios = Array.from(new Set(comConvenio.map(r=>r.convenio))).sort();
+  // Idem: soma só a PARTE em convênio de cada lançamento, não o valor cheio.
   const matriz = {};
-  comConvenio.forEach(r=>{
+  const profissionaisSet = new Set(), conveniosSet = new Set();
+  doMesAtual.forEach(r=>{
+    if(!r.convenio) return;
+    const valorConvenio = partesPagamentoDe(r)
+      .filter(p=>p.forma==='CONVÊNIO')
+      .reduce((s,p)=>s+(Number(p.valor)||0),0);
+    if(valorConvenio<=0) return;
     matriz[r.prof] = matriz[r.prof] || {};
-    matriz[r.prof][r.convenio] = (matriz[r.prof][r.convenio]||0) + (Number(r.valor)||0);
+    matriz[r.prof][r.convenio] = (matriz[r.prof][r.convenio]||0) + valorConvenio;
+    profissionaisSet.add(r.prof);
+    conveniosSet.add(r.convenio);
   });
+  const profissionais = Array.from(profissionaisSet).sort();
+  const convenios = Array.from(conveniosSet).sort();
   const tabela = document.getElementById('rmr-tabela-matriz-convenio');
   if(profissionais.length===0){ tabela.innerHTML='<tr><td class="vazio">Nenhum atendimento por convênio no período.</td></tr>'; return; }
   tabela.innerHTML = `
