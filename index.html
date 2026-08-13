@@ -815,13 +815,6 @@
       </div>
 
 
-      <div class="squad-titulo"><span>Atendimentos por convênio</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div class="campo" style="max-width:280px;margin-bottom:12px;"><input type="text" id="rmr-busca-detalhe" placeholder="Buscar paciente, convênio, profissional..." style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);"></div>
-        <div class="tabela-scroll"><table id="rmr-tabela-detalhe-nominal"></table></div>
-      </div>
-
-
       <div class="squad-titulo"><span>Turnos: ociosos × vendidos</span><div class="linha"></div></div>
       <div class="grade-2">
         <div class="cartao"><h3>Por profissional</h3><div class="tabela-scroll"><table id="rmr-tabela-turnos"></table></div></div>
@@ -852,6 +845,13 @@
       <div class="cartao">
         <textarea id="rmr-texto-nota" style="width:100%;min-height:90px;" placeholder="Nenhuma anotação registrada para este período."></textarea>
         <div class="rodape-nota"><button class="botao secundario pequeno" id="rmr-botao-salvar-nota">Salvar anotação</button></div>
+      </div>
+
+
+      <div class="squad-titulo"><span>Atendimentos por convênio</span><div class="linha"></div></div>
+      <div class="cartao">
+        <div class="campo" style="max-width:280px;margin-bottom:12px;"><input type="text" id="rmr-busca-detalhe" placeholder="Buscar paciente, convênio, profissional..." style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);"></div>
+        <div class="tabela-scroll"><table id="rmr-tabela-detalhe-nominal"></table></div>
       </div>
     </section>
 
@@ -944,7 +944,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.10.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.12.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1039,6 +1039,15 @@
    v2.10.0 — Aba Verificar: novo filtro "Exame" (select), junto dos
              filtros de Profissional/Andar/Convênio/Forma de pagamento —
              também resetado pelo botão "Limpar período".
+   v2.11.0 — Aba RMR: card "Atendimentos por convênio" movido para o
+             final da aba (depois de "Sugestões de melhoria").
+   v2.12.0 — Correção: nas 3 tabelas que mostram "% atingido" da meta
+             (Dashboard "Meta × realizado", RMR "Todos os profissionais"
+             e RMR "Eficiência de turnos"), quando o profissional NÃO tem
+             meta cadastrada a coluna agora fica em branco (—), sem barra
+             e sem %. Antes o Dashboard mostrava 100% indevidamente (bug
+             reportado) e o RMR mostrava 0% — ambos enganosos, já que sem
+             meta não existe "percentual atingido" de verdade.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -3523,17 +3532,20 @@ function desenharTabelaComparativo(comparativo){
   tabela.innerHTML = `
     <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Qtd. atendimentos</th><th>Meta (R$)</th><th>Realizado (R$)</th><th>% atingido</th></tr></thead>
     <tbody>${comparativo.map(c=>{
-      const pct = c.metaValor ? Math.min(100, (c.valorRealizado/c.metaValor)*100) : (c.valorRealizado>0?100:0);
-      const cor = pct>=100 ? 'var(--teal-600)' : (pct>=70 ? 'var(--gold-500)' : 'var(--plum-500)');
+      const temMeta = c.metaValor > 0;
+      const pct = temMeta ? Math.min(100, (c.valorRealizado/c.metaValor)*100) : null;
+      const cor = pct!==null && pct>=100 ? 'var(--teal-600)' : (pct!==null && pct>=70 ? 'var(--gold-500)' : 'var(--plum-500)');
       return `<tr>
         <td>${c.prof}</td>
         <td>${c.turnosDisponibilizados||'—'}</td>
         <td>${c.quantidade}</td>
-        <td class="mono">${c.metaValor?formatarMoeda(c.metaValor):'—'}</td>
+        <td class="mono">${temMeta?formatarMoeda(c.metaValor):'—'}</td>
         <td class="mono">${formatarMoeda(c.valorRealizado)}</td>
         <td style="min-width:120px;">
+          ${temMeta ? `
           <div class="mono" style="font-size:12px;">${pct.toFixed(0)}%</div>
           <div class="barra-meta"><div style="width:${pct}%;background:${cor};"></div></div>
+          ` : `<div class="mono" style="font-size:12px;color:var(--ink-400);">—</div>`}
         </td>
       </tr>`;
     }).join('')}</tbody>`;
@@ -3900,7 +3912,8 @@ function rmrRenderProfissionais(mesRef, ano, anoAnterior){
   const metaPorProf = {}; metasDoMes.forEach(m=>metaPorProf[m.prof]=m);
   const linhas = Object.keys(porProf).sort().map(prof=>{
     const meta = metaPorProf[prof]||{};
-    const pct = meta.meta_valor ? Math.min(150,(porProf[prof].valor/meta.meta_valor)*100) : 0;
+    const temMeta = Number(meta.meta_valor) > 0;
+    const pct = temMeta ? Math.min(150,(porProf[prof].valor/meta.meta_valor)*100) : null;
     return {prof, ...porProf[prof], turnos:meta.turnos_disponibilizados||'—', meta:meta.meta_valor||0, pct};
   });
   const tabela = document.getElementById('rmr-tabela-profissionais-mes');
@@ -3910,7 +3923,7 @@ function rmrRenderProfissionais(mesRef, ano, anoAnterior){
     <tbody>${linhas.map(l=>`
       <tr><td>${l.prof}</td><td>${l.turnos}</td><td>${l.quantidade}</td><td class="mono">${formatarMoeda(l.valor)}</td>
       <td class="mono">${l.meta?formatarMoeda(l.meta):'—'}</td>
-      <td><div class="mono" style="font-size:11.5px;">${l.pct.toFixed(0)}%</div><div class="barra-meta"><div style="width:${Math.min(100,l.pct)}%;"></div></div></td></tr>`).join('')}
+      <td>${l.pct!==null ? `<div class="mono" style="font-size:11.5px;">${l.pct.toFixed(0)}%</div><div class="barra-meta"><div style="width:${Math.min(100,l.pct)}%;"></div></div>` : `<div class="mono" style="font-size:11.5px;color:var(--ink-400);">—</div>`}</td></tr>`).join('')}
     </tbody>`;
 }
 
@@ -4117,11 +4130,12 @@ function rmrRenderEficiencia(doMesAtual, metasDoMes){
       const disp = Number(meta.turnos_disponibilizados)||0;
       const vendidos = dados.turnos.size;
       const pctTurnos = disp ? Math.round((vendidos/disp)*100) : 0;
-      const pctMeta = meta.meta_valor ? Math.round((dados.valor/meta.meta_valor)*100) : 0;
+      const temMeta = Number(meta.meta_valor) > 0;
+      const pctMeta = temMeta ? Math.round((dados.valor/meta.meta_valor)*100) : null;
       const media = vendidos ? dados.valor/vendidos : 0;
       return `<tr><td>${prof}</td><td>${disp||'—'}</td><td>${vendidos}</td><td>${pctTurnos}%</td>
-        <td class="mono">${meta.meta_valor?formatarMoeda(meta.meta_valor):'—'}</td><td class="mono">${formatarMoeda(dados.valor)}</td>
-        <td><div class="mono" style="font-size:11.5px;">${pctMeta}%</div><div class="barra-meta"><div style="width:${Math.min(100,pctMeta)}%;"></div></div></td>
+        <td class="mono">${temMeta?formatarMoeda(meta.meta_valor):'—'}</td><td class="mono">${formatarMoeda(dados.valor)}</td>
+        <td>${temMeta ? `<div class="mono" style="font-size:11.5px;">${pctMeta}%</div><div class="barra-meta"><div style="width:${Math.min(100,pctMeta)}%;"></div></div>` : `<div class="mono" style="font-size:11.5px;color:var(--ink-400);">—</div>`}</td>
         <td class="mono">${formatarMoeda(media)}</td></tr>`;
     }).join('')}</tbody>`;
 }
