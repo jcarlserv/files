@@ -628,117 +628,7 @@
 
 
     <!-- ---------- ANÁLISES (fusão de Dashboard + Análises Cruzadas) ---------- -->
-    <section class="painel" id="painel-analises">
-      <div class="cabecalho-painel">
-        <div>
-          <h2>Análises</h2>
-          <p>Visão consolidada do período selecionado, mais análises flexíveis por dimensão e correlação.</p>
-        </div>
-        <div class="filtros">
-          <div class="campo">
-            <label>Mês</label>
-            <select id="filtro-mes-analises"></select>
-          </div>
-          <div class="campo">
-            <label>Ano</label>
-            <select id="filtro-ano-analises"></select>
-          </div>
-          <div class="campo">
-            <label>Andar</label>
-            <select id="filtro-andar-analises"><option value="">Todos</option></select>
-          </div>
-          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
-        </div>
-      </div>
-
-
-      <div class="grade-kpi">
-        <div class="kpi"><div class="rotulo">Atendimentos no período</div><div class="valor" id="kpi-atendimentos">—</div></div>
-        <div class="kpi"><div class="rotulo">Valor produzido</div><div class="valor teal" id="kpi-valor">—</div></div>
-        <div class="kpi"><div class="rotulo">Ticket médio</div><div class="valor" id="kpi-ticket">—</div></div>
-        <div class="kpi"><div class="rotulo">% da meta de valor atingida</div><div class="valor gold" id="kpi-meta">—</div></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Squad Atendimento</span><div class="linha"></div></div>
-      <div class="cartao"><h3>Atendimentos por profissional</h3><div id="grafico-profissional" class="mini-grafico" style="min-height:220px;"></div></div>
-      <div class="grade-2">
-        <div class="cartao"><h3>Distribuição por convênio</h3><div id="grafico-convenio" class="mini-grafico" style="min-height:220px;"></div></div>
-        <div class="cartao"><h3>Distribuição por andar</h3><div id="grafico-andar" class="mini-grafico" style="min-height:220px;"></div></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Squad Financeiro</span><div class="linha"></div></div>
-      <div class="cartao">
-        <h3>Meta × realizado por profissional</h3>
-        <div class="tabela-scroll">
-          <table id="tabela-comparativo"></table>
-        </div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Evolução do ano</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-          <h3 style="margin:0;" id="titulo-evolucao-ano">Janeiro até o mês selecionado</h3>
-          <div class="filtros">
-            <div class="campo">
-              <label>Profissional</label>
-              <select id="filtro-prof-evolucao"><option value="">Todos (somado)</option></select>
-            </div>
-          </div>
-        </div>
-        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">A matriz usa o Mês e Ano escolhidos acima como ponto final; a linha "Média período" é o valor realizado dividido pelos turnos efetivamente usados naquele mês.</p>
-        <div class="tabela-scroll">
-          <table id="tabela-evolucao-ano"></table>
-        </div>
-      </div>
-
-
-      <div class="grade-2">
-        <div class="cartao"><h3>Valor previsto × realizado</h3><div id="grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
-        <div class="cartao"><h3>Quantidade prevista × realizada</h3><div id="grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Análise flexível</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-          <h3 style="margin:0;">Quantidade e valor por dimensão</h3>
-          <div class="filtros">
-            <div class="campo">
-              <label>Dimensão</label>
-              <select id="filtro-dimensao-analise"></select>
-            </div>
-          </div>
-        </div>
-        <div class="tabela-scroll"><table id="tabela-analise-dimensao"></table></div>
-        <div id="grafico-analise-dimensao" class="mini-grafico" style="min-height:240px;margin-top:20px;"></div>
-      </div>
-
-
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-          <h3 style="margin:0;">Correlação entre duas dimensões</h3>
-          <div class="filtros">
-            <div class="campo"><label>Linhas</label><select id="filtro-correlacao-a"></select></div>
-            <div class="campo"><label>Colunas</label><select id="filtro-correlacao-b"></select></div>
-            <div class="campo">
-              <label>Métrica</label>
-              <select id="filtro-correlacao-metrica">
-                <option value="valor">Valor (R$)</option>
-                <option value="quantidade">Quantidade</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">Cruze qualquer duas listas (ex.: Convênio × Procedimento, Atendente × Forma de pagamento, Profissional × Exame) para enxergar padrões qualitativos por trás dos números.</p>
-        <div class="tabela-scroll"><table id="tabela-correlacao"></table></div>
-      </div>
-    </section>
-
-
-    <!-- ---------- RMR ---------- -->
+    <!-- ---------- RMR (fusão de RMR + Análises) ---------- -->
     <section class="painel" id="painel-rmr">
       <div class="cabecalho-painel">
         <div>
@@ -763,6 +653,14 @@
       </div>
 
 
+      <div class="squad-titulo"><span>Squad Atendimento</span><div class="linha"></div></div>
+      <div class="cartao"><h3>Atendimentos por profissional</h3><div id="grafico-profissional" class="mini-grafico" style="min-height:220px;"></div></div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Distribuição por convênio</h3><div id="grafico-convenio" class="mini-grafico" style="min-height:220px;"></div></div>
+        <div class="cartao"><h3>Distribuição por andar</h3><div id="grafico-andar" class="mini-grafico" style="min-height:220px;"></div></div>
+      </div>
+
+
       <div class="squad-titulo"><span>Indicadores por profissional</span><div class="linha"></div></div>
       <div class="cartao">
         <h3>Selecionar profissional</h3>
@@ -770,19 +668,31 @@
         <div class="tabela-scroll" style="margin-top:16px;"><table id="rmr-tabela-profissional-detalhe"></table></div>
       </div>
       <div class="cartao">
-        <h3>Todos os profissionais — mês de referência</h3>
+        <h3>Meta × realizado por profissional — mês de referência</h3>
         <div class="tabela-scroll"><table id="rmr-tabela-profissionais-mes"></table></div>
+        <div id="grafico-meta-realizado" class="mini-grafico" style="min-height:230px;margin-top:20px;"></div>
       </div>
 
 
       <div class="squad-titulo"><span>Detalhamento de exames</span><div class="linha"></div></div>
-      <div class="cartao"><div class="tabela-scroll"><table id="rmr-tabela-exames"></table></div></div>
+      <div class="cartao">
+        <div class="tabela-scroll"><table id="rmr-tabela-exames"></table></div>
+        <div id="grafico-exames" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
+      </div>
 
 
       <div class="squad-titulo"><span>Procedimentos e biópsias</span><div class="linha"></div></div>
       <div class="grade-2">
-        <div class="cartao"><h3>Por tipo de procedimento</h3><div class="tabela-scroll"><table id="rmr-tabela-procedimentos"></table></div></div>
-        <div class="cartao"><h3>Biópsias por quantidade de frascos</h3><div class="tabela-scroll"><table id="rmr-tabela-biopsias"></table></div></div>
+        <div class="cartao">
+          <h3>Por tipo de procedimento</h3>
+          <div class="tabela-scroll"><table id="rmr-tabela-procedimentos"></table></div>
+          <div id="grafico-procedimentos" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
+        </div>
+        <div class="cartao">
+          <h3>Biópsias por quantidade de frascos</h3>
+          <div class="tabela-scroll"><table id="rmr-tabela-biopsias"></table></div>
+          <div id="grafico-biopsias" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
+        </div>
       </div>
 
 
@@ -802,13 +712,69 @@
 
 
       <div class="squad-titulo"><span>Eficiência de turnos e metas financeiras</span><div class="linha"></div></div>
-      <div class="cartao"><div class="tabela-scroll"><table id="rmr-tabela-eficiencia"></table></div></div>
+      <div class="cartao">
+        <div class="tabela-scroll"><table id="rmr-tabela-eficiencia"></table></div>
+        <div id="grafico-eficiencia" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
+      </div>
 
 
-      <div class="squad-titulo"><span>Evolução anual</span><div class="linha"></div></div>
+      <div class="squad-titulo"><span>Evolução do ano</span><div class="linha"></div></div>
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+          <h3 style="margin:0;" id="titulo-evolucao-ano">Janeiro até o mês selecionado</h3>
+          <div class="filtros">
+            <div class="campo">
+              <label>Profissional</label>
+              <select id="filtro-prof-evolucao"><option value="">Todos (somado)</option></select>
+            </div>
+          </div>
+        </div>
+        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">A matriz usa o Mês e Ano escolhidos acima como ponto final; a linha "Média período" é o valor realizado dividido pelos turnos efetivamente usados naquele mês.</p>
+        <div class="tabela-scroll">
+          <table id="tabela-evolucao-ano"></table>
+        </div>
+      </div>
       <div class="grade-2">
-        <div class="cartao"><h3>Valor produzido por mês</h3><div id="rmr-grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
-        <div class="cartao"><h3>Atendimentos por mês</h3><div id="rmr-grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
+        <div class="cartao"><h3>Valor previsto × realizado</h3><div id="grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
+        <div class="cartao"><h3>Quantidade prevista × realizada</h3><div id="grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
+      </div>
+      <div class="grade-2">
+        <div class="cartao"><h3>Valor produzido por mês (vs. ano anterior)</h3><div id="rmr-grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
+        <div class="cartao"><h3>Atendimentos por mês (vs. ano anterior)</h3><div id="rmr-grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
+      </div>
+
+
+      <div class="squad-titulo"><span>Análise flexível</span><div class="linha"></div></div>
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+          <h3 style="margin:0;">Quantidade e valor por dimensão</h3>
+          <div class="filtros">
+            <div class="campo">
+              <label>Dimensão</label>
+              <select id="filtro-dimensao-analise"></select>
+            </div>
+          </div>
+        </div>
+        <div class="tabela-scroll"><table id="tabela-analise-dimensao"></table></div>
+        <div id="grafico-analise-dimensao" class="mini-grafico" style="min-height:240px;margin-top:20px;"></div>
+      </div>
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+          <h3 style="margin:0;">Correlação entre duas dimensões</h3>
+          <div class="filtros">
+            <div class="campo"><label>Linhas</label><select id="filtro-correlacao-a"></select></div>
+            <div class="campo"><label>Colunas</label><select id="filtro-correlacao-b"></select></div>
+            <div class="campo">
+              <label>Métrica</label>
+              <select id="filtro-correlacao-metrica">
+                <option value="valor">Valor (R$)</option>
+                <option value="quantidade">Quantidade</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">Cruze qualquer duas listas (ex.: Convênio × Procedimento, Atendente × Forma de pagamento, Profissional × Exame) para enxergar padrões qualitativos por trás dos números.</p>
+        <div class="tabela-scroll"><table id="tabela-correlacao"></table></div>
       </div>
 
 
@@ -915,7 +881,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v3.0.2</b></span>
+    <span>ProdClin <b id="versao-sistema">v4.0.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1058,6 +1024,27 @@
    v3.0.2 — Tela Lançamento: campo "Data" vem travado no dia de hoje
             quando o papel logado é atendente (não pode escolher outra
             data ao criar um lançamento).
+   v4.0.0 — Fusão das abas Análises e RMR numa única aba "RMR": filtros de
+            Mês/Ano/Andar unificados (usa só rmr-mes/rmr-ano/rmr-andar).
+            A única sobreposição real (tabela "Meta × realizado por
+            profissional", que existia de dois jeitos quase idênticos)
+            virou uma tabela só, com um gráfico de barras novo logo
+            abaixo. As duas seções de evolução mensal (uma baseada em
+            meta, outra no ano anterior) foram agrupadas num só bloco
+            "Evolução do ano" com os 4 gráficos. Gráficos novos também
+            foram adicionados abaixo das tabelas de Exames, Procedimentos,
+            Biópsias e Eficiência de turnos, pra melhor visualização. A
+            permissão `ver_analises` foi abandonada — a aba passa a
+            depender só de `ver_rmr` (o inverso da fusão anterior, que
+            tinha abandonado `ver_dashboard` em favor de `ver_analises`).
+            Ganho técnico: a aba inteira agora usa UMA busca só
+            (buscarProducaoCompleta do ano, já paginada) para calcular
+            tudo — KPIs, gráficos, tabelas e análise flexível — em vez de
+            buscas separadas que já causaram divergência de dados entre
+            telas no passado (bug da Daniele Erthal, v2.13.0-v2.14.0).
+            Linhas antigas com chave='ver_analises' na tabela
+            `permissoes` do Supabase ficam inofensivas (só não são mais
+            lidas pelo sistema).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -1102,7 +1089,6 @@ const DEFINICAO_PERMISSOES = [
   {tela:'Crítica',        chave:'excluir_critica',         rotulo:'Excluir'},
   {tela:'Metas',          chave:'ver_metas',               rotulo:'Ver'},
   {tela:'Metas',          chave:'editar_metas',            rotulo:'Editar'},
-  {tela:'Análises',       chave:'ver_analises',            rotulo:'Ver'},
   {tela:'RMR',            chave:'ver_rmr',                 rotulo:'Ver'},
   {tela:'Configurações',  chave:'ver_configuracoes',       rotulo:'Ver'},
   {tela:'Configurações',  chave:'editar_configuracoes',    rotulo:'Editar'}
@@ -2116,7 +2102,6 @@ function montarNavegacao(){
     {id:'editar', rotulo:'Verificar', chave:'ver_verificar'},
     {id:'critica', rotulo:'Crítica', chave:'ver_critica'},
     {id:'metas', rotulo:'Metas', chave:'ver_metas'},
-    {id:'analises', rotulo:'Análises', chave:'ver_analises'},
     {id:'rmr', rotulo:'RMR', chave:'ver_rmr'},
     {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
   ];
@@ -2150,7 +2135,6 @@ async function atualizarPainelAtivo(){
   if(estado.abaAtiva==='editar') await atualizarEditar();
   if(estado.abaAtiva==='critica') await atualizarCritica();
   if(estado.abaAtiva==='metas') await atualizarMetas();
-  if(estado.abaAtiva==='analises') await atualizarAnalises();
   if(estado.abaAtiva==='configuracoes') await atualizarConfiguracoes();
   if(estado.abaAtiva==='rmr') await atualizarRMR();
 }
@@ -2221,12 +2205,12 @@ function preencherSelectsPeriodo(){
   document.getElementById('filtro-data-fim').value = paraISO(ultimoDiaMes);
 
 
-  [['filtro-mes-analises'],['filtro-mes-metas'],['filtro-mes-critica']].forEach(([id])=>{
+  [['filtro-mes-metas'],['filtro-mes-critica']].forEach(([id])=>{
     const sel = document.getElementById(id);
     sel.innerHTML = MESES.map(m=>`<option value="${m}" ${m===mesAtual?'selected':''}>${m}</option>`).join('');
     sel.addEventListener('change', atualizarPainelAtivo);
   });
-  [['filtro-ano-analises'],['filtro-ano-metas'],['filtro-ano-critica']].forEach(([id])=>{
+  [['filtro-ano-metas'],['filtro-ano-critica']].forEach(([id])=>{
     const sel = document.getElementById(id);
     sel.innerHTML = anos.map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('');
     sel.addEventListener('change', atualizarPainelAtivo);
@@ -2243,12 +2227,6 @@ function preencherSelectsPeriodo(){
   filtroAndarGerencial.innerHTML = '<option value="">Todos</option>' +
     (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
   filtroAndarGerencial.addEventListener('change', atualizarEditar);
-
-
-  const filtroAndarAnalises = document.getElementById('filtro-andar-analises');
-  filtroAndarAnalises.innerHTML = '<option value="">Todos</option>' +
-    (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
-  filtroAndarAnalises.addEventListener('change', atualizarPainelAtivo);
 
 
   montarMultiselectConvenio();
@@ -3532,42 +3510,6 @@ document.getElementById('botao-excluir-modal').addEventListener('click', async (
 /* ---------------------------------------------------------------------
    PAINEL: DASHBOARD
 --------------------------------------------------------------------- */
-async function atualizarDashboard(){
-  const mes = document.getElementById('filtro-mes-analises').value;
-  const ano = document.getElementById('filtro-ano-analises').value;
-  const andar = document.getElementById('filtro-andar-analises').value;
-  ['kpi-atendimentos','kpi-valor','kpi-ticket','kpi-meta'].forEach(id=>document.getElementById(id).textContent='…');
-  document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
-  let resp;
-  try{
-    resp = await api('dashboard', {mes, ano, andar});
-  }catch(e){
-    document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Erro de conexão com o Supabase. Confira SUPABASE_URL e SUPABASE_ANON_KEY.</td></tr>';
-    return;
-  }
-  if(!resp.ok){
-    document.getElementById('tabela-comparativo').innerHTML = `<tr><td class="vazio">${resp.erro || 'Não foi possível carregar o dashboard.'}</td></tr>`;
-    return;
-  }
-
-
-  document.getElementById('kpi-atendimentos').textContent = resp.totalAtendimentos;
-  document.getElementById('kpi-valor').textContent = formatarMoeda(resp.totalValor);
-  const ticket = resp.totalAtendimentos ? resp.totalValor/resp.totalAtendimentos : 0;
-  document.getElementById('kpi-ticket').textContent = formatarMoeda(ticket);
-  const metaTotal = resp.comparativo.reduce((s,c)=>s+c.metaValor,0);
-  const pctMeta = metaTotal ? ((resp.totalValor/metaTotal)*100).toFixed(0)+'%' : '—';
-  document.getElementById('kpi-meta').textContent = pctMeta;
-
-
-  desenharGraficoProfissional(resp.porProfissional);
-  desenharGraficoConvenio(resp.porConvenio);
-  desenharGraficoAndar(resp.porAndar||{});
-  desenharTabelaComparativo(resp.comparativo);
-  await atualizarEvolucaoAno();
-}
-
-
 function desenharGraficoProfissional(porProfissional){
   const rotulos = Object.keys(porProfissional);
   const valores = rotulos.map(r=>porProfissional[r].quantidade);
@@ -3589,66 +3531,28 @@ function desenharGraficoAndar(porAndar){
 }
 
 
-function desenharTabelaComparativo(comparativo){
-  const tabela = document.getElementById('tabela-comparativo');
-  if(comparativo.length===0){ tabela.innerHTML = '<tr><td class="vazio">Sem dados para o período.</td></tr>'; return; }
-  tabela.innerHTML = `
-    <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Qtd. atendimentos</th><th>Meta (R$)</th><th>Realizado (R$)</th><th>% atingido</th></tr></thead>
-    <tbody>${comparativo.map(c=>{
-      const temMeta = c.metaValor > 0;
-      const pct = temMeta ? Math.min(100, (c.valorRealizado/c.metaValor)*100) : null;
-      const cor = pct!==null && pct>=100 ? 'var(--teal-600)' : (pct!==null && pct>=70 ? 'var(--gold-500)' : 'var(--plum-500)');
-      return `<tr>
-        <td>${c.prof}</td>
-        <td>${c.turnosDisponibilizados||'—'}</td>
-        <td>${c.quantidade}</td>
-        <td class="mono">${temMeta?formatarMoeda(c.metaValor):'—'}</td>
-        <td class="mono">${formatarMoeda(c.valorRealizado)}</td>
-        <td style="min-width:120px;">
-          ${temMeta ? `
-          <div class="mono" style="font-size:12px;">${pct.toFixed(0)}%</div>
-          <div class="barra-meta"><div style="width:${pct}%;background:${cor};"></div></div>
-          ` : `<div class="mono" style="font-size:12px;color:var(--ink-400);">—</div>`}
-        </td>
-      </tr>`;
-    }).join('')}</tbody>`;
-}
-
-
 /* ---------------------------------------------------------------------
    EVOLUÇÃO DO ANO — matriz Jan..mês selecionado + gráficos comparativos
+   (baseados na META, diferente da "Evolução anual" da RMR que compara com
+   o ano anterior). Fundida na aba RMR: em vez de buscar o ano inteiro de
+   novo, reaproveita o rmrCache que atualizarRMR() já buscou — evita um
+   fetch duplicado e garante que os números batem com o resto da aba.
 --------------------------------------------------------------------- */
-let evolucaoAnoInicializado = true;
-
-
-async function atualizarEvolucaoAno(){
-  const mesSelecionado = document.getElementById('filtro-mes-analises').value;
-  const ano = document.getElementById('filtro-ano-analises').value;
+function atualizarEvolucaoAno(){
+  if(!rmrCache || !rmrCache.registrosAno) return; // ainda não carregou (guarda contra clique muito rápido)
+  const mesSelecionado = rmrCache.mes;
+  const ano = rmrCache.ano;
   const prof = document.getElementById('filtro-prof-evolucao').value;
-  const andar = document.getElementById('filtro-andar-analises').value;
   const idxMes = MESES.indexOf(mesSelecionado);
   const mesesConsiderados = MESES.slice(0, idxMes+1);
 
 
   document.getElementById('titulo-evolucao-ano').textContent = `Janeiro até ${mesSelecionado} — ${ano}`;
-  document.getElementById('tabela-evolucao-ano').innerHTML = '<tr><td class="vazio">Carregando...</td></tr>';
 
 
-  let respProd, respMetas;
-  try{
-    [respProd, respMetas] = await Promise.all([
-      buscarProducaoCompleta({ano, prof}),
-      api('listarMetas', {ano})
-    ]);
-  }catch(e){
-    document.getElementById('tabela-evolucao-ano').innerHTML = '<tr><td class="vazio">Erro de conexão com o servidor.</td></tr>';
-    return;
-  }
-
-
-  let registros = respProd.registros || [];
-  if(andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===andar.trim().toUpperCase());
-  const metas = (respMetas.metas || []).filter(m => !prof || m.prof===prof);
+  let registros = rmrCache.registrosAno; // já filtrado por andar dentro de atualizarRMR
+  if(prof) registros = registros.filter(r=>r.prof===prof);
+  const metas = (rmrCache.metasAno || []).filter(m => !prof || m.prof===prof);
 
 
   const linhas = mesesConsiderados.map(mes=>{
@@ -3717,8 +3621,9 @@ async function atualizarEvolucaoAno(){
 
 
 /* ---------------------------------------------------------------------
-   ANÁLISES CRUZADAS — aba própria, carregada sob demanda (só busca os
-   dados quando o usuário realmente abre essa aba, não junto do Dashboard).
+   ANÁLISE FLEXÍVEL — fundida na aba RMR (não busca dados própria: usa
+   estado.registrosDashboard, preenchido por atualizarRMR() a partir do
+   rmrCache já carregado).
 --------------------------------------------------------------------- */
 let selectsAnaliseProntos = false;
 
@@ -3736,30 +3641,6 @@ function prepararSelectsAnalise(){
   document.getElementById('filtro-correlacao-b').addEventListener('change', atualizarCorrelacao);
   document.getElementById('filtro-correlacao-metrica').addEventListener('change', atualizarCorrelacao);
   selectsAnaliseProntos = true;
-}
-
-
-async function atualizarAnalises(){
-  // Fusão Dashboard + Análises: uma chamada resolve os KPIs/gráficos fixos,
-  // meta x realizado e evolução do ano (atualizarDashboard já chama
-  // atualizarEvolucaoAno no final); a outra resolve a análise flexível por
-  // dimensão e a correlação — os dois usam os mesmos filtros de Mês/Ano/Andar.
-  await atualizarDashboard();
-
-
-  prepararSelectsAnalise();
-  document.getElementById('tabela-analise-dimensao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
-  document.getElementById('tabela-correlacao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
-  const mes = document.getElementById('filtro-mes-analises').value;
-  const ano = document.getElementById('filtro-ano-analises').value;
-  const andar = document.getElementById('filtro-andar-analises').value;
-  const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
-  const resp = await buscarProducaoCompleta({dataInicio, dataFim});
-  let registros = resp.registros || [];
-  if(andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===andar.trim().toUpperCase());
-  estado.registrosDashboard = registros;
-  atualizarAnaliseDimensao();
-  atualizarCorrelacao();
 }
 function rotuloValorAnalise(v){
   if(v===undefined || v===null || v==='') return 'Não informado';
@@ -3917,6 +3798,7 @@ async function atualizarRMR(){
 
 
   rmrRenderResumo(doMesAtual, doMesAnterior, metasDoMes);
+  rmrRenderSquadAtendimento(doMesAtual);
   rmrRenderProfissionais(mes, ano, anoAnterior);
   rmrRenderExames(doMesAtual);
   rmrRenderProcedimentosBiopsias(doMesAtual);
@@ -3926,6 +3808,35 @@ async function atualizarRMR(){
   rmrRenderMatrizConvenio(doMesAtual);
   rmrRenderEficiencia(doMesAtual, metasDoMes);
   rmrRenderEvolucaoAnual();
+  atualizarEvolucaoAno();
+
+
+  // Análise flexível (dimensão + correlação) — reaproveita doMesAtual, já
+  // filtrado por andar, sem precisar de outra busca ao banco.
+  prepararSelectsAnalise();
+  estado.registrosDashboard = doMesAtual;
+  atualizarAnaliseDimensao();
+  atualizarCorrelacao();
+}
+
+
+/* Gráficos de distribuição (Squad Atendimento) — calculados a partir do
+   doMesAtual que atualizarRMR() já tem em mãos, sem busca própria. */
+function rmrRenderSquadAtendimento(doMesAtual){
+  const porProfissional = {}, porConvenio = {}, porAndar = {};
+  doMesAtual.forEach(r=>{
+    const prof = r.prof || 'Não informado';
+    const conv = r.convenio || 'PARTICULAR';
+    const andarReg = r.andar || 'Não informado';
+    const valor = Number(r.valor)||0;
+    if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
+    porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
+    porConvenio[conv] = (porConvenio[conv]||0) + valor;
+    porAndar[andarReg] = (porAndar[andarReg]||0) + valor;
+  });
+  desenharGraficoProfissional(porProfissional);
+  desenharGraficoConvenio(porConvenio);
+  desenharGraficoAndar(porAndar);
 }
 
 
@@ -3988,7 +3899,11 @@ function rmrRenderProfissionais(mesRef, ano, anoAnterior){
     return {prof, ...porProf[prof], turnos:meta.turnos_disponibilizados||'—', meta:meta.meta_valor||0, pct};
   });
   const tabela = document.getElementById('rmr-tabela-profissionais-mes');
-  if(linhas.length===0){ tabela.innerHTML='<tr><td class="vazio">Sem dados no período.</td></tr>'; return; }
+  if(linhas.length===0){
+    tabela.innerHTML='<tr><td class="vazio">Sem dados no período.</td></tr>';
+    graficoVazio('grafico-meta-realizado');
+    return;
+  }
   tabela.innerHTML = `
     <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Atendimentos</th><th>Valor realizado</th><th>Meta (R$)</th><th>% atingido</th></tr></thead>
     <tbody>${linhas.map(l=>`
@@ -3996,6 +3911,7 @@ function rmrRenderProfissionais(mesRef, ano, anoAnterior){
       <td class="mono">${l.meta?formatarMoeda(l.meta):'—'}</td>
       <td>${l.pct!==null ? `<div class="mono" style="font-size:11.5px;">${l.pct.toFixed(0)}%</div><div class="barra-meta"><div style="width:${Math.min(100,l.pct)}%;"></div></div>` : `<div class="mono" style="font-size:11.5px;color:var(--ink-400);">—</div>`}</td></tr>`).join('')}
     </tbody>`;
+  miniGraficoBarras('grafico-meta-realizado', linhas.map(l=>l.prof), linhas.map(l=>Math.round(l.valor)), '#5C2350');
 }
 
 
@@ -4041,7 +3957,11 @@ function rmrRenderExames(doMesAtual){
   const origens = Array.from(new Set(exames.map(rmrOrigemPagamento))).sort();
   const tabela = document.getElementById('rmr-tabela-exames');
   const tipos = Object.keys(linhas).sort();
-  if(tipos.length===0){ tabela.innerHTML='<tr><td class="vazio">Nenhum exame registrado no período.</td></tr>'; return; }
+  if(tipos.length===0){
+    tabela.innerHTML='<tr><td class="vazio">Nenhum exame registrado no período.</td></tr>';
+    graficoVazio('grafico-exames');
+    return;
+  }
   tabela.innerHTML = `
     <thead><tr><th>Tipo de exame</th>${origens.map(o=>`<th>${o}</th>`).join('')}<th>Total</th></tr></thead>
     <tbody>${tipos.map(tipo=>{
@@ -4050,6 +3970,8 @@ function rmrRenderExames(doMesAtual){
     }).join('')}
     <tr class="linha-total"><td>Total</td>${origens.map(o=>`<td>${tipos.reduce((s,t)=>s+(linhas[t][o]||0),0)}</td>`).join('')}<td>${exames.length}</td></tr>
     </tbody>`;
+  const totaisPorTipo = tipos.map(tipo=>origens.reduce((s,o)=>s+(linhas[tipo][o]||0),0));
+  miniGraficoBarras('grafico-exames', tipos, totaisPorTipo, '#146B5D');
 }
 
 
@@ -4061,6 +3983,8 @@ function rmrRenderProcedimentosBiopsias(doMesAtual){
   tProc.innerHTML = chavesProc.length===0 ? '<tr><td class="vazio">Sem dados.</td></tr>' : `
     <thead><tr><th>Procedimento</th><th>Quantidade</th></tr></thead>
     <tbody>${chavesProc.map(p=>`<tr><td>${p}</td><td>${porProcedimento[p]}</td></tr>`).join('')}</tbody>`;
+  if(chavesProc.length===0) graficoVazio('grafico-procedimentos');
+  else miniGraficoBarras('grafico-procedimentos', chavesProc, chavesProc.map(p=>porProcedimento[p]), '#8A3D79');
 
 
   const comBiopsia = doMesAtual.filter(r=>r.biopsias);
@@ -4072,6 +3996,8 @@ function rmrRenderProcedimentosBiopsias(doMesAtual){
     <thead><tr><th>Frascos</th><th>Quantidade</th></tr></thead>
     <tbody>${chavesBio.map(f=>`<tr><td>${f}</td><td>${porFrasco[f]}</td></tr>`).join('')}
     <tr class="linha-total"><td>Total</td><td>${comBiopsia.length}</td></tr></tbody>`;
+  if(chavesBio.length===0) graficoVazio('grafico-biopsias');
+  else miniGraficoBarras('grafico-biopsias', chavesBio, chavesBio.map(f=>porFrasco[f]), '#9C6E22');
 }
 
 
@@ -4192,23 +4118,31 @@ function rmrRenderEficiencia(doMesAtual, metasDoMes){
 
 
   const tabela = document.getElementById('rmr-tabela-eficiencia');
-  if(todosProf.length===0){ tabela.innerHTML='<tr><td class="vazio">Sem dados no período.</td></tr>'; return; }
+  if(todosProf.length===0){
+    tabela.innerHTML='<tr><td class="vazio">Sem dados no período.</td></tr>';
+    graficoVazio('grafico-eficiencia');
+    return;
+  }
+  const linhasCalculadas = todosProf.map(prof=>{
+    const dados = porProf[prof] || {quantidade:0, valor:0, turnos:new Set()};
+    const meta = metaMap[prof] || {};
+    const disp = Number(meta.turnos_disponibilizados)||0;
+    const vendidos = dados.turnos.size;
+    const pctTurnos = disp ? Math.round((vendidos/disp)*100) : 0;
+    const temMeta = Number(meta.meta_valor) > 0;
+    const pctMeta = temMeta ? Math.round((dados.valor/meta.meta_valor)*100) : null;
+    const media = vendidos ? dados.valor/vendidos : 0;
+    return {prof, disp, vendidos, pctTurnos, temMeta, pctMeta, valor:dados.valor, meta:meta.meta_valor, media};
+  });
   tabela.innerHTML = `
     <thead><tr><th>Profissional</th><th>Turnos disp.</th><th>Turnos vendidos</th><th>% eficiência turnos</th><th>Meta (R$)</th><th>Realizado (R$)</th><th>% meta atingida</th><th>Média/turno</th></tr></thead>
-    <tbody>${todosProf.map(prof=>{
-      const dados = porProf[prof] || {quantidade:0, valor:0, turnos:new Set()};
-      const meta = metaMap[prof] || {};
-      const disp = Number(meta.turnos_disponibilizados)||0;
-      const vendidos = dados.turnos.size;
-      const pctTurnos = disp ? Math.round((vendidos/disp)*100) : 0;
-      const temMeta = Number(meta.meta_valor) > 0;
-      const pctMeta = temMeta ? Math.round((dados.valor/meta.meta_valor)*100) : null;
-      const media = vendidos ? dados.valor/vendidos : 0;
-      return `<tr><td>${prof}</td><td>${disp||'—'}</td><td>${vendidos}</td><td>${pctTurnos}%</td>
-        <td class="mono">${temMeta?formatarMoeda(meta.meta_valor):'—'}</td><td class="mono">${formatarMoeda(dados.valor)}</td>
-        <td>${temMeta ? `<div class="mono" style="font-size:11.5px;">${pctMeta}%</div><div class="barra-meta"><div style="width:${Math.min(100,pctMeta)}%;"></div></div>` : `<div class="mono" style="font-size:11.5px;color:var(--ink-400);">—</div>`}</td>
-        <td class="mono">${formatarMoeda(media)}</td></tr>`;
+    <tbody>${linhasCalculadas.map(l=>{
+      return `<tr><td>${l.prof}</td><td>${l.disp||'—'}</td><td>${l.vendidos}</td><td>${l.pctTurnos}%</td>
+        <td class="mono">${l.temMeta?formatarMoeda(l.meta):'—'}</td><td class="mono">${formatarMoeda(l.valor)}</td>
+        <td>${l.temMeta ? `<div class="mono" style="font-size:11.5px;">${l.pctMeta}%</div><div class="barra-meta"><div style="width:${Math.min(100,l.pctMeta)}%;"></div></div>` : `<div class="mono" style="font-size:11.5px;color:var(--ink-400);">—</div>`}</td>
+        <td class="mono">${formatarMoeda(l.media)}</td></tr>`;
     }).join('')}</tbody>`;
+  miniGraficoBarras('grafico-eficiencia', linhasCalculadas.map(l=>l.prof), linhasCalculadas.map(l=>l.pctTurnos), '#0E5548');
 }
 
 
