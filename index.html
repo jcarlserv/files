@@ -661,11 +661,9 @@
 
 
       <div class="squad-titulo"><span>Squad Atendimento</span><div class="linha"></div></div>
+      <div class="cartao"><h3>Atendimentos por profissional</h3><div id="grafico-profissional" class="mini-grafico" style="min-height:220px;"></div></div>
       <div class="grade-2">
-        <div class="cartao"><h3>Atendimentos por profissional</h3><div id="grafico-profissional" class="mini-grafico" style="min-height:220px;"></div></div>
         <div class="cartao"><h3>Distribuição por convênio</h3><div id="grafico-convenio" class="mini-grafico" style="min-height:220px;"></div></div>
-      </div>
-      <div class="grade-2">
         <div class="cartao"><h3>Distribuição por andar</h3><div id="grafico-andar" class="mini-grafico" style="min-height:220px;"></div></div>
       </div>
 
@@ -944,7 +942,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.14.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.15.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1068,6 +1066,10 @@
              buscarProducaoCompleta (paginação em blocos de 1000), então
              nenhuma tela mais sofre corte silencioso, independente do
              volume de dados.
+   v2.15.0 — Dashboard, Squad Atendimento: "Atendimentos por profissional"
+             passou a ocupar a largura toda do card; "Distribuição por
+             convênio" e "Distribuição por andar" ficam lado a lado,
+             abaixo dele.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
