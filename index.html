@@ -944,7 +944,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.12.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.13.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1048,6 +1048,17 @@
              e sem %. Antes o Dashboard mostrava 100% indevidamente (bug
              reportado) e o RMR mostrava 0% — ambos enganosos, já que sem
              meta não existe "percentual atingido" de verdade.
+   v2.13.0 — Correção de dados incompletos: Dashboard, Análises e Crítica
+             passaram a buscar direto o intervalo de datas do mês
+             selecionado (gte/lte na própria query), em vez de buscar o
+             ano inteiro e filtrar o mês no navegador — essa segunda
+             forma corria risco de corte silencioso do Supabase quando o
+             total de linhas do ano passava do limite de retorno de uma
+             consulta só, fazendo essas telas mostrarem menos lançamentos
+             do que existem de verdade. RMR e "Evolução do ano" (que
+             realmente precisam do ano inteiro) passaram a buscar em
+             páginas de 1000 linhas (buscarProducaoCompleta) até trazer
+             tudo, em vez de uma chamada só.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -1226,6 +1237,47 @@ async function api(acao, dados={}) {
 }
 
 
+/* Converte um nome de mês + ano no primeiro e último dia daquele mês, em
+   ISO (yyyy-MM-dd) — usado para mandar o filtro de período DIRETO pro
+   Supabase (gte/lte na própria query), em vez de buscar o ano inteiro e
+   filtrar o mês depois no navegador. Buscar o ano inteiro é o que fazia
+   o Dashboard/Análises/Crítica sofrerem corte silencioso quando o total
+   de linhas do ano passava do limite de retorno de uma única consulta do
+   Supabase (o banco corta e não avisa — some com dados sem dar erro). */
+function primeiroEUltimoDiaDoMes(nomeMes, ano){
+  const idx = MESES.indexOf(nomeMes);
+  if(idx===-1 || !ano) return {dataInicio:null, dataFim:null};
+  const primeiro = new Date(Number(ano), idx, 1);
+  const ultimo = new Date(Number(ano), idx+1, 0);
+  const paraISO = d => d.toISOString().slice(0,10);
+  return {dataInicio: paraISO(primeiro), dataFim: paraISO(ultimo)};
+}
+
+
+/* Busca produção em PÁGINAS de 1000 linhas até trazer tudo, em vez de uma
+   chamada só — necessário para buscas por ano inteiro (RMR, Evolução do
+   ano), que só com uma chamada normal correm o mesmo risco de corte
+   silencioso do Supabase citado acima. Uma única chamada de listarProducao
+   já é segura quando o período é curto (um mês), mas não quando é um ano. */
+async function buscarProducaoCompleta(paramsBase){
+  const TAMANHO_PAGINA = 1000;
+  let todos = [];
+  let pagina = 0;
+  while(true){
+    const resp = await api('listarProducao', Object.assign({}, paramsBase, {
+      limitePagina: TAMANHO_PAGINA, offsetPagina: pagina*TAMANHO_PAGINA
+    }));
+    if(!resp.ok) return resp;
+    const lote = resp.registros || [];
+    todos = todos.concat(lote);
+    if(lote.length < TAMANHO_PAGINA) break; // última página (veio menos que o tamanho cheio)
+    pagina++;
+    if(pagina > 50) break; // trava de segurança (50 mil linhas) contra loop infinito
+  }
+  return {ok:true, registros: todos};
+}
+
+
 /* ---------------------------------------------------------------------
    Auxiliares de conversão mês (nome <-> número) e mês/ano a partir da data
    — a tabela do Supabase guarda "data" (yyyy-MM-dd) e "mes" como número
@@ -1308,6 +1360,14 @@ async function supabaseApi(acao, dados) {
       }
       if(dados.prof) query = query.eq('prof', dados.prof);
       if(dados.limite) query = query.limit(Number(dados.limite));
+      // Paginação (usada por buscarProducaoCompleta, para buscas de ano
+      // inteiro que passariam do limite de linhas de uma consulta só) —
+      // independente do "limite" acima, que é usado em outros lugares
+      // (ex.: "Meus últimos lançamentos", limite:15).
+      if(dados.limitePagina){
+        const deslocamento = Number(dados.offsetPagina)||0;
+        query = query.range(deslocamento, deslocamento + Number(dados.limitePagina) - 1);
+      }
       const { data, error } = await query.order('data', {ascending:false});
       if(error) return {ok:false, erro:error.message};
       let registros = (data||[]).map(anexarMesAnoPelaData);
@@ -1474,7 +1534,12 @@ async function supabaseApi(acao, dados) {
 
 
     case 'dashboard': {
-      const respProd = await supabaseApi('listarProducao', {mes:dados.mes, ano:dados.ano});
+      // Busca só o intervalo de datas do mês selecionado, direto na query
+      // (gte/lte), em vez de buscar o ano inteiro e filtrar o mês depois —
+      // buscar o ano inteiro corria risco de corte silencioso do Supabase
+      // quando o total de linhas do ano passa do limite de uma consulta só.
+      const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(dados.mes, dados.ano);
+      const respProd = await supabaseApi('listarProducao', {dataInicio, dataFim});
       if(!respProd.ok) return respProd;
       let registros = respProd.registros;
       if(dados.andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===String(dados.andar).trim().toUpperCase());
@@ -2866,7 +2931,8 @@ async function atualizarCritica(){
   ['kpi-critica-total','kpi-critica-incompletos','kpi-critica-pct'].forEach(id=>document.getElementById(id).textContent='…');
 
 
-  const resp = await api('listarProducao', {mes, ano, prof});
+  const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
+  const resp = await api('listarProducao', {dataInicio, dataFim, prof});
   const registros = resp.registros || [];
   const incompletos = registros.filter(r => CAMPOS_CRITICOS.some(c => campoCriticoVazio(r, c.chave)));
 
@@ -3574,7 +3640,7 @@ async function atualizarEvolucaoAno(){
   let respProd, respMetas;
   try{
     [respProd, respMetas] = await Promise.all([
-      api('listarProducao', {ano, prof}),
+      buscarProducaoCompleta({ano, prof}),
       api('listarMetas', {ano})
     ]);
   }catch(e){
@@ -3683,7 +3749,8 @@ async function atualizarAnalises(){
   const mes = document.getElementById('filtro-mes-analises').value;
   const ano = document.getElementById('filtro-ano-analises').value;
   const andar = document.getElementById('filtro-andar-analises').value;
-  const resp = await api('listarProducao', {mes, ano});
+  const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
+  const resp = await api('listarProducao', {dataInicio, dataFim});
   let registros = resp.registros || [];
   if(andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===andar.trim().toUpperCase());
   estado.registrosDashboard = registros;
@@ -3811,8 +3878,8 @@ async function atualizarRMR(){
   let prodAno, prodAnoAnterior, metasAno, metasAnoAnterior, nota;
   try{
     [prodAno, prodAnoAnterior, metasAno, metasAnoAnterior, nota] = await Promise.all([
-      api('listarProducao', {ano}),
-      api('listarProducao', {ano:anoAnterior}),
+      buscarProducaoCompleta({ano}),
+      buscarProducaoCompleta({ano:anoAnterior}),
       api('listarMetas', {ano}),
       api('listarMetas', {ano:anoAnterior}),
       api('obterNota', {mes, ano})
