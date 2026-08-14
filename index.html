@@ -944,7 +944,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.13.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v2.14.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1059,6 +1059,15 @@
              realmente precisam do ano inteiro) passaram a buscar em
              páginas de 1000 linhas (buscarProducaoCompleta) até trazer
              tudo, em vez de uma chamada só.
+   v2.14.0 — Correção adicional: filtrar por data (v2.13.0) reduz o
+             volume mas não garante ficar abaixo do limite de linhas de
+             uma consulta do Supabase se o período tiver muitos
+             lançamentos. Agora TODAS as buscas de produção sem limite
+             fixo (Dashboard, Verificar, Crítica, Análises — além de RMR
+             e Evolução do ano, já corrigidas antes) usam
+             buscarProducaoCompleta (paginação em blocos de 1000), então
+             nenhuma tela mais sofre corte silencioso, independente do
+             volume de dados.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -1534,12 +1543,13 @@ async function supabaseApi(acao, dados) {
 
 
     case 'dashboard': {
-      // Busca só o intervalo de datas do mês selecionado, direto na query
-      // (gte/lte), em vez de buscar o ano inteiro e filtrar o mês depois —
-      // buscar o ano inteiro corria risco de corte silencioso do Supabase
-      // quando o total de linhas do ano passa do limite de uma consulta só.
+      // Busca o intervalo de datas do mês selecionado EM PÁGINAS (não uma
+      // chamada só) — filtrar por mês reduz o volume, mas não garante ficar
+      // abaixo do limite de linhas de uma consulta do Supabase se a clínica
+      // tiver muitos lançamentos naquele mês. buscarProducaoCompleta pagina
+      // até trazer tudo, então funciona independente do volume.
       const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(dados.mes, dados.ano);
-      const respProd = await supabaseApi('listarProducao', {dataInicio, dataFim});
+      const respProd = await buscarProducaoCompleta({dataInicio, dataFim});
       if(!respProd.ok) return respProd;
       let registros = respProd.registros;
       if(dados.andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===String(dados.andar).trim().toUpperCase());
@@ -2784,7 +2794,7 @@ async function atualizarEditar(){
   document.getElementById('resumo-financeiro-editar').innerHTML = '';
 
 
-  const resp = await api('listarProducao', {prof, dataInicio, dataFim});
+  const resp = await buscarProducaoCompleta({prof, dataInicio, dataFim});
   let registros = resp.registros||[];
   if(andar){
     registros = registros.filter(r => String(r.andar||'').trim().toUpperCase() === andar.trim().toUpperCase());
@@ -2932,7 +2942,7 @@ async function atualizarCritica(){
 
 
   const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
-  const resp = await api('listarProducao', {dataInicio, dataFim, prof});
+  const resp = await buscarProducaoCompleta({dataInicio, dataFim, prof});
   const registros = resp.registros || [];
   const incompletos = registros.filter(r => CAMPOS_CRITICOS.some(c => campoCriticoVazio(r, c.chave)));
 
@@ -3750,7 +3760,7 @@ async function atualizarAnalises(){
   const ano = document.getElementById('filtro-ano-analises').value;
   const andar = document.getElementById('filtro-andar-analises').value;
   const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
-  const resp = await api('listarProducao', {dataInicio, dataFim});
+  const resp = await buscarProducaoCompleta({dataInicio, dataFim});
   let registros = resp.registros || [];
   if(andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===andar.trim().toUpperCase());
   estado.registrosDashboard = registros;
