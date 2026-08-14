@@ -712,10 +712,8 @@
             </div>
           </div>
         </div>
-        <div class="grade-2">
-          <div class="tabela-scroll"><table id="tabela-analise-dimensao"></table></div>
-          <div id="grafico-analise-dimensao" class="mini-grafico" style="min-height:240px;"></div>
-        </div>
+        <div class="tabela-scroll"><table id="tabela-analise-dimensao"></table></div>
+        <div id="grafico-analise-dimensao" class="mini-grafico" style="min-height:240px;margin-top:20px;"></div>
       </div>
 
 
@@ -917,7 +915,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v3.0.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v3.0.1</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1055,6 +1053,8 @@
             depender só de `ver_analises`. Linhas antigas com
             chave='ver_dashboard' na tabela `permissoes` do Supabase
             ficam inofensivas (só não são mais lidas pelo sistema).
+   v3.0.1 — Card "Quantidade e valor por dimensão" (aba Análises): o
+            gráfico ficava ao lado da tabela, agora fica embaixo dela.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
