@@ -915,7 +915,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v3.0.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v3.0.2</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1055,6 +1055,9 @@
             ficam inofensivas (só não são mais lidas pelo sistema).
    v3.0.1 — Card "Quantidade e valor por dimensão" (aba Análises): o
             gráfico ficava ao lado da tabela, agora fica embaixo dela.
+   v3.0.2 — Tela Lançamento: campo "Data" vem travado no dia de hoje
+            quando o papel logado é atendente (não pode escolher outra
+            data ao criar um lançamento).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -2513,6 +2516,12 @@ function montarFormularioLancamento(){
   const hoje = new Date().toISOString().slice(0,10);
   const campoData = document.getElementById('campo_data');
   if(campoData) campoData.value = hoje;
+  // Atendente: não pode escolher outra data na tela de Lançamento — o campo
+  // fica travado no dia de hoje (o valor continua acessível via JS mesmo
+  // desabilitado, então não atrapalha o salvamento).
+  if(estado.papel==='atendente' && campoData){
+    campoData.disabled = true;
+  }
 
 
   montarSecaoPagamento('campo_', null);
