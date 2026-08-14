@@ -627,25 +627,25 @@
     </section>
 
 
-    <!-- ---------- DASHBOARD ---------- -->
-    <section class="painel" id="painel-dashboard">
+    <!-- ---------- ANÁLISES (fusão de Dashboard + Análises Cruzadas) ---------- -->
+    <section class="painel" id="painel-analises">
       <div class="cabecalho-painel">
         <div>
-          <h2>Dashboard de indicadores</h2>
-          <p>Visão consolidada do período selecionado.</p>
+          <h2>Análises</h2>
+          <p>Visão consolidada do período selecionado, mais análises flexíveis por dimensão e correlação.</p>
         </div>
         <div class="filtros">
           <div class="campo">
             <label>Mês</label>
-            <select id="filtro-mes-dashboard"></select>
+            <select id="filtro-mes-analises"></select>
           </div>
           <div class="campo">
             <label>Ano</label>
-            <select id="filtro-ano-dashboard"></select>
+            <select id="filtro-ano-analises"></select>
           </div>
           <div class="campo">
             <label>Andar</label>
-            <select id="filtro-andar-dashboard"><option value="">Todos</option></select>
+            <select id="filtro-andar-analises"><option value="">Todos</option></select>
           </div>
           <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
         </div>
@@ -699,34 +699,9 @@
         <div class="cartao"><h3>Valor previsto × realizado</h3><div id="grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
         <div class="cartao"><h3>Quantidade prevista × realizada</h3><div id="grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
       </div>
-    </section>
 
 
-    <!-- ---------- ANÁLISES CRUZADAS ---------- -->
-    <section class="painel" id="painel-analises">
-      <div class="cabecalho-painel">
-        <div>
-          <h2>Análises cruzadas</h2>
-          <p>Quantidade e valor por qualquer lista, e correlação entre duas dimensões.</p>
-        </div>
-        <div class="filtros">
-          <div class="campo">
-            <label>Mês</label>
-            <select id="filtro-mes-analises"></select>
-          </div>
-          <div class="campo">
-            <label>Ano</label>
-            <select id="filtro-ano-analises"></select>
-          </div>
-          <div class="campo">
-            <label>Andar</label>
-            <select id="filtro-andar-analises"><option value="">Todos</option></select>
-          </div>
-          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
-        </div>
-      </div>
-
-
+      <div class="squad-titulo"><span>Análise flexível</span><div class="linha"></div></div>
       <div class="cartao">
         <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
           <h3 style="margin:0;">Quantidade e valor por dimensão</h3>
@@ -942,7 +917,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v2.15.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v3.0.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1070,6 +1045,16 @@
              passou a ocupar a largura toda do card; "Distribuição por
              convênio" e "Distribuição por andar" ficam lado a lado,
              abaixo dele.
+   v3.0.0 — Fusão das abas Dashboard e Análises Cruzadas numa única aba
+            "Análises": filtros de Mês/Ano/Andar unificados (não mais
+            duplicados), conteúdo do Dashboard (KPIs, gráficos fixos,
+            Meta × realizado, Evolução do ano) mantido tal como estava,
+            seguido de uma seção "Análise flexível" com os cards por
+            dimensão e correlação que já existiam na Análises. A
+            permissão `ver_dashboard` foi abandonada — a aba passa a
+            depender só de `ver_analises`. Linhas antigas com
+            chave='ver_dashboard' na tabela `permissoes` do Supabase
+            ficam inofensivas (só não são mais lidas pelo sistema).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -1114,7 +1099,6 @@ const DEFINICAO_PERMISSOES = [
   {tela:'Crítica',        chave:'excluir_critica',         rotulo:'Excluir'},
   {tela:'Metas',          chave:'ver_metas',               rotulo:'Ver'},
   {tela:'Metas',          chave:'editar_metas',            rotulo:'Editar'},
-  {tela:'Dashboard',      chave:'ver_dashboard',           rotulo:'Ver'},
   {tela:'Análises',       chave:'ver_analises',            rotulo:'Ver'},
   {tela:'RMR',            chave:'ver_rmr',                 rotulo:'Ver'},
   {tela:'Configurações',  chave:'ver_configuracoes',       rotulo:'Ver'},
@@ -2129,7 +2113,6 @@ function montarNavegacao(){
     {id:'editar', rotulo:'Verificar', chave:'ver_verificar'},
     {id:'critica', rotulo:'Crítica', chave:'ver_critica'},
     {id:'metas', rotulo:'Metas', chave:'ver_metas'},
-    {id:'dashboard', rotulo:'Dashboard', chave:'ver_dashboard'},
     {id:'analises', rotulo:'Análises', chave:'ver_analises'},
     {id:'rmr', rotulo:'RMR', chave:'ver_rmr'},
     {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
@@ -2164,7 +2147,6 @@ async function atualizarPainelAtivo(){
   if(estado.abaAtiva==='editar') await atualizarEditar();
   if(estado.abaAtiva==='critica') await atualizarCritica();
   if(estado.abaAtiva==='metas') await atualizarMetas();
-  if(estado.abaAtiva==='dashboard') await atualizarDashboard();
   if(estado.abaAtiva==='analises') await atualizarAnalises();
   if(estado.abaAtiva==='configuracoes') await atualizarConfiguracoes();
   if(estado.abaAtiva==='rmr') await atualizarRMR();
@@ -2236,12 +2218,12 @@ function preencherSelectsPeriodo(){
   document.getElementById('filtro-data-fim').value = paraISO(ultimoDiaMes);
 
 
-  [['filtro-mes-dashboard'],['filtro-mes-analises'],['filtro-mes-metas'],['filtro-mes-critica']].forEach(([id])=>{
+  [['filtro-mes-analises'],['filtro-mes-metas'],['filtro-mes-critica']].forEach(([id])=>{
     const sel = document.getElementById(id);
     sel.innerHTML = MESES.map(m=>`<option value="${m}" ${m===mesAtual?'selected':''}>${m}</option>`).join('');
     sel.addEventListener('change', atualizarPainelAtivo);
   });
-  [['filtro-ano-dashboard'],['filtro-ano-analises'],['filtro-ano-metas'],['filtro-ano-critica']].forEach(([id])=>{
+  [['filtro-ano-analises'],['filtro-ano-metas'],['filtro-ano-critica']].forEach(([id])=>{
     const sel = document.getElementById(id);
     sel.innerHTML = anos.map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('');
     sel.addEventListener('change', atualizarPainelAtivo);
@@ -2258,12 +2240,6 @@ function preencherSelectsPeriodo(){
   filtroAndarGerencial.innerHTML = '<option value="">Todos</option>' +
     (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
   filtroAndarGerencial.addEventListener('change', atualizarEditar);
-
-
-  const filtroAndarDashboard = document.getElementById('filtro-andar-dashboard');
-  filtroAndarDashboard.innerHTML = '<option value="">Todos</option>' +
-    (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
-  filtroAndarDashboard.addEventListener('change', atualizarPainelAtivo);
 
 
   const filtroAndarAnalises = document.getElementById('filtro-andar-analises');
@@ -3548,9 +3524,9 @@ document.getElementById('botao-excluir-modal').addEventListener('click', async (
    PAINEL: DASHBOARD
 --------------------------------------------------------------------- */
 async function atualizarDashboard(){
-  const mes = document.getElementById('filtro-mes-dashboard').value;
-  const ano = document.getElementById('filtro-ano-dashboard').value;
-  const andar = document.getElementById('filtro-andar-dashboard').value;
+  const mes = document.getElementById('filtro-mes-analises').value;
+  const ano = document.getElementById('filtro-ano-analises').value;
+  const andar = document.getElementById('filtro-andar-analises').value;
   ['kpi-atendimentos','kpi-valor','kpi-ticket','kpi-meta'].forEach(id=>document.getElementById(id).textContent='…');
   document.getElementById('tabela-comparativo').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
   let resp;
@@ -3637,10 +3613,10 @@ let evolucaoAnoInicializado = true;
 
 
 async function atualizarEvolucaoAno(){
-  const mesSelecionado = document.getElementById('filtro-mes-dashboard').value;
-  const ano = document.getElementById('filtro-ano-dashboard').value;
+  const mesSelecionado = document.getElementById('filtro-mes-analises').value;
+  const ano = document.getElementById('filtro-ano-analises').value;
   const prof = document.getElementById('filtro-prof-evolucao').value;
-  const andar = document.getElementById('filtro-andar-dashboard').value;
+  const andar = document.getElementById('filtro-andar-analises').value;
   const idxMes = MESES.indexOf(mesSelecionado);
   const mesesConsiderados = MESES.slice(0, idxMes+1);
 
@@ -3755,6 +3731,13 @@ function prepararSelectsAnalise(){
 
 
 async function atualizarAnalises(){
+  // Fusão Dashboard + Análises: uma chamada resolve os KPIs/gráficos fixos,
+  // meta x realizado e evolução do ano (atualizarDashboard já chama
+  // atualizarEvolucaoAno no final); a outra resolve a análise flexível por
+  // dimensão e a correlação — os dois usam os mesmos filtros de Mês/Ano/Andar.
+  await atualizarDashboard();
+
+
   prepararSelectsAnalise();
   document.getElementById('tabela-analise-dimensao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
   document.getElementById('tabela-correlacao').innerHTML = '<tr><td class="vazio">Carregando dados do período...</td></tr>';
