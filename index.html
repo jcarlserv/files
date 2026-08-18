@@ -909,6 +909,22 @@
       </div>
 
 
+      <div class="cartao" id="cartao-atendentes-profissionais" style="max-width:100%;">
+        <h3>Atendentes por profissional</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Marque com quais profissionais cada atendente trabalha (pode marcar mais de um). Essa trava
+          funciona em dois sentidos: quando é a própria atendente logada lançando (o campo Atendente já
+          vem travado nela mesma), o campo <b>Profissional</b> mostra só quem está vinculado a ela — e
+          bloqueia o lançamento se não houver nenhum. Quando é o gerente lançando, ou em qualquer edição
+          pelo modal (onde o Atendente nunca é travado), é o contrário: escolher o <b>Profissional</b>
+          filtra quem pode ser escolhido como Atendente.
+        </p>
+        <div class="tabela-scroll">
+          <table id="tabela-atendentes-profissionais"></table>
+        </div>
+      </div>
+
+
       <div class="cartao" style="max-width:820px;">
         <h3>Importar produção em massa (CSV)</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
@@ -935,7 +951,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.1.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.2.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1156,6 +1172,23 @@
             Verificar: dois filtros novos, "Procedimento" (select) e
             "Paciente" (busca por texto, ao digitar) — ao lado dos que já
             existiam.
+   v6.2.0 — Reversão parcial da v6.1.0: "Profissional" voltou a vir antes
+            de "Andar" no Lançamento — necessário porque agora o
+            Profissional também pode depender do Atendente (ver abaixo),
+            então a ordem de dependência é Atendente → Profissional →
+            Andar/Procedimento, não o contrário.
+            Nova funcionalidade: cadastro "Atendentes por profissional"
+            (aba Configurações, só gerente) — mesma mecânica das matrizes
+            de Andar/Procedimento, mas essa trava funciona em DUAS
+            direções conforme o contexto: (1) quando é a própria atendente
+            logada lançando no Lançamento (Atendente já travado no nome
+            dela), o campo Profissional passa a mostrar só quem está
+            vinculado a ela, bloqueando o lançamento se não houver
+            nenhum; (2) quando é o gerente lançando, ou em qualquer edição
+            pelo Modal (onde o Atendente nunca é travado), é o contrário —
+            escolher o Profissional filtra o Atendente. Requer uma tabela
+            nova no Supabase, `atendentes_profissionais` — a própria tela
+            mostra o SQL certinho se ela não existir ainda.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -1248,11 +1281,18 @@ const estado = {
   // Cadastro de "qual(is) andar(es) cada profissional atende" — map
   // {prof: ['TÉRREO','COPARTICIPADOS', ...]}. Usado pra travar/filtrar o
   // campo Andar de acordo com o Profissional escolhido (ver
-  // aplicarTravaAndarProcedimentoPorProfissional).
+  // aplicarTravasCondicionadasDoFormulario).
   profissionaisAndares:{},
   // Mesma ideia, mas pra "quais procedimentos cada profissional realiza" —
   // map {prof: ['CONSULTA','CIRURGIA', ...]}.
-  profissionaisProcedimentos:{}
+  profissionaisProcedimentos:{},
+  // Cadastro de "quais profissionais cada atendente atende" — guardado nos
+  // dois sentidos, porque a trava funciona em direções diferentes conforme
+  // quem está logado (ver aplicarTravasCondicionadasDoFormulario):
+  // atendentesProfissionais: {atendente: [prof, ...]}
+  // profissionaisAtendentes: {prof: [atendente, ...]}
+  atendentesProfissionais:{},
+  profissionaisAtendentes:{}
 };
 
 
@@ -1277,6 +1317,11 @@ const demo = {
     {prof:'LISIENE', procedimento:'SESSÃO'},
     {prof:'RENATA', procedimento:'SESSÃO'},
     {prof:'DR MARCELO USG', procedimento:'USG'}
+  ],
+  // Lista de {atendente, prof} — equivalente à tabela atendentes_profissionais.
+  atendentesProfissionais:[
+    {atendente:'KAILLANY', prof:'ANGELINA'},
+    {atendente:'KAILLANY', prof:'LISIENE'}
   ],
   usuarios:[
     {usuario:'gerente', senha:'gerente123', papel:'gerente', nome_profissional:'Coordenação'},
@@ -1420,15 +1465,19 @@ function anexarMesAnoPelaData(registro){
 }
 
 
-// Converte uma lista de linhas [{prof, <campo>}] (vinda de
-// profissionais_andares ou profissionais_procedimentos) num mapa
-// {prof: [valor1, valor2, ...]} — usado pelas travas de formulário.
-function agruparProfPorCampo(linhas, campo){
+// Converte uma lista de linhas [{<campoChave>, <campoValor>}] (vinda de
+// profissionais_andares, profissionais_procedimentos ou
+// atendentes_profissionais) num mapa {chave: [valor1, valor2, ...]} —
+// usado pelas travas de formulário. campoChave é opcional e default 'prof'
+// (mantém compatível com as chamadas mais antigas, que só agrupavam por
+// profissional).
+function agruparProfPorCampo(linhas, campoValor, campoChave){
+  campoChave = campoChave || 'prof';
   const mapa = {};
   (linhas||[]).forEach(l=>{
-    if(!l || !l.prof || !l[campo]) return;
-    if(!mapa[l.prof]) mapa[l.prof] = [];
-    mapa[l.prof].push(l[campo]);
+    if(!l || !l[campoChave] || !l[campoValor]) return;
+    if(!mapa[l[campoChave]]) mapa[l[campoChave]] = [];
+    mapa[l[campoChave]].push(l[campoValor]);
   });
   return mapa;
 }
@@ -1674,6 +1723,31 @@ async function supabaseApi(acao, dados) {
     }
 
 
+    // Atendentes por profissional — cadastro (n:n) usado nos dois sentidos:
+    // quando o Atendente logado está travado no próprio nome (Lançamento),
+    // filtra quem ele pode escolher em "Profissional"; quando o Atendente
+    // está livre (gerente no Lançamento, ou qualquer edição no Modal), o
+    // Profissional escolhido filtra quem pode ser escolhido em "Atendente".
+    case 'listarAtendentesProfissionais': {
+      const { data, error } = await supabaseClient.from('atendentes_profissionais').select('atendente, prof');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, linhas: data||[]};
+    }
+
+
+    case 'definirAtendenteProfissional': {
+      if(dados.valor){
+        const { error } = await supabaseClient.from('atendentes_profissionais')
+          .upsert({ atendente: dados.atendente, prof: dados.prof }, { onConflict: 'atendente,prof' });
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      } else {
+        const { error } = await supabaseClient.from('atendentes_profissionais')
+          .delete().eq('atendente', dados.atendente).eq('prof', dados.prof);
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      }
+    }
+
+
     // Repasse de coparticipados — uma única linha "global" por mês/ano (prof
     // fixo = 'GERAL', já que a taxa/rateio é a mesma para todo mundo). Não
     // usamos upsert com onConflict aqui porque não temos certeza de que existe
@@ -1796,6 +1870,18 @@ function mockApi(acao, dados) {
         if(idx===-1) demo.profissionaisProcedimentos.push({prof:dados.prof, procedimento:dados.procedimento});
       } else {
         if(idx>-1) demo.profissionaisProcedimentos.splice(idx,1);
+      }
+      return {ok:true};
+    }
+    case 'listarAtendentesProfissionais': {
+      return {ok:true, linhas: demo.atendentesProfissionais.slice()};
+    }
+    case 'definirAtendenteProfissional': {
+      const idx = demo.atendentesProfissionais.findIndex(l=>l.atendente===dados.atendente && l.prof===dados.prof);
+      if(dados.valor){
+        if(idx===-1) demo.atendentesProfissionais.push({atendente:dados.atendente, prof:dados.prof});
+      } else {
+        if(idx>-1) demo.atendentesProfissionais.splice(idx,1);
       }
       return {ok:true};
     }
@@ -2281,23 +2367,29 @@ async function iniciarApp(){
     estado.listas = listasResp.listas || {};
 
 
-    // Cadastro de andar/procedimento por profissional (ver seção 4.1 do
-    // modelo) — carregado uma vez aqui e usado pra travar/filtrar os campos
-    // Andar e Procedimento no Lançamento e no modal de edição. Se a tabela
-    // ainda não existir no Supabase, não trava a aplicação inteira: só
-    // segue com o cadastro vazio (equivalente a "ninguém tem andar/
-    // procedimento cadastrado ainda", que já é tratado como bloqueio no
-    // formulário — ver aplicarTravaAndarProcedimentoPorProfissional).
+    // Cadastro de andar/procedimento/atendente por profissional (ver
+    // histórico de decisões) — carregado uma vez aqui e usado pra travar/
+    // filtrar os campos Andar, Procedimento e Atendente no Lançamento e no
+    // modal de edição. Se alguma tabela ainda não existir no Supabase, não
+    // trava a aplicação inteira: só segue com o cadastro vazio (equivalente
+    // a "ninguém tem nada cadastrado ainda", que já é tratado como bloqueio
+    // no formulário — ver aplicarTravasCondicionadasDoFormulario).
     try{
-      const [respAndares, respProcedimentos] = await Promise.all([
+      const [respAndares, respProcedimentos, respAtendentes] = await Promise.all([
         api('listarProfissionaisAndares', {}),
-        api('listarProfissionaisProcedimentos', {})
+        api('listarProfissionaisProcedimentos', {}),
+        api('listarAtendentesProfissionais', {})
       ]);
       estado.profissionaisAndares = agruparProfPorCampo(respAndares.ok ? respAndares.linhas : [], 'andar');
       estado.profissionaisProcedimentos = agruparProfPorCampo(respProcedimentos.ok ? respProcedimentos.linhas : [], 'procedimento');
+      const linhasAtendentes = respAtendentes.ok ? respAtendentes.linhas : [];
+      estado.atendentesProfissionais = agruparProfPorCampo(linhasAtendentes, 'prof', 'atendente');
+      estado.profissionaisAtendentes = agruparProfPorCampo(linhasAtendentes, 'atendente', 'prof');
     }catch(e){
       estado.profissionaisAndares = {};
       estado.profissionaisProcedimentos = {};
+      estado.atendentesProfissionais = {};
+      estado.profissionaisAtendentes = {};
     }
   }catch(e){
     mostrarErroInicializacao('Não foi possível carregar as listas do banco (' + (e.message||e) + '). Confira se SUPABASE_URL e SUPABASE_ANON_KEY estão corretos e se as políticas de RLS estão liberando leitura na tabela "listas".');
@@ -2551,9 +2643,9 @@ function preencherSelectsPeriodo(){
 function definicaoCampos(){
   const L = estado.listas;
   return [
-    {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'prof', rotulo:'Profissional', tipo:'select', opcoes:L.profissionais, obrigatorio:true,
       travado: estado.papel==='profissional'},
+    {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
     {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos, obrigatorio:true},
     {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
@@ -2727,32 +2819,41 @@ function lerValoresCampos(prefixo='campo_'){
    PAINEL: LANÇAMENTO
 --------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------
-   TRAVA DE ANDAR/PROCEDIMENTO POR PROFISSIONAL — reaproveitada entre a
-   tela de Lançamento (prefixo 'campo_') e o modal de edição (prefixo
-   'modal_'). Restringe as opções de "Andar" e "Procedimento" às que estão
-   cadastradas pro profissional selecionado (estado.profissionaisAndares /
-   estado.profissionaisProcedimentos, carregados uma vez no login). Se o
-   profissional não tiver NADA cadastrado, o select fica só com
-   "Selecionar..." — o que já é suficiente pra bloquear o salvamento, já
-   que esses dois campos são obrigatórios (a validação genérica de
-   camposObrigatoriosFaltando pega isso sozinha, sem precisar de código
-   extra).
+   TRAVAS CONDICIONADAS DO FORMULÁRIO — reaproveitada entre a tela de
+   Lançamento (prefixo 'campo_') e o modal de edição (prefixo 'modal_').
+   Encadeia duas travas:
 
-   Se o valor já salvo (editando um lançamento antigo) não estiver mais
-   na lista permitida pro profissional atual, ele é mantido como opção
-   extra, marcada "(fora do cadastro)" — pra não sumir um dado histórico
-   sem querer, só sinalizar que está desalinhado do cadastro de hoje.
+   1) Atendente × Profissional (bidirecional, muda de direção conforme o
+      contexto):
+      - Se o Atendente já está TRAVADO no próprio nome (só acontece no
+        Lançamento, quando quem está logado é um atendente — ver
+        montarFormularioLancamento), o campo Profissional passa a mostrar
+        só quem está vinculado àquele atendente
+        (estado.atendentesProfissionais).
+      - Caso contrário (gerente no Lançamento, ou QUALQUER edição pelo
+        Modal — o Atendente nunca é travado lá), é o Profissional
+        escolhido que filtra o Atendente (estado.profissionaisAtendentes).
+
+   2) Profissional → Andar/Procedimento (já existia): restringe as opções
+      de "Andar" e "Procedimento" às cadastradas pro profissional já
+      definido no passo 1.
+
+   Em ambos os casos, se não sobrar nenhuma opção pro profissional/
+   atendente/andar/procedimento correspondente, o select fica só com
+   "Selecionar..." — suficiente pra bloquear o salvamento, já que esses
+   campos são obrigatórios (camposObrigatoriosFaltando pega isso sozinha).
+
+   Um valor já salvo (editando um lançamento antigo) que não bata mais com
+   o cadastro atual é mantido como opção extra, marcada "(fora do
+   cadastro)" — pra não sumir dado histórico sem querer.
 --------------------------------------------------------------------- */
-function aplicarTravaAndarProcedimentoPorProfissional(prefixo){
-  const elProf = document.getElementById(prefixo+'prof');
-  const prof = elProf ? elProf.value : '';
-
-  const restringirSelect = (idCampo, permitidos, todasAsOpcoes)=>{
+function aplicarTravasCondicionadasDoFormulario(prefixo){
+  const restringirSelect = (idCampo, permitidos, todasAsOpcoes, restringir)=>{
     const sel = document.getElementById(idCampo);
     if(!sel) return;
     const valorAtual = sel.value;
-    let opcoes = prof ? permitidos.slice() : todasAsOpcoes.slice();
-    const foraDoCadastro = !!prof && !!valorAtual && !opcoes.includes(valorAtual);
+    let opcoes = restringir ? permitidos.slice() : todasAsOpcoes.slice();
+    const foraDoCadastro = !!restringir && !!valorAtual && !opcoes.includes(valorAtual);
     if(foraDoCadastro) opcoes = [valorAtual, ...opcoes];
     sel.innerHTML = '<option value="">Selecionar...</option>' + opcoes.map(o=>{
       const rotulo = (foraDoCadastro && o===valorAtual) ? `${o} (fora do cadastro)` : o;
@@ -2760,8 +2861,28 @@ function aplicarTravaAndarProcedimentoPorProfissional(prefixo){
     }).join('');
   };
 
-  restringirSelect(prefixo+'andar', prof ? (estado.profissionaisAndares[prof]||[]) : [], estado.listas.andares||[]);
-  restringirSelect(prefixo+'procedimento', prof ? (estado.profissionaisProcedimentos[prof]||[]) : [], estado.listas.procedimentos||[]);
+  const elProf = document.getElementById(prefixo+'prof');
+
+  // 1a) Atendente travado no próprio nome (só no Lançamento, só pra quem
+  // está logado como atendente) → filtra o Profissional por ele.
+  const atendenteTravado = (prefixo==='campo_' && estado.papel==='atendente');
+  if(atendenteTravado && elProf){
+    const profissionaisPermitidos = estado.atendentesProfissionais[estado.nomeProfissional] || [];
+    restringirSelect(prefixo+'prof', profissionaisPermitidos, estado.listas.profissionais||[], true);
+  }
+
+  // 2) Profissional (já filtrado pelo passo 1a, se for o caso) → Andar e
+  // Procedimento.
+  const prof = elProf ? elProf.value : '';
+  restringirSelect(prefixo+'andar', prof ? (estado.profissionaisAndares[prof]||[]) : [], estado.listas.andares||[], !!prof);
+  restringirSelect(prefixo+'procedimento', prof ? (estado.profissionaisProcedimentos[prof]||[]) : [], estado.listas.procedimentos||[], !!prof);
+
+  // 1b) Atendente livre (gerente no Lançamento, ou qualquer edição pelo
+  // Modal) → o Profissional escolhido filtra o Atendente.
+  if(!atendenteTravado){
+    const atendentesPermitidos = prof ? (estado.profissionaisAtendentes[prof]||[]) : [];
+    restringirSelect(prefixo+'atendente', atendentesPermitidos, estado.listas.atendentes||[], !!prof);
+  }
 }
 
 
@@ -2798,13 +2919,13 @@ function montarFormularioLancamento(){
 
 
   // Trava de Andar/Procedimento conforme o Profissional escolhido (ver
-  // aplicarTravaAndarProcedimentoPorProfissional). Aplica já na montagem
+  // aplicarTravasCondicionadasDoFormulario). Aplica já na montagem
   // (cobre o caso de papel==='profissional', que já vem com o Profissional
   // fixo) e de novo toda vez que o Profissional mudar.
-  aplicarTravaAndarProcedimentoPorProfissional('campo_');
+  aplicarTravasCondicionadasDoFormulario('campo_');
   const selProfLancamento = document.getElementById('campo_prof');
   if(selProfLancamento){
-    selProfLancamento.addEventListener('change', ()=>aplicarTravaAndarProcedimentoPorProfissional('campo_'));
+    selProfLancamento.addEventListener('change', ()=>aplicarTravasCondicionadasDoFormulario('campo_'));
   }
 }
 
@@ -3302,17 +3423,21 @@ async function atualizarConfiguracoes(){
   const cartaoPermissoes = document.getElementById('cartao-direitos-privilegios');
   const cartaoProfAndares = document.getElementById('cartao-profissionais-andares');
   const cartaoProfProcedimentos = document.getElementById('cartao-profissionais-procedimentos');
+  const cartaoAtendentesProf = document.getElementById('cartao-atendentes-profissionais');
   if(estado.papel === 'gerente'){
     cartaoPermissoes.style.display = '';
     cartaoProfAndares.style.display = '';
     cartaoProfProcedimentos.style.display = '';
+    cartaoAtendentesProf.style.display = '';
     await carregarPermissoes();
     await carregarProfissionaisAndares();
     await carregarProfissionaisProcedimentos();
+    await carregarAtendentesProfissionais();
   } else {
     cartaoPermissoes.style.display = 'none';
     cartaoProfAndares.style.display = 'none';
     cartaoProfProcedimentos.style.display = 'none';
+    cartaoAtendentesProf.style.display = 'none';
   }
 
 
@@ -3329,7 +3454,7 @@ async function atualizarConfiguracoes(){
    (profissional × andar, profissional × procedimento), no mesmo padrão
    visual da matriz de Direitos e Privilégios. Usadas pra travar/filtrar
    os campos Andar e Procedimento no Lançamento e no modal de edição (ver
-   aplicarTravaAndarProcedimentoPorProfissional). Guardadas nas tabelas
+   aplicarTravasCondicionadasDoFormulario). Guardadas nas tabelas
    `profissionais_andares` e `profissionais_procedimentos` do Supabase.
 --------------------------------------------------------------------- */
 async function carregarProfissionaisAndares(){
@@ -3356,13 +3481,15 @@ create policy acesso_total_anon on profissionais_andares for all using (true) wi
     tabela.innerHTML = `<tr><td class="vazio">${resp.erro || 'Não foi possível carregar.'}</td></tr>`;
     return;
   }
-  const porProf = agruparProfPorCampo(resp.linhas, 'andar');
-  estado.profissionaisAndares = porProf; // mantém a trava do formulário sempre com o dado mais recente
+  const porLinha = agruparProfPorCampo(resp.linhas, 'andar');
+  estado.profissionaisAndares = porLinha; // mantém a trava do formulário sempre com o dado mais recente
   renderizarMatrizProfissionalCampo({
-    tabela, porProf,
-    profissionais: estado.listas.profissionais||[],
-    opcoes: estado.listas.andares||[],
+    tabela, porLinha,
+    rotuloLinha: 'Profissional',
+    linhas: estado.listas.profissionais||[],
+    colunas: estado.listas.andares||[],
     acao: 'definirProfissionalAndar',
+    nomeCampoLinha: 'prof',
     nomeCampoAcao: 'andar',
     classeCheckbox: 'chk-prof-andar'
   });
@@ -3393,42 +3520,95 @@ create policy acesso_total_anon on profissionais_procedimentos for all using (tr
     tabela.innerHTML = `<tr><td class="vazio">${resp.erro || 'Não foi possível carregar.'}</td></tr>`;
     return;
   }
-  const porProf = agruparProfPorCampo(resp.linhas, 'procedimento');
-  estado.profissionaisProcedimentos = porProf;
+  const porLinha = agruparProfPorCampo(resp.linhas, 'procedimento');
+  estado.profissionaisProcedimentos = porLinha;
   renderizarMatrizProfissionalCampo({
-    tabela, porProf,
-    profissionais: estado.listas.profissionais||[],
-    opcoes: estado.listas.procedimentos||[],
+    tabela, porLinha,
+    rotuloLinha: 'Profissional',
+    linhas: estado.listas.profissionais||[],
+    colunas: estado.listas.procedimentos||[],
     acao: 'definirProfissionalProcedimento',
+    nomeCampoLinha: 'prof',
     nomeCampoAcao: 'procedimento',
     classeCheckbox: 'chk-prof-procedimento'
   });
 }
 
 
-// Desenha uma matriz profissional × opções (checkbox em cada célula) e liga
-// os eventos de salvar — reaproveitada por Andar e por Procedimento, já que
-// as duas seguem exatamente a mesma mecânica.
-function renderizarMatrizProfissionalCampo({tabela, porProf, profissionais, opcoes, acao, nomeCampoAcao, classeCheckbox}){
-  if(profissionais.length===0 || opcoes.length===0){
-    tabela.innerHTML = '<tr><td class="vazio">Cadastre profissionais e as opções correspondentes em "Listas do sistema" primeiro.</td></tr>';
+async function carregarAtendentesProfissionais(){
+  const tabela = document.getElementById('tabela-atendentes-profissionais');
+  tabela.innerHTML = '<tr><td class="vazio">Carregando...</td></tr>';
+  const resp = await api('listarAtendentesProfissionais', {});
+  if(!resp.ok){
+    if(/relation.*atendentes_profissionais.*does not exist/i.test(resp.erro||'')){
+      tabela.innerHTML = `<tr><td class="vazio" style="text-align:left;padding:16px;">
+        <b style="color:var(--danger);">Falta uma tabela no banco.</b><br>
+        Ainda não existe a tabela <code>atendentes_profissionais</code>. Vá no <b>SQL Editor</b>
+        do Supabase e rode este comando uma vez, depois recarregue esta página:
+        <pre style="background:var(--rose-100);padding:10px 12px;border-radius:8px;margin-top:10px;white-space:pre-wrap;font-size:12.5px;">create table if not exists atendentes_profissionais (
+  id uuid primary key default gen_random_uuid(),
+  atendente text not null,
+  prof text not null,
+  unique (atendente, prof)
+);
+alter table atendentes_profissionais enable row level security;
+create policy acesso_total_anon on atendentes_profissionais for all using (true) with check (true);</pre>
+      </td></tr>`;
+      return;
+    }
+    tabela.innerHTML = `<tr><td class="vazio">${resp.erro || 'Não foi possível carregar.'}</td></tr>`;
+    return;
+  }
+  // Guarda nos dois sentidos — atendente→[profissionais] (usado quando o
+  // Atendente logado está travado no próprio nome, no Lançamento) e
+  // profissional→[atendentes] (usado quando o Atendente está livre, ou
+  // seja, gerente no Lançamento e qualquer edição no Modal).
+  estado.atendentesProfissionais = agruparProfPorCampo(resp.linhas, 'prof', 'atendente');
+  estado.profissionaisAtendentes = agruparProfPorCampo(resp.linhas, 'atendente', 'prof');
+  renderizarMatrizProfissionalCampo({
+    tabela, porLinha: estado.atendentesProfissionais,
+    rotuloLinha: 'Atendente',
+    linhas: estado.listas.atendentes||[],
+    colunas: estado.listas.profissionais||[],
+    acao: 'definirAtendenteProfissional',
+    nomeCampoLinha: 'atendente',
+    nomeCampoAcao: 'prof',
+    classeCheckbox: 'chk-atendente-prof',
+    // Ao salvar, também precisa manter o mapa invertido (profissional→
+    // atendentes) sincronizado, já que os dois vêm do mesmo cadastro.
+    aoAlterar: (linha, valor, marcado)=>{
+      if(!estado.profissionaisAtendentes[valor]) estado.profissionaisAtendentes[valor] = [];
+      estado.profissionaisAtendentes[valor] = estado.profissionaisAtendentes[valor].filter(v=>v!==linha);
+      if(marcado) estado.profissionaisAtendentes[valor].push(linha);
+    }
+  });
+}
+
+
+// Desenha uma matriz linha × coluna (checkbox em cada célula) e liga os
+// eventos de salvar — reaproveitada por Profissional×Andar,
+// Profissional×Procedimento e Atendente×Profissional, já que as três
+// seguem exatamente a mesma mecânica (só muda o que é linha/coluna).
+function renderizarMatrizProfissionalCampo({tabela, porLinha, rotuloLinha, linhas, colunas, acao, nomeCampoLinha, nomeCampoAcao, classeCheckbox, aoAlterar}){
+  if(linhas.length===0 || colunas.length===0){
+    tabela.innerHTML = '<tr><td class="vazio">Cadastre os itens correspondentes em "Listas do sistema" primeiro.</td></tr>';
     return;
   }
   tabela.innerHTML = `
-    <thead><tr><th>Profissional</th>${opcoes.map(o=>`<th style="text-align:center;">${o}</th>`).join('')}</tr></thead>
-    <tbody>${profissionais.map(prof=>`
-      <tr data-prof="${prof}">
-        <td>${prof}</td>
-        ${opcoes.map(o=>`<td style="text-align:center;"><input type="checkbox" class="${classeCheckbox}" data-valor="${o}" ${(porProf[prof]||[]).includes(o)?'checked':''}></td>`).join('')}
+    <thead><tr><th>${rotuloLinha}</th>${colunas.map(o=>`<th style="text-align:center;">${o}</th>`).join('')}</tr></thead>
+    <tbody>${linhas.map(linha=>`
+      <tr data-linha="${linha}">
+        <td>${linha}</td>
+        ${colunas.map(o=>`<td style="text-align:center;"><input type="checkbox" class="${classeCheckbox}" data-valor="${o}" ${(porLinha[linha]||[]).includes(o)?'checked':''}></td>`).join('')}
       </tr>`).join('')}</tbody>`;
 
   tabela.querySelectorAll(`.${classeCheckbox}`).forEach(chk=>{
     chk.addEventListener('change', async ()=>{
-      const prof = chk.closest('tr').dataset.prof;
+      const linha = chk.closest('tr').dataset.linha;
       const valor = chk.dataset.valor;
       const valorAnterior = !chk.checked;
       chk.disabled = true;
-      const resp = await api(acao, {prof, [nomeCampoAcao]: valor, valor: chk.checked});
+      const resp = await api(acao, {[nomeCampoLinha]: linha, [nomeCampoAcao]: valor, valor: chk.checked});
       chk.disabled = false;
       if(!resp.ok){
         alert(resp.erro || 'Não foi possível salvar essa opção.');
@@ -3437,9 +3617,10 @@ function renderizarMatrizProfissionalCampo({tabela, porProf, profissionais, opco
       }
       // Atualiza o cache local usado pelas travas do formulário, sem
       // precisar recarregar a página inteira.
-      if(!porProf[prof]) porProf[prof] = [];
-      porProf[prof] = porProf[prof].filter(v=>v!==valor);
-      if(chk.checked) porProf[prof].push(valor);
+      if(!porLinha[linha]) porLinha[linha] = [];
+      porLinha[linha] = porLinha[linha].filter(v=>v!==valor);
+      if(chk.checked) porLinha[linha].push(valor);
+      if(aoAlterar) aoAlterar(linha, valor, chk.checked);
     });
   });
 }
@@ -3884,10 +4065,10 @@ function abrirModal(registro, camposPendentes, contexto){
   // Lançamento — aqui também vale, por decisão explícita do usuário (a
   // trava de Atendente/Data, por comparação, só vale no Lançamento; esta
   // é diferente e vale nos dois lugares).
-  aplicarTravaAndarProcedimentoPorProfissional('modal_');
+  aplicarTravasCondicionadasDoFormulario('modal_');
   const selProfModal = document.getElementById('modal_prof');
   if(selProfModal){
-    selProfModal.addEventListener('change', ()=>aplicarTravaAndarProcedimentoPorProfissional('modal_'));
+    selProfModal.addEventListener('change', ()=>aplicarTravasCondicionadasDoFormulario('modal_'));
   }
 
 
