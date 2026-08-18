@@ -474,6 +474,14 @@
               <label>Exame</label>
               <select id="filtro-exame-gerencial"><option value="">Todos</option></select>
             </div>
+            <div class="campo">
+              <label>Procedimento</label>
+              <select id="filtro-procedimento-gerencial"><option value="">Todos</option></select>
+            </div>
+            <div class="campo">
+              <label>Paciente</label>
+              <input type="text" id="filtro-paciente-gerencial" placeholder="Buscar por nome...">
+            </div>
             <button class="botao secundario" id="botao-novo-registro-gerencial">+ Novo registro</button>
             <button class="botao sutil pequeno" id="botao-limpar-periodo">Limpar período</button>
             <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
@@ -927,7 +935,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.0.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.1.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1143,6 +1151,11 @@
             própria tela: se a tabela não existir, o card mostra o
             comando SQL certinho, igual já acontecia com Direitos e
             Privilégios).
+   v6.1.0 — Tela Lançamento: ordem dos campos mudou, "Andar" agora vem
+            antes de "Profissional" (resto da ordem inalterado). Aba
+            Verificar: dois filtros novos, "Procedimento" (select) e
+            "Paciente" (busca por texto, ao digitar) — ao lado dos que já
+            existiam.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
@@ -2470,6 +2483,17 @@ function preencherSelectsPeriodo(){
   filtroExameGerencial.addEventListener('change', atualizarEditar);
 
 
+  const filtroProcedimentoGerencial = document.getElementById('filtro-procedimento-gerencial');
+  filtroProcedimentoGerencial.innerHTML = '<option value="">Todos</option>' +
+    (estado.listas.procedimentos||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
+  filtroProcedimentoGerencial.addEventListener('change', atualizarEditar);
+
+
+  // Paciente é busca por texto (não é lista fixa) — atualiza a cada
+  // digitação, igual à busca já existente na tabela nominal do RMR.
+  document.getElementById('filtro-paciente-gerencial').addEventListener('input', atualizarEditar);
+
+
   const filtroProfCritica = document.getElementById('filtro-prof-critica');
   if(estado.papel==='profissional'){
     document.getElementById('campo-prof-critica').style.display = 'none';
@@ -2509,6 +2533,8 @@ function preencherSelectsPeriodo(){
     document.getElementById('botao-filtro-convenio').textContent = 'Todos';
     document.getElementById('filtro-forma-pagamento-gerencial').value = '';
     document.getElementById('filtro-exame-gerencial').value = '';
+    document.getElementById('filtro-procedimento-gerencial').value = '';
+    document.getElementById('filtro-paciente-gerencial').value = '';
     atualizarEditar();
   });
 
@@ -2525,9 +2551,9 @@ function preencherSelectsPeriodo(){
 function definicaoCampos(){
   const L = estado.listas;
   return [
+    {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'prof', rotulo:'Profissional', tipo:'select', opcoes:L.profissionais, obrigatorio:true,
       travado: estado.papel==='profissional'},
-    {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true},
     {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true},
     {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos, obrigatorio:true},
     {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
@@ -3027,6 +3053,8 @@ async function atualizarEditar(){
   const andar = document.getElementById('filtro-andar-gerencial').value;
   const formaPagamento = document.getElementById('filtro-forma-pagamento-gerencial').value;
   const exame = document.getElementById('filtro-exame-gerencial').value;
+  const procedimento = document.getElementById('filtro-procedimento-gerencial').value;
+  const paciente = document.getElementById('filtro-paciente-gerencial').value.trim().toUpperCase();
   const dataInicio = document.getElementById('filtro-data-inicio').value;
   const dataFim = document.getElementById('filtro-data-fim').value;
 
@@ -3046,6 +3074,12 @@ async function atualizarEditar(){
   }
   if(exame){
     registros = registros.filter(r => String(r.exames||'').trim().toUpperCase() === exame.trim().toUpperCase());
+  }
+  if(procedimento){
+    registros = registros.filter(r => String(r.procedimento||'').trim().toUpperCase() === procedimento.trim().toUpperCase());
+  }
+  if(paciente){
+    registros = registros.filter(r => String(r.paciente||'').trim().toUpperCase().includes(paciente));
   }
   // Se o registro tem pagamento dividido (formas_pagamento preenchido),
   // considera cada parte separadamente; senão trata como uma única "parte"
