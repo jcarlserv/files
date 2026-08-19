@@ -328,6 +328,12 @@
             for atualizada pra ler do plano de contas (isso fica pra uma
             próxima entrega, junto com o botão de Apresentação dentro de
             Análises, a aba Início e o Squad Financeiro na aba RMR).
+   v6.6.1 — Reorganização de arquivos: a lógica da aba Metas (que morava
+            junto com Configurações em configuracoes.js, desde que as duas
+            eram telas pequenas) virou js/metas.js próprio — configuracoes.js
+            caiu de 940 pra 873 linhas. Nenhuma mudança de comportamento,
+            só separação por aba, seguindo o mesmo padrão do resto do
+            sistema (um arquivo por aba).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
