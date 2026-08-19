@@ -145,6 +145,13 @@ async function carregarNomeClinica(){
   try{
     const resp = await api('obterConfiguracoes', {});
     nomeClinicaAtual = (resp.configuracoes && resp.configuracoes.nome_clinica) || 'Clínica';
+    // Logo e cor principal personalizadas (ver LOGO E CORES em configuracoes.js) —
+    // aplicadas já na tela de login, antes de qualquer usuário entrar, e ficam
+    // guardadas em estado pra a aba Configurações mostrar a prévia depois.
+    estado.logoClinica = (resp.configuracoes && resp.configuracoes.logo_clinica) || null;
+    estado.corPrimaria = (resp.configuracoes && resp.configuracoes.cor_primaria) || null;
+    if(estado.logoClinica) aplicarLogoNosSelo(estado.logoClinica);
+    if(estado.corPrimaria) aplicarPaletaCor(estado.corPrimaria);
   }catch(e){
     nomeClinicaAtual = 'Clínica';
   }

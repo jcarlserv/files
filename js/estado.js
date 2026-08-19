@@ -46,7 +46,8 @@ const DEFINICAO_PERMISSOES = [
   {tela:'Análises',       chave:'ver_rmr',                 rotulo:'Ver'},
   {tela:'RMR',            chave:'ver_rmr_squad',           rotulo:'Ver'},
   {tela:'Configurações',  chave:'ver_configuracoes',       rotulo:'Ver'},
-  {tela:'Configurações',  chave:'editar_configuracoes',    rotulo:'Editar'}
+  {tela:'Configurações',  chave:'editar_configuracoes',    rotulo:'Editar'},
+  {tela:'Apresentação',   chave:'ver_apresentacao',        rotulo:'Ver'}
 ];
 
 
@@ -105,5 +106,10 @@ const estado = {
   // atendentesProfissionais: {atendente: [prof, ...]}
   // profissionaisAtendentes: {prof: [atendente, ...]}
   atendentesProfissionais:{},
-  profissionaisAtendentes:{}
+  profissionaisAtendentes:{},
+  // Logo da clínica (base64) e cor primária personalizada (hex) — carregadas uma vez em
+  // carregarNomeClinica() (sessao-login.js) e usadas pra trocar o selo "C" pela logo e
+  // reaplicar a paleta salva. Ficam null enquanto a clínica não tiver configurado nada.
+  logoClinica:null,
+  corPrimaria:null
 };

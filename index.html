@@ -16,7 +16,7 @@
 <div id="tela-login">
   <div class="cartao-login">
     <div class="marca-login">
-      <div class="selo">C</div>
+      <div class="selo" id="selo-login">C</div>
       <h1>ProdClin</h1>
       <p id="subtitulo-login">Acesso restrito à equipe da clínica</p>
     </div>
@@ -42,7 +42,7 @@
   <div id="faixa-demo" style="display:none;">MODO DEMONSTRAÇÃO — configure SUPABASE_URL e SUPABASE_ANON_KEY para usar dados reais</div>
   <header class="topo">
     <div class="marca-topo">
-      <div class="selo">C</div>
+      <div class="selo" id="selo-topo">C</div>
       <div>
         <h2>ProdClin</h2>
         <span id="nome-clinica-topo">Clínica</span>
@@ -284,6 +284,58 @@
         <textarea id="texto-nota" style="width:100%;" placeholder="Anote aqui os pontos discutidos na reunião mensal..."></textarea>
         <div class="rodape-nota"><button class="botao secundario pequeno" id="botao-salvar-nota">Salvar anotação</button></div>
       </div>
+
+
+      <div class="cartao" id="cartao-financeiro-dre">
+        <h3>Financeiro (DRE) — <span id="dre-mes-referencia">—</span></h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Dado contábil (vem do banco/conciliação), não é calculado a partir da produção — por isso
+          precisa ser digitado manualmente, uma vez por mês. Alimenta a aba Apresentação; enquanto
+          não for preenchido, aquelas telas ficam em branco para este mês.
+        </p>
+        <div class="grade-form">
+          <div class="campo">
+            <label>Faturamento bruto (R$)</label>
+            <input type="number" id="dre-faturamento-bruto" step="0.01">
+          </div>
+          <div class="campo">
+            <label>Deduções e impostos (R$)</label>
+            <input type="number" id="dre-deducoes-impostos" step="0.01">
+          </div>
+          <div class="campo">
+            <label>Custo do serviço prestado (R$)</label>
+            <input type="number" id="dre-custo-servico" step="0.01">
+          </div>
+          <div class="campo">
+            <label>Despesas — Setor pessoal (R$)</label>
+            <input type="number" id="dre-despesas-pessoal" step="0.01">
+          </div>
+          <div class="campo">
+            <label>Despesas — Compras e manutenções (R$)</label>
+            <input type="number" id="dre-despesas-compras" step="0.01">
+          </div>
+          <div class="campo">
+            <label>Despesas — Operacionais (R$)</label>
+            <input type="number" id="dre-despesas-operacionais" step="0.01">
+          </div>
+          <div class="campo">
+            <label>Despesas — Financeiras (R$)</label>
+            <input type="number" id="dre-despesas-financeiras" step="0.01">
+          </div>
+          <div class="campo">
+            <label>Prolabore (R$)</label>
+            <input type="number" id="dre-prolabore" step="0.01">
+          </div>
+        </div>
+        <div class="grade-kpi" style="margin:18px 0 0;">
+          <div class="kpi"><div class="rotulo">Margem de contribuição</div><div class="valor teal" id="dre-margem-contribuicao">—</div></div>
+          <div class="kpi"><div class="rotulo">Resultado da operação</div><div class="valor" id="dre-resultado-operacao">—</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:16px;">
+          <button class="botao secundario" id="botao-salvar-dre">Salvar DRE do mês</button>
+          <span id="confirmacao-dre" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+        </div>
+      </div>
     </section>
 
 
@@ -300,6 +352,8 @@
           <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
           <div class="campo"><label>Andar</label><select id="rmr-andar"><option value="">Todos</option></select></div>
           <button class="botao sutil pequeno botao-exportar-pdf" id="rmr-botao-imprimir">Exportar PDF</button>
+          <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-mes" title="Todos os profissionais e andares do mês selecionado, sem os filtros da tela">Exportar dados (mês)</button>
+          <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-ano" title="Todos os profissionais e andares do ano selecionado, sem os filtros da tela">Exportar dados (ano)</button>
         </div>
       </div>
 
@@ -472,6 +526,32 @@
     </section>
 
 
+    <!-- ---------- APRESENTAÇÃO (gerada automaticamente a partir do banco) ---------- -->
+    <section class="painel" id="painel-apresentacao">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Apresentação</h2>
+          <p>Reunião mensal de resultados — montada automaticamente a partir dos dados do ProdClin, sem precisar exportar nem enviar nada.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo"><label>Mês</label><select id="apresentacao-mes"></select></div>
+          <div class="campo"><label>Ano</label><select id="apresentacao-ano"></select></div>
+          <button class="botao secundario pequeno" id="apresentacao-botao-tela-cheia">Apresentar (tela cheia)</button>
+          <button class="botao sutil pequeno" id="apresentacao-botao-exportar-pdf">Exportar PDF</button>
+        </div>
+      </div>
+
+      <div id="apresentacao-stage-wrap">
+        <div id="apresentacao-stage"><p class="vazio">Carregando...</p></div>
+        <div id="apresentacao-navegacao">
+          <button class="botao sutil pequeno" id="apresentacao-anterior">← Anterior</button>
+          <span id="apresentacao-indicador" class="mono">1 / 1</span>
+          <button class="botao sutil pequeno" id="apresentacao-proxima">Próxima →</button>
+        </div>
+      </div>
+    </section>
+
+
     <!-- ---------- CONFIGURAÇÕES ---------- -->
     <section class="painel" id="painel-configuracoes">
       <div class="cabecalho-painel">
@@ -496,6 +576,37 @@
         <p style="margin:14px 0 0;color:var(--ink-400);font-size:12px;">
           Esse nome aparece no cabeçalho do sistema e na tela de login, para todos os usuários.
         </p>
+      </div>
+
+
+      <div class="cartao" style="max-width:480px;">
+        <h3>Logo e cores</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Envie a logo da clínica — ela substitui o selo "C" no topo do sistema e na tela de
+          login, para todos os usuários. Ao enviar, o sistema sugere uma nova cor principal com
+          base na imagem (sem usar nenhuma IA — é só uma leitura das cores do arquivo).
+        </p>
+        <div class="campo">
+          <label>Arquivo da logo (PNG ou JPG)</label>
+          <input type="file" id="config-input-logo" accept="image/png,image/jpeg" />
+        </div>
+        <div id="config-preview-logo" style="display:none;margin:6px 0 16px;">
+          <img id="config-preview-logo-img" alt="Prévia da logo" style="max-width:110px;max-height:110px;border-radius:12px;border:1.5px solid var(--line);display:block;object-fit:contain;background:#fff;" />
+        </div>
+        <div id="config-sugestao-cor" style="display:none;margin:0 0 16px;padding:14px;border-radius:10px;background:var(--rose-100);">
+          <p style="margin:0 0 10px;font-size:12.5px;color:var(--ink-600);font-weight:600;">Cor sugerida com base na logo</p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div id="config-amostra-cor" style="width:34px;height:34px;border-radius:8px;border:1.5px solid var(--line);flex-shrink:0;"></div>
+            <span id="config-codigo-cor" class="mono" style="font-size:12.5px;"></span>
+            <button type="button" class="botao secundario pequeno" id="botao-aplicar-cor">Aplicar essa cor</button>
+            <button type="button" class="botao sutil pequeno" id="botao-descartar-cor">Ignorar sugestão</button>
+          </div>
+          <p id="config-cor-aplicada-aviso" style="display:none;margin:10px 0 0;font-size:12px;color:var(--teal-700);font-weight:600;">Cor aplicada — clique em "Salvar logo" para confirmar de vez.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="botao secundario" id="botao-salvar-logo">Salvar logo</button>
+          <span id="confirmacao-logo" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+        </div>
       </div>
 
 
@@ -617,7 +728,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.3.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.5.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -677,7 +788,6 @@
 <script src="js/dados-demo.js"></script>
 <script src="js/api.js"></script>
 <script src="js/graficos.js"></script>
-<script src="js/sessao-login.js"></script>
 <script src="js/app-init.js"></script>
 <script src="js/lancamento.js"></script>
 <script src="js/verificar.js"></script>
@@ -685,6 +795,11 @@
 <script src="js/configuracoes.js"></script>
 <script src="js/modal.js"></script>
 <script src="js/analises.js"></script>
+<script src="js/apresentacao.js"></script>
 <script src="js/rmr-squad.js"></script>
+<!-- sessao-login.js precisa ser o ÚLTIMO: ele roda código imediatamente ao
+     carregar (tenta retomar sessão salva, chamando iniciarApp()), então
+     todas as funções do resto do sistema já precisam existir antes disso. -->
+<script src="js/sessao-login.js"></script>
 </body>
 </html>

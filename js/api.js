@@ -447,6 +447,37 @@ async function supabaseApi(acao, dados) {
     }
 
 
+    // FINANCEIRO (DRE) — cadastrado manualmente 1x por mês na aba Metas (vem da
+    // contabilidade/conciliação bancária, não é calculado a partir da produção).
+    // Uma linha por mês/ano só, com os 7 grandes grupos usados no DRE resumido.
+    // Alimenta a aba Apresentação; enquanto não for preenchido pro mês, essas
+    // telas ficam em branco (não é possível calcular/estimar esse dado sozinho).
+    case 'obterFinanceiroDre': {
+      const { data, error } = await supabaseClient.from('financeiro_dre')
+        .select('*').eq('mes', nomeMesParaNumero(dados.mes)).eq('ano', Number(dados.ano)).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, dre: data || null};
+    }
+
+    case 'salvarFinanceiroDre': {
+      const registro = {
+        mes: nomeMesParaNumero(dados.mes), ano: Number(dados.ano),
+        faturamento_bruto: Number(dados.faturamento_bruto)||0,
+        deducoes_impostos: Number(dados.deducoes_impostos)||0,
+        custo_servico_prestado: Number(dados.custo_servico_prestado)||0,
+        despesas_pessoal: Number(dados.despesas_pessoal)||0,
+        despesas_compras_manutencao: Number(dados.despesas_compras_manutencao)||0,
+        despesas_operacionais: Number(dados.despesas_operacionais)||0,
+        despesas_financeiras: Number(dados.despesas_financeiras)||0,
+        prolabore: Number(dados.prolabore)||0,
+        atualizado_em: new Date().toISOString()
+      };
+      const { error } = await supabaseClient.from('financeiro_dre')
+        .upsert(registro, { onConflict: 'mes,ano' });
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
     case 'dashboard': {
       // Busca o intervalo de datas do mês selecionado EM PÁGINAS (não uma
       // chamada só) — filtrar por mês reduz o volume, mas não garante ficar
@@ -570,6 +601,24 @@ function mockApi(acao, dados) {
         taxa: Number(dados.taxa)||0,
         rateio_clinica: Number(dados.rateio_clinica)||0,
         rateio_coparticipado: Number(dados.rateio_coparticipado)||0
+      };
+      return {ok:true};
+    }
+    case 'obterFinanceiroDre': {
+      const chave = dados.mes+'-'+dados.ano;
+      return {ok:true, dre: demo.financeiroDre[chave] || null};
+    }
+    case 'salvarFinanceiroDre': {
+      const chave = dados.mes+'-'+dados.ano;
+      demo.financeiroDre[chave] = {
+        faturamento_bruto: Number(dados.faturamento_bruto)||0,
+        deducoes_impostos: Number(dados.deducoes_impostos)||0,
+        custo_servico_prestado: Number(dados.custo_servico_prestado)||0,
+        despesas_pessoal: Number(dados.despesas_pessoal)||0,
+        despesas_compras_manutencao: Number(dados.despesas_compras_manutencao)||0,
+        despesas_operacionais: Number(dados.despesas_operacionais)||0,
+        despesas_financeiras: Number(dados.despesas_financeiras)||0,
+        prolabore: Number(dados.prolabore)||0
       };
       return {ok:true};
     }

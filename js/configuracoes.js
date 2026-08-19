@@ -33,6 +33,11 @@ async function atualizarConfiguracoes(){
   document.getElementById('config-nome-clinica').value = nomeClinicaAtual;
   prepararSelectListaConfig();
   renderizarItensListaConfig();
+  prepararLogoCores();
+  if(estado.logoClinica && !logoBase64Pendente){
+    document.getElementById('config-preview-logo').style.display = 'block';
+    document.getElementById('config-preview-logo-img').src = estado.logoClinica;
+  }
 
 
   // Direitos e Privilégios nunca é liberado pela própria matriz de permissões —
@@ -637,6 +642,7 @@ async function atualizarMetas(){
   document.getElementById('tabela-metas').innerHTML = '<tr><td class="vazio">Carregando metas...</td></tr>';
   await atualizarTabelaMetas(mes, ano);
   await carregarNota(mes, ano);
+  await carregarFinanceiroDre(mes, ano);
   const podeEditarMetas = temPermissao('editar_metas');
   document.getElementById('botao-salvar-nota').style.display = podeEditarMetas ? 'inline-flex' : 'none';
   document.getElementById('texto-nota').disabled = !podeEditarMetas;
@@ -695,4 +701,310 @@ async function salvarNota(){
   await api('salvarNota', {mes, ano, texto});
   botao.textContent = 'Anotação salva ✓';
   setTimeout(()=>botao.textContent='Salvar anotação', 1800);
+}
+
+
+/* ---------------------------------------------------------------------
+   FINANCEIRO (DRE) — cartão na aba Metas. Dado contábil digitado
+   manualmente (não é derivado da produção) — uma linha por mês/ano.
+   Alimenta a aba Apresentação; ver tabela `financeiro_dre` no Supabase.
+--------------------------------------------------------------------- */
+const CAMPOS_DRE = [
+  ['dre-faturamento-bruto', 'faturamento_bruto'],
+  ['dre-deducoes-impostos', 'deducoes_impostos'],
+  ['dre-custo-servico', 'custo_servico_prestado'],
+  ['dre-despesas-pessoal', 'despesas_pessoal'],
+  ['dre-despesas-compras', 'despesas_compras_manutencao'],
+  ['dre-despesas-operacionais', 'despesas_operacionais'],
+  ['dre-despesas-financeiras', 'despesas_financeiras'],
+  ['dre-prolabore', 'prolabore']
+];
+
+// Soma a margem/resultado a partir dos campos já digitados na tela (chamado a
+// cada digitação, pra já mostrar o resultado antes mesmo de salvar).
+function recalcularDreNaTela(){
+  const v = campo => Number(document.getElementById(campo).value) || 0;
+  const faturamento = v('dre-faturamento-bruto');
+  const margemContribuicao = faturamento - v('dre-deducoes-impostos') - v('dre-custo-servico');
+  const resultado = margemContribuicao - v('dre-despesas-pessoal') - v('dre-despesas-compras')
+    - v('dre-despesas-operacionais') - v('dre-despesas-financeiras') - v('dre-prolabore');
+  document.getElementById('dre-margem-contribuicao').textContent = formatarMoeda(margemContribuicao);
+  const elResultado = document.getElementById('dre-resultado-operacao');
+  elResultado.textContent = formatarMoeda(resultado);
+  elResultado.className = 'valor' + (resultado < 0 ? '' : ' teal');
+  elResultado.style.color = resultado < 0 ? 'var(--danger)' : '';
+}
+
+let dreCamposProntos = false;
+function prepararCamposDre(){
+  if(dreCamposProntos) return;
+  CAMPOS_DRE.forEach(([id])=>document.getElementById(id).addEventListener('input', recalcularDreNaTela));
+  dreCamposProntos = true;
+}
+
+async function carregarFinanceiroDre(mes, ano){
+  prepararCamposDre();
+  document.getElementById('dre-mes-referencia').textContent = `${mes} de ${ano}`;
+  const resp = await api('obterFinanceiroDre', {mes, ano});
+  const dre = (resp.ok && resp.dre) ? resp.dre : null;
+  CAMPOS_DRE.forEach(([id, campoBanco])=>{
+    document.getElementById(id).value = dre ? (dre[campoBanco] || '') : '';
+  });
+  recalcularDreNaTela();
+
+  const podeEditarMetas = temPermissao('editar_metas');
+  CAMPOS_DRE.forEach(([id])=>document.getElementById(id).disabled = !podeEditarMetas);
+  document.getElementById('botao-salvar-dre').style.display = podeEditarMetas ? 'inline-flex' : 'none';
+}
+
+async function salvarFinanceiroDre(){
+  const mes = document.getElementById('filtro-mes-metas').value;
+  const ano = document.getElementById('filtro-ano-metas').value;
+  const confirmacao = document.getElementById('confirmacao-dre');
+  const dados = { mes, ano };
+  CAMPOS_DRE.forEach(([id, campoBanco])=>{ dados[campoBanco] = document.getElementById(id).value; });
+
+  confirmacao.style.color = 'var(--ink-400)';
+  confirmacao.textContent = 'Salvando...';
+  const resp = await api('salvarFinanceiroDre', dados);
+  if(!resp.ok){
+    confirmacao.style.color = 'var(--danger)';
+    confirmacao.textContent = resp.erro || 'Não foi possível salvar o DRE deste mês.';
+    return;
+  }
+  confirmacao.style.color = 'var(--teal-700)';
+  confirmacao.textContent = 'DRE salvo ✓';
+  setTimeout(()=>{ if(confirmacao.textContent==='DRE salvo ✓') confirmacao.textContent=''; }, 2500);
+}
+
+
+/* ---------------------------------------------------------------------
+   LOGO E CORES — envio da logo da clínica (guardada como base64 na
+   tabela `configuracoes`, chave 'logo_clinica') e sugestão de paleta
+   principal a partir das cores predominantes da imagem (processamento
+   100% local, via <canvas> — nenhuma IA envolvida). A cor escolhida é
+   salva em 'cor_primaria' (hex) e reaplicada em toda visita, via CSS
+   custom properties (--plum-900/800/700/500/300) — a cor --teal-* de
+   sucesso/positivo nunca é tocada, pra manter o contraste com a marca.
+--------------------------------------------------------------------- */
+let logoCoresProntos = false;
+let logoBase64Pendente = null;   // arquivo selecionado, ainda não salvo
+let corSugeridaPendente = null;  // hex sugerido, ainda não confirmado
+let corAplicadaPendente = null;  // hex que o usuário já clicou "Aplicar" (será salvo)
+
+function hexParaRgb(hex){
+  hex = hex.replace('#','');
+  return { r: parseInt(hex.slice(0,2),16), g: parseInt(hex.slice(2,4),16), b: parseInt(hex.slice(4,6),16) };
+}
+function rgbParaHex(r,g,b){
+  const c = v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');
+  return '#'+c(r)+c(g)+c(b);
+}
+function rgbParaHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h=0,s=0; const l=(max+min)/2;
+  const d = max-min;
+  if(d!==0){
+    s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){
+      case r: h = ((g-b)/d + (g<b?6:0)); break;
+      case g: h = ((b-r)/d + 2); break;
+      case b: h = ((r-g)/d + 4); break;
+    }
+    h/=6;
+  }
+  return {h:h*360, s, l};
+}
+function hslParaRgb(h,s,l){
+  h/=360;
+  const hue2rgb=(p,q,t)=>{
+    if(t<0) t+=1; if(t>1) t-=1;
+    if(t<1/6) return p+(q-p)*6*t;
+    if(t<1/2) return q;
+    if(t<2/3) return p+(q-p)*(2/3-t)*6;
+    return p;
+  };
+  let r,g,b;
+  if(s===0){ r=g=b=l; }
+  else{
+    const q = l<0.5 ? l*(1+s) : l+s-l*s;
+    const p = 2*l-q;
+    r = hue2rgb(p,q,h+1/3); g = hue2rgb(p,q,h); b = hue2rgb(p,q,h-1/3);
+  }
+  return { r:r*255, g:g*255, b:b*255 };
+}
+
+/* Lê os pixels de uma <img> já carregada (via canvas, reduzida pra 40×40 pra
+   ficar rápido) e devolve a cor predominante em hex — ignora pixels quase
+   brancos/pretos/muito dessaturados (fundo comum de arquivo de logo) pra não
+   sugerir uma cor "sem graça"; se sobrar só fundo neutro, cai pra média geral. */
+function extrairCorPredominante(imgEl){
+  const tamanho = 40;
+  const canvas = document.createElement('canvas');
+  canvas.width = tamanho; canvas.height = tamanho;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgEl, 0, 0, tamanho, tamanho);
+  let dados;
+  try{
+    dados = ctx.getImageData(0, 0, tamanho, tamanho).data;
+  }catch(e){
+    return '#8A3D79'; // imagem de outra origem/CORS bloqueou leitura — cai no plum padrão
+  }
+
+  const baldes = {};
+  let somaR=0, somaG=0, somaB=0, totalGeral=0;
+  for(let i=0; i<dados.length; i+=4){
+    const r=dados[i], g=dados[i+1], b=dados[i+2], a=dados[i+3];
+    if(a<128) continue; // pixel transparente
+    totalGeral++; somaR+=r; somaG+=g; somaB+=b;
+    const {s, l} = rgbParaHsl(r,g,b);
+    if(l>0.92 || l<0.08 || s<0.15) continue; // ignora fundo neutro/branco/preto
+    const chave = [Math.round(r/24), Math.round(g/24), Math.round(b/24)].join(',');
+    if(!baldes[chave]) baldes[chave] = {r:0,g:0,b:0,n:0};
+    baldes[chave].r+=r; baldes[chave].g+=g; baldes[chave].b+=b; baldes[chave].n++;
+  }
+
+  const chaves = Object.keys(baldes);
+  if(chaves.length===0){
+    // só tinha fundo neutro — usa a média geral mesmo assim
+    if(totalGeral===0) return '#8A3D79';
+    return rgbParaHex(somaR/totalGeral, somaG/totalGeral, somaB/totalGeral);
+  }
+  const maior = chaves.reduce((a,b)=> baldes[a].n>baldes[b].n ? a : b);
+  const {r,g,b,n} = baldes[maior];
+  return rgbParaHex(r/n, g/n, b/n);
+}
+
+/* Deriva os 5 tons (900/800/700/500/300) usados na marca a partir de UMA cor
+   base — mantém o matiz/saturação da cor extraída e só varia a luminosidade,
+   nos mesmos "degraus" da paleta plum original, pra preservar o contraste já
+   testado do layout (texto claro sobre --plum-900 no topo, etc.). */
+function derivarPaletaDeCor(hexBase){
+  const {r,g,b} = hexParaRgb(hexBase);
+  const {h, s} = rgbParaHsl(r,g,b);
+  const satUsada = Math.max(0.25, Math.min(s, 0.65)); // evita cor bruta demais ou cinza demais
+  const degraus = { 900:0.16, 800:0.20, 700:0.27, 500:0.40, 300:0.68 };
+  const paleta = {};
+  Object.keys(degraus).forEach(tom=>{
+    const {r:rr,g:gg,b:bb} = hslParaRgb(h, satUsada, degraus[tom]);
+    paleta[tom] = rgbParaHex(rr,gg,bb);
+  });
+  return paleta;
+}
+
+// Aplica a paleta (5 variáveis CSS) no :root, sobrescrevendo o valor padrão
+// da folha de estilos — vale pra toda a página, incluindo tela de login.
+function aplicarPaletaCor(hexBase){
+  if(!hexBase) return;
+  const paleta = derivarPaletaDeCor(hexBase);
+  const raiz = document.documentElement.style;
+  raiz.setProperty('--plum-900', paleta['900']);
+  raiz.setProperty('--plum-800', paleta['800']);
+  raiz.setProperty('--plum-700', paleta['700']);
+  raiz.setProperty('--plum-500', paleta['500']);
+  raiz.setProperty('--plum-300', paleta['300']);
+}
+
+// Remove qualquer cor aplicada nesta sessão e volta pra última cor
+// efetivamente SALVA no banco (ou pro roxo padrão da folha de estilos, se
+// a clínica nunca salvou nenhuma).
+function restaurarPaletaSalva(){
+  if(estado.corPrimaria){
+    aplicarPaletaCor(estado.corPrimaria);
+  } else {
+    ['--plum-900','--plum-800','--plum-700','--plum-500','--plum-300'].forEach(v=>{
+      document.documentElement.style.removeProperty(v);
+    });
+  }
+}
+
+// Troca o selo "C" pela logo (chamado tanto no boot, com a logo já salva,
+// quanto logo após o usuário enviar um arquivo novo, pra pré-visualizar).
+function aplicarLogoNosSelo(base64){
+  ['selo-login','selo-topo'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(base64){
+      el.innerHTML = `<img src="${base64}" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff;">`;
+    } else {
+      el.innerHTML = 'C';
+    }
+  });
+}
+
+function prepararLogoCores(){
+  if(logoCoresProntos) return;
+
+  document.getElementById('config-input-logo').addEventListener('change', (ev)=>{
+    const arquivo = ev.target.files[0];
+    const sugestaoBox = document.getElementById('config-sugestao-cor');
+    const avisoAplicada = document.getElementById('config-cor-aplicada-aviso');
+    sugestaoBox.style.display = 'none';
+    avisoAplicada.style.display = 'none';
+    corSugeridaPendente = null;
+    corAplicadaPendente = null;
+    logoBase64Pendente = null;
+    if(!arquivo) return;
+
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      logoBase64Pendente = leitor.result;
+      const preview = document.getElementById('config-preview-logo');
+      const previewImg = document.getElementById('config-preview-logo-img');
+      preview.style.display = 'block';
+      previewImg.src = logoBase64Pendente;
+
+      previewImg.onload = () => {
+        corSugeridaPendente = extrairCorPredominante(previewImg);
+        document.getElementById('config-amostra-cor').style.background = corSugeridaPendente;
+        document.getElementById('config-codigo-cor').textContent = corSugeridaPendente.toUpperCase();
+        sugestaoBox.style.display = 'block';
+      };
+    };
+    leitor.readAsDataURL(arquivo);
+  });
+
+  document.getElementById('botao-aplicar-cor').addEventListener('click', ()=>{
+    if(!corSugeridaPendente) return;
+    corAplicadaPendente = corSugeridaPendente;
+    aplicarPaletaCor(corAplicadaPendente);
+    document.getElementById('config-cor-aplicada-aviso').style.display = 'block';
+  });
+
+  document.getElementById('botao-descartar-cor').addEventListener('click', ()=>{
+    document.getElementById('config-sugestao-cor').style.display = 'none';
+    document.getElementById('config-cor-aplicada-aviso').style.display = 'none';
+    corAplicadaPendente = null;
+    restaurarPaletaSalva();
+  });
+
+  document.getElementById('botao-salvar-logo').addEventListener('click', async ()=>{
+    if(!logoBase64Pendente){ alert('Escolha um arquivo de logo antes de salvar.'); return; }
+    const confirmacao = document.getElementById('confirmacao-logo');
+    confirmacao.style.color = 'var(--ink-400)';
+    confirmacao.textContent = 'Salvando...';
+
+    const respLogo = await api('salvarConfiguracao', {chave:'logo_clinica', valor: logoBase64Pendente});
+    if(!respLogo.ok){
+      confirmacao.style.color = 'var(--danger)';
+      confirmacao.textContent = respLogo.erro || 'Não foi possível salvar a logo.';
+      return;
+    }
+    estado.logoClinica = logoBase64Pendente;
+    aplicarLogoNosSelo(estado.logoClinica);
+
+    if(corAplicadaPendente){
+      const respCor = await api('salvarConfiguracao', {chave:'cor_primaria', valor: corAplicadaPendente});
+      if(respCor.ok){
+        estado.corPrimaria = corAplicadaPendente;
+      }
+    }
+
+    confirmacao.style.color = 'var(--teal-700)';
+    confirmacao.textContent = 'Logo salva ✓';
+    setTimeout(()=>{ if(confirmacao.textContent==='Logo salva ✓') confirmacao.textContent=''; }, 2500);
+  });
+
+  logoCoresProntos = true;
 }

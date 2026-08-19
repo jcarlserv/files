@@ -201,6 +201,64 @@
             ficar vazio. Requer uma tabela nova no Supabase,
             `profissionais_exames` — a própria tela mostra o SQL certinho
             se ela não existir ainda.
+   v6.4.0 — Configurações: novo cartão "Logo e cores" (entre "Identidade da
+            clínica" e "Listas do sistema") — envio da logo da clínica
+            (guardada em base64 na tabela `configuracoes`, chave
+            'logo_clinica'), que passa a aparecer no lugar do selo "C" no
+            topo e na tela de login pra todos os usuários. Ao enviar,
+            sugere uma cor principal com base nas cores da imagem
+            (processamento local via canvas, sem IA nenhuma) — o usuário
+            confirma em "Aplicar essa cor" e ela é salva em
+            'cor_primaria', reaplicada em toda visita via CSS custom
+            properties (só a família --plum-*; a cor --teal-* de sucesso
+            não é alterada).
+            Aba Análises: dois botões novos, "Exportar dados (mês)" e
+            "Exportar dados (ano)" — geram um relatório à parte (nova
+            aba, via print), com TODOS os profissionais e andares (ignora
+            o filtro "Andar" da tela, usa só o Mês/Ano já selecionados),
+            só com tabelas agregadas (financeiro, ranking por
+            profissional, procedimentos, exames, biópsias, eficiência de
+            turnos, e evolução mensal no modo "ano") — sem nenhum texto
+            de análise redigido e sem dado nominal de paciente. Pensado
+            pra alimentar uma IA externa que monta a apresentação mensal
+            de resultados.
+   v6.5.0 — Nova aba "Apresentação" (permissão `ver_apresentacao`): monta
+            sozinha, a partir do banco, uma reunião mensal de resultados
+            navegável em slides (setas/teclado, tela cheia via Fullscreen
+            API, exportação em PDF via print) — sem precisar exportar nem
+            enviar nada manualmente. Cobre Resumo Executivo, Evolução do
+            ano, Composição da receita por Andar, seções separadas de
+            SETOR TÉRREO e 1º ANDAR — COPARTICIPADOS (particular×convênio,
+            previsto×realizado, volume operacional, ticket médio,
+            faturamento comparativo, top 10 profissionais, ocupação de
+            turnos, USG histórico) e Acompanhamento Financeiro (DRE e
+            estrutura de custos). "Previsto" por andar é a soma das metas
+            dos profissionais cadastrados como exclusivos daquele andar
+            (Configurações → Profissionais por andar) — o ProdClin não
+            guarda meta por categoria de procedimento, só por profissional.
+            Aba Metas: novo cartão "Financeiro (DRE)" — 8 campos digitados
+            manualmente 1x por mês (dado contábil, não vem da produção),
+            com margem de contribuição e resultado calculados na hora.
+            Alimenta a aba Apresentação; sem isso preenchido, as duas
+            telas financeiras da apresentação ficam em branco, com aviso.
+            Requer uma tabela nova no Supabase, `financeiro_dre` — SQL:
+            create table if not exists financeiro_dre (
+              id uuid primary key default gen_random_uuid(),
+              mes integer not null, ano integer not null,
+              faturamento_bruto numeric not null default 0,
+              deducoes_impostos numeric not null default 0,
+              custo_servico_prestado numeric not null default 0,
+              despesas_pessoal numeric not null default 0,
+              despesas_compras_manutencao numeric not null default 0,
+              despesas_operacionais numeric not null default 0,
+              despesas_financeiras numeric not null default 0,
+              prolabore numeric not null default 0,
+              atualizado_em timestamptz not null default now(),
+              unique(mes, ano)
+            );
+            alter table financeiro_dre enable row level security;
+            create policy acesso_total_anon on financeiro_dre for all
+              using (true) with check (true);
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

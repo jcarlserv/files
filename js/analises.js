@@ -247,6 +247,8 @@ function rmrPrepararSelects(){
   selAndar.addEventListener('change', atualizarRMR);
   document.getElementById('rmr-busca-detalhe').addEventListener('input', rmrFiltrarTabelaDetalhe);
   document.getElementById('rmr-botao-salvar-nota').addEventListener('click', rmrSalvarNota);
+  document.getElementById('rmr-botao-exportar-dados-mes').addEventListener('click', ()=>gerarRelatorioDadosBrutos('mes'));
+  document.getElementById('rmr-botao-exportar-dados-ano').addEventListener('click', ()=>gerarRelatorioDadosBrutos('ano'));
   rmrSelectsProntos = true;
 }
 
@@ -679,3 +681,206 @@ async function rmrSalvarNota(){
 }
 
 
+
+
+/* =====================================================================
+   EXPORTAR DADOS BRUTOS (mês ou ano) — diferente do "Exportar PDF" comum
+   (que é só um print da tela atual, respeitando os filtros). Esse gera um
+   documento à parte, sempre com TODOS os profissionais e TODOS os andares
+   (ignora o filtro "Andar" da tela — só usa Mês/Ano já selecionados),
+   pensado pra alimentar uma IA externa que vai montar uma apresentação
+   (o usuário já faz isso hoje colando um PDF assim numa IA de terceiros).
+   Por isso é só TABELA/NÚMERO, sem nenhum texto de análise redigido por
+   aqui, e sem dado nominal de paciente (só agregados), por privacidade.
+   Abre uma aba nova e imprime — mesmo mecanismo (sem lib externa) do resto
+   do sistema. A janela é aberta ANTES de qualquer busca ao banco, porque
+   navegadores bloqueiam popup se o window.open não for a primeiríssima
+   coisa a rodar no clique do usuário.
+===================================================================== */
+function relatorioAgruparESomar(registros, campo){
+  const grupos = {};
+  registros.forEach(r=>{
+    const chave = r[campo] || 'Não informado';
+    if(!grupos[chave]) grupos[chave] = {quantidade:0, valor:0};
+    grupos[chave].quantidade++;
+    grupos[chave].valor += Number(r.valor)||0;
+  });
+  return grupos;
+}
+
+function relatorioTabelaHtml(titulo, cabecalhos, linhas){
+  if(linhas.length===0) return `<h3>${titulo}</h3><p class="vazio-rel">Sem dados neste período.</p>`;
+  return `<h3>${titulo}</h3>
+    <table>
+      <thead><tr>${cabecalhos.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+      <tbody>${linhas.map(l=>`<tr>${l.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+}
+
+async function gerarRelatorioDadosBrutos(modo){
+  const mes = document.getElementById('rmr-mes').value;
+  const ano = Number(document.getElementById('rmr-ano').value);
+
+  // Abre a aba/janela JÁ (sem esperar a busca) pra não ser bloqueada como popup.
+  const janela = window.open('', '_blank');
+  if(!janela){
+    alert('O navegador bloqueou a abertura da nova aba. Permita pop-ups para este site e tente de novo.');
+    return;
+  }
+  janela.document.write('<p style="font-family:sans-serif;padding:40px;color:#5B4A57;">Preparando relatório...</p>');
+  janela.document.close();
+
+  let registros, metas;
+  try{
+    if(modo==='mes'){
+      const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
+      const respProd = await buscarProducaoCompleta({dataInicio, dataFim});
+      registros = respProd.ok ? respProd.registros : [];
+      const respMetas = await api('listarMetas', {mes, ano});
+      metas = respMetas.ok ? respMetas.metas : [];
+    } else {
+      const respProd = await buscarProducaoCompleta({ano});
+      registros = respProd.ok ? respProd.registros : [];
+      const respMetas = await api('listarMetas', {ano});
+      metas = respMetas.ok ? respMetas.metas : [];
+    }
+  }catch(e){
+    janela.document.body.innerHTML = '<p style="font-family:sans-serif;padding:40px;color:#B23A3A;">Erro ao buscar os dados. Feche esta aba e tente de novo.</p>';
+    return;
+  }
+
+  const tituloPeriodoSimples = modo==='mes' ? `${mes} de ${ano}` : `Ano de ${ano}`;
+
+  const totalValor = registros.reduce((s,r)=>s+(Number(r.valor)||0),0);
+  const profissionaisAtivos = new Set(registros.map(r=>r.prof)).size;
+
+  // --- Ranking por profissional ---
+  const porProf = {};
+  registros.forEach(r=>{
+    const p = r.prof||'Não informado';
+    if(!porProf[p]) porProf[p] = {quantidade:0, valor:0};
+    porProf[p].quantidade++; porProf[p].valor += Number(r.valor)||0;
+  });
+  const linhasProf = Object.keys(porProf).sort((a,b)=>porProf[b].valor-porProf[a].valor).map(p=>[
+    p, porProf[p].quantidade, formatarMoeda(porProf[p].valor), formatarMoeda(porProf[p].valor/porProf[p].quantidade)
+  ]);
+
+  // --- Financeiro por forma de pagamento (considera pagamento dividido) ---
+  const porForma = {};
+  registros.forEach(r=>{
+    partesPagamentoDe(r).forEach(p=>{
+      const forma = String(p.forma||'Não informada').trim().toUpperCase() || 'NÃO INFORMADA';
+      if(!porForma[forma]) porForma[forma] = {quantidade:0, valor:0};
+      porForma[forma].quantidade++; porForma[forma].valor += Number(p.valor)||0;
+    });
+  });
+  const linhasForma = Object.keys(porForma).sort((a,b)=>porForma[b].valor-porForma[a].valor).map(f=>[
+    f, porForma[f].quantidade, formatarMoeda(porForma[f].valor)
+  ]);
+
+  // --- Financeiro por convênio ---
+  const porConvenio = relatorioAgruparESomar(registros.map(r=>Object.assign({},r,{convenio:r.convenio||'PARTICULAR'})), 'convenio');
+  const linhasConvenio = Object.keys(porConvenio).sort((a,b)=>porConvenio[b].valor-porConvenio[a].valor).map(c=>[
+    c, porConvenio[c].quantidade, formatarMoeda(porConvenio[c].valor)
+  ]);
+
+  // --- Procedimentos ---
+  const porProcedimento = relatorioAgruparESomar(registros.map(r=>Object.assign({},r,{procedimento:r.procedimento||'Não informado'})), 'procedimento');
+  const linhasProcedimento = Object.keys(porProcedimento).sort((a,b)=>porProcedimento[b].quantidade-porProcedimento[a].quantidade).map(p=>[
+    p, porProcedimento[p].quantidade, formatarMoeda(porProcedimento[p].valor)
+  ]);
+
+  // --- Exames ---
+  const comExame = registros.filter(r=>r.exames);
+  const porExame = {};
+  comExame.forEach(r=>{ if(!porExame[r.exames]) porExame[r.exames]={quantidade:0}; porExame[r.exames].quantidade++; });
+  const linhasExame = Object.keys(porExame).sort((a,b)=>porExame[b].quantidade-porExame[a].quantidade).map(e=>[e, porExame[e].quantidade]);
+
+  // --- Biópsias ---
+  const comBiopsia = registros.filter(r=>r.biopsias);
+  const porBiopsia = {};
+  comBiopsia.forEach(r=>{ porBiopsia[r.biopsias]=(porBiopsia[r.biopsias]||0)+1; });
+  const linhasBiopsia = Object.keys(porBiopsia).sort().map(f=>[f, porBiopsia[f]]);
+
+  // --- Eficiência de turnos por profissional (usa metas do período) ---
+  const usoPorProf = {};
+  registros.forEach(r=>{
+    usoPorProf[r.prof] = usoPorProf[r.prof] || new Set();
+    usoPorProf[r.prof].add(r.data+'_'+r.turno);
+  });
+  const linhasEficiencia = metas.map(m=>{
+    const usados = usoPorProf[m.prof] ? usoPorProf[m.prof].size : 0;
+    const disp = Number(m.turnos_disponibilizados)||0;
+    const ociosos = Math.max(0, disp-usados);
+    const pct = disp ? Math.round((usados/disp)*100)+'%' : '—';
+    return [m.prof, disp, usados, ociosos, pct];
+  }).sort((a,b)=>b[1]-a[1]);
+
+  // --- Evolução mensal (só no modo "ano") ---
+  let blocoEvolucao = '';
+  if(modo==='ano'){
+    const porMes = {};
+    MESES.forEach(m=>porMes[m]={quantidade:0, valor:0});
+    registros.forEach(r=>{ if(porMes[r.mes]){ porMes[r.mes].quantidade++; porMes[r.mes].valor+=Number(r.valor)||0; } });
+    const hoje = new Date();
+    const idxLimite = (ano === hoje.getFullYear()) ? hoje.getMonth() : 11;
+    const linhasEvolucao = MESES.slice(0, idxLimite+1).map(m=>[m, porMes[m].quantidade, formatarMoeda(porMes[m].valor)]);
+    blocoEvolucao = relatorioTabelaHtml('Evolução mensal', ['Mês','Atendimentos','Valor'], linhasEvolucao);
+  }
+
+  const geradoEm = new Date().toLocaleString('pt-BR');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>ProdClin — Dados brutos — ${tituloPeriodoSimples}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#241522;padding:32px;max-width:1000px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .subtitulo{color:#5B4A57;font-size:13px;margin:0 0 24px;}
+  h2{font-size:15px;background:#F6ECF2;padding:8px 12px;border-radius:6px;margin:28px 0 4px;}
+  h3{font-size:13px;color:#5C2350;margin:18px 0 8px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;}
+  th,td{padding:6px 10px;border-bottom:1px solid #E7DDE4;text-align:left;}
+  th{background:#FAFAF8;font-weight:700;text-transform:uppercase;font-size:10.5px;color:#5B4A57;}
+  .kpis{display:flex;gap:16px;margin:16px 0 8px;flex-wrap:wrap;}
+  .kpi{border:1px solid #E7DDE4;border-radius:8px;padding:10px 16px;min-width:140px;}
+  .kpi .r{font-size:10.5px;color:#8B7A87;text-transform:uppercase;}
+  .kpi .v{font-size:18px;font-weight:700;color:#3D1636;}
+  .vazio-rel{color:#8B7A87;font-size:12px;}
+  .rodape{margin-top:32px;font-size:11px;color:#8B7A87;border-top:1px solid #E7DDE4;padding-top:10px;}
+  @media print{ body{padding:0;} h2{break-after:avoid;} table{break-inside:avoid;} }
+</style></head><body>
+
+<h1>ProdClin — Relatório de dados brutos</h1>
+<p class="subtitulo">Período: <b>${tituloPeriodoSimples}</b> • Todos os profissionais e andares (sem filtros) • Gerado em ${geradoEm}</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="r">Atendimentos</div><div class="v">${registros.length}</div></div>
+  <div class="kpi"><div class="r">Valor total</div><div class="v">${formatarMoeda(totalValor)}</div></div>
+  <div class="kpi"><div class="r">Ticket médio</div><div class="v">${formatarMoeda(registros.length?totalValor/registros.length:0)}</div></div>
+  <div class="kpi"><div class="r">Profissionais ativos</div><div class="v">${profissionaisAtivos}</div></div>
+</div>
+
+<h2>Financeiro</h2>
+${relatorioTabelaHtml('Por forma de pagamento', ['Forma','Qtd.','Valor'], linhasForma)}
+${relatorioTabelaHtml('Por convênio', ['Convênio','Qtd.','Valor'], linhasConvenio)}
+
+<h2>Produção por profissional</h2>
+${relatorioTabelaHtml('Ranking', ['Profissional','Atendimentos','Valor realizado','Ticket médio'], linhasProf)}
+${relatorioTabelaHtml('Eficiência de turnos', ['Profissional','Turnos disp.','Turnos usados','Ociosos','% eficiência'], linhasEficiencia)}
+
+<h2>Procedimentos e exames</h2>
+${relatorioTabelaHtml('Por procedimento', ['Procedimento','Qtd.','Valor'], linhasProcedimento)}
+${relatorioTabelaHtml('Por exame', ['Exame','Qtd.'], linhasExame)}
+${relatorioTabelaHtml('Biópsias por frascos', ['Frascos','Qtd.'], linhasBiopsia)}
+
+${blocoEvolucao}
+
+<div class="rodape">ProdClin — relatório de dados agregados (sem identificação de pacientes), gerado automaticamente para uso interno/análise.</div>
+
+</body></html>`;
+
+  janela.document.open();
+  janela.document.write(html);
+  janela.document.close();
+  setTimeout(()=>{ try{ janela.focus(); janela.print(); }catch(e){} }, 400);
+}

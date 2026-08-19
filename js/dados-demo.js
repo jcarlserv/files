@@ -16,6 +16,9 @@ const demo = {
   // chave "Mês-Ano" -> {taxa, rateio_clinica, rateio_coparticipado} — equivalente
   // à tabela `coparticipados` (uma linha global por mês, prof='GERAL').
   coparticipados: {},
+  // chave "Mês-Ano" -> {faturamento_bruto, deducoes_impostos, ...} — equivalente à
+  // tabela `financeiro_dre` (DRE mensal, cadastrado manualmente na aba Metas).
+  financeiroDre: {},
   // Lista de {prof, andar} — equivalente à tabela profissionais_andares.
   profissionaisAndares:[
     {prof:'ANGELINA', andar:'TÉRREO'},
