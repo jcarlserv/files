@@ -1,0 +1,211 @@
+/* =====================================================================
+   ProdClin — config.js
+   Configuração do Supabase (URL + chave pública) e o cabeçalho de versão/changelog do sistema.
+   IMPORTANTE: a chave abaixo é a 'publishable/anon key' do Supabase — ela É pública por
+   natureza (roda no navegador de qualquer usuário) e não pode ser 'escondida' só por estar
+   num arquivo separado. A segurança real do sistema depende das políticas de RLS no banco
+   e (idealmente, no futuro) de autenticação de verdade via Supabase Auth.
+   Este arquivo é carregado via <script src> em index.html, na mesma ordem
+   em que aparecia originalmente dentro do <script> único — variáveis e
+   funções continuam compartilhando o escopo global, exatamente como antes.
+===================================================================== */
+
+/* =====================================================================
+   CONFIGURAÇÃO — Supabase
+   Preencha SUPABASE_URL e SUPABASE_ANON_KEY com os valores do seu
+   projeto (Project Settings > API Keys, no painel do Supabase — use a
+   "Publishable key", nunca a "Secret key"). Enquanto SUPABASE_URL
+   estiver vazio, o sistema roda em MODO DEMONSTRAÇÃO com dados de
+   exemplo guardados só nesta sessão.
+===================================================================== */
+/* =====================================================================
+   CONTROLE DE VERSÃO — atualizar o número abaixo (e a <span id="versao-
+   sistema"> no rodapé) a cada alteração entregue neste arquivo, para que
+   o rodapé do sistema sempre reflita a versão realmente publicada.
+
+   v2.5.0 — Aba Verificar: novo card "Repasse de coparticipados" (taxa de
+            18% + rateio 40% clínica / 60% coparticipado), calculado sobre
+            os lançamentos filtrados e salvo por mês na tabela
+            `coparticipados` do Supabase.
+   v2.6.0 — Aba Verificar: reorganizada em 4 cards separados, na ordem
+            Filtros → Repasse de coparticipados → Resumo financeiro →
+            Tabela de lançamentos (antes tudo ficava junto num só card,
+            com o Repasse isolado no fim da aba).
+   v2.7.0 — Lançamento/Verificar: forma de pagamento agora pode ser
+            dividida em mais de uma forma no mesmo lançamento (ex.: parte
+            em dinheiro, parte no cartão), sem duplicar o procedimento. O
+            "Valor (R$)" passou a ser calculado automaticamente como a
+            soma das partes. Requer a coluna nova `formas_pagamento`
+            (jsonb) na tabela `producao` do Supabase — ver instrução no
+            final da resposta que introduziu esta versão.
+   v2.8.0 — Tela Lançamento: campo "Atendente" vem travado com o nome do
+            próprio usuário quando o papel logado é atendente (só nessa
+            tela; no modal de edição continua livre).
+   v2.9.0 — Coluna "Exame" adicionada em 3 tabelas nominais que ainda não
+            mostravam esse dado: "Lançamentos" (aba Verificar), "Meus
+            últimos lançamentos" (aba Lançamento) e "Atendimentos por
+            convênio" (aba RMR) — nessa última, a busca por texto também
+            passou a considerar o exame.
+   v2.10.0 — Aba Verificar: novo filtro "Exame" (select), junto dos
+             filtros de Profissional/Andar/Convênio/Forma de pagamento —
+             também resetado pelo botão "Limpar período".
+   v2.11.0 — Aba RMR: card "Atendimentos por convênio" movido para o
+             final da aba (depois de "Sugestões de melhoria").
+   v2.12.0 — Correção: nas 3 tabelas que mostram "% atingido" da meta
+             (Dashboard "Meta × realizado", RMR "Todos os profissionais"
+             e RMR "Eficiência de turnos"), quando o profissional NÃO tem
+             meta cadastrada a coluna agora fica em branco (—), sem barra
+             e sem %. Antes o Dashboard mostrava 100% indevidamente (bug
+             reportado) e o RMR mostrava 0% — ambos enganosos, já que sem
+             meta não existe "percentual atingido" de verdade.
+   v2.13.0 — Correção de dados incompletos: Dashboard, Análises e Crítica
+             passaram a buscar direto o intervalo de datas do mês
+             selecionado (gte/lte na própria query), em vez de buscar o
+             ano inteiro e filtrar o mês no navegador — essa segunda
+             forma corria risco de corte silencioso do Supabase quando o
+             total de linhas do ano passava do limite de retorno de uma
+             consulta só, fazendo essas telas mostrarem menos lançamentos
+             do que existem de verdade. RMR e "Evolução do ano" (que
+             realmente precisam do ano inteiro) passaram a buscar em
+             páginas de 1000 linhas (buscarProducaoCompleta) até trazer
+             tudo, em vez de uma chamada só.
+   v2.14.0 — Correção adicional: filtrar por data (v2.13.0) reduz o
+             volume mas não garante ficar abaixo do limite de linhas de
+             uma consulta do Supabase se o período tiver muitos
+             lançamentos. Agora TODAS as buscas de produção sem limite
+             fixo (Dashboard, Verificar, Crítica, Análises — além de RMR
+             e Evolução do ano, já corrigidas antes) usam
+             buscarProducaoCompleta (paginação em blocos de 1000), então
+             nenhuma tela mais sofre corte silencioso, independente do
+             volume de dados.
+   v2.15.0 — Dashboard, Squad Atendimento: "Atendimentos por profissional"
+             passou a ocupar a largura toda do card; "Distribuição por
+             convênio" e "Distribuição por andar" ficam lado a lado,
+             abaixo dele.
+   v3.0.0 — Fusão das abas Dashboard e Análises Cruzadas numa única aba
+            "Análises": filtros de Mês/Ano/Andar unificados (não mais
+            duplicados), conteúdo do Dashboard (KPIs, gráficos fixos,
+            Meta × realizado, Evolução do ano) mantido tal como estava,
+            seguido de uma seção "Análise flexível" com os cards por
+            dimensão e correlação que já existiam na Análises. A
+            permissão `ver_dashboard` foi abandonada — a aba passa a
+            depender só de `ver_analises`. Linhas antigas com
+            chave='ver_dashboard' na tabela `permissoes` do Supabase
+            ficam inofensivas (só não são mais lidas pelo sistema).
+   v3.0.1 — Card "Quantidade e valor por dimensão" (aba Análises): o
+            gráfico ficava ao lado da tabela, agora fica embaixo dela.
+   v3.0.2 — Tela Lançamento: campo "Data" vem travado no dia de hoje
+            quando o papel logado é atendente (não pode escolher outra
+            data ao criar um lançamento).
+   v4.0.0 — Fusão das abas Análises e RMR numa única aba "RMR": filtros de
+            Mês/Ano/Andar unificados (usa só rmr-mes/rmr-ano/rmr-andar).
+            A única sobreposição real (tabela "Meta × realizado por
+            profissional", que existia de dois jeitos quase idênticos)
+            virou uma tabela só, com um gráfico de barras novo logo
+            abaixo. As duas seções de evolução mensal (uma baseada em
+            meta, outra no ano anterior) foram agrupadas num só bloco
+            "Evolução do ano" com os 4 gráficos. Gráficos novos também
+            foram adicionados abaixo das tabelas de Exames, Procedimentos,
+            Biópsias e Eficiência de turnos, pra melhor visualização. A
+            permissão `ver_analises` foi abandonada — a aba passa a
+            depender só de `ver_rmr` (o inverso da fusão anterior, que
+            tinha abandonado `ver_dashboard` em favor de `ver_analises`).
+            Ganho técnico: a aba inteira agora usa UMA busca só
+            (buscarProducaoCompleta do ano, já paginada) para calcular
+            tudo — KPIs, gráficos, tabelas e análise flexível — em vez de
+            buscas separadas que já causaram divergência de dados entre
+            telas no passado (bug da Daniele Erthal, v2.13.0-v2.14.0).
+            Linhas antigas com chave='ver_analises' na tabela
+            `permissoes` do Supabase ficam inofensivas (só não são mais
+            lidas pelo sistema).
+   v5.0.0 — A aba que se chamava "RMR" (fusão da v4.0.0) foi renomeada
+            para "Análises" (conteúdo interno não mudou, só o rótulo e o
+            título). Uma aba NOVA chamada "RMR" foi criada do zero, com
+            estrutura hierárquica "Squad Atendimento" → andar (dinâmico)
+            → médico (dinâmico): cada médico tem uma tabela mensal "Dados
+            de atendimento" (Prd. úteis = turnos_disponibilizados da aba
+            Metas; Meta per. = meta acumulada do ano até o mês), contagem
+            do mês + tabela mensal de Consultas/Exames/Procedimentos/
+            Cirurgias/Biópsias (categorizado a partir do campo
+            "procedimento" + "exames" + "biopsias"), e um gráfico
+            comparativo anual. Cada andar também tem uma "Visão geral"
+            agregada (todos os médicos somados) com essas mesmas
+            categorias, mais Convênio e Forma de pagamento (quantidade +
+            valor). Nova permissão `ver_rmr_squad` controla essa aba
+            nova — `ver_rmr` continua controlando a aba "Análises"
+            renomeada, sem precisar de migração no Supabase desta vez.
+   v5.0.1 — Correção: a aba RMR nova não aparecia (id da navegação
+            'rmrSquad' não batia com o id do painel HTML
+            'painel-rmr-squad' — o sistema monta esse id automaticamente
+            como "painel-" + id da aba, então precisam ser idênticos).
+            Corrigido para 'rmr-squad' nos dois lugares.
+   v5.1.0 — Aba RMR: novos filtros "Andar" e "Profissional", ao lado de
+            Mês/Ano. Os dois filtram só na hora de montar a tela (sem
+            buscar os dados de novo — o ano inteiro já está em cache).
+            Selecionar um profissional específico esconde a "Visão geral"
+            daquele andar (que só faz sentido somando todo mundo) e
+            mostra só o bloco daquele médico.
+   v5.2.0 — Aba RMR: nada é mostrado até escolher um andar no filtro (era
+            isso que deixava a tela gigante — Térreo e Coparticipados
+            empilhados de uma vez). O filtro "Profissional" agora só
+            lista quem realmente atua no andar escolhido (antes listava
+            todo mundo da clínica) e fica desabilitado, com a dica
+            "Escolha um andar primeiro", enquanto nenhum andar for
+            selecionado.
+   v6.0.0 — Nova funcionalidade: cadastro de "Profissionais por andar" e
+            "Profissionais por procedimento" (aba Configurações, só
+            gerente). Um profissional pode ter mais de um andar/
+            procedimento marcado. Isso trava os campos "Andar" e
+            "Procedimento" na tela de Lançamento E no modal de edição
+            (Verificar/Crítica): ao escolher o Profissional, os dois
+            campos passam a mostrar só as opções cadastradas pra ele — e
+            ficam vazios (bloqueando o salvamento, via validação de campo
+            obrigatório já existente) se o profissional ainda não tiver
+            nada cadastrado. Um valor já salvo que não bata mais com o
+            cadastro atual (edição de lançamento antigo) é mantido como
+            opção extra, marcado "(fora do cadastro)", pra não sumir dado
+            histórico. Requer duas tabelas novas no Supabase —
+            `profissionais_andares` e `profissionais_procedimentos` — ver
+            SQL na resposta que introduziu esta versão (ou direto na
+            própria tela: se a tabela não existir, o card mostra o
+            comando SQL certinho, igual já acontecia com Direitos e
+            Privilégios).
+   v6.1.0 — Tela Lançamento: ordem dos campos mudou, "Andar" agora vem
+            antes de "Profissional" (resto da ordem inalterado). Aba
+            Verificar: dois filtros novos, "Procedimento" (select) e
+            "Paciente" (busca por texto, ao digitar) — ao lado dos que já
+            existiam.
+   v6.2.0 — Reversão parcial da v6.1.0: "Profissional" voltou a vir antes
+            de "Andar" no Lançamento — necessário porque agora o
+            Profissional também pode depender do Atendente (ver abaixo),
+            então a ordem de dependência é Atendente → Profissional →
+            Andar/Procedimento, não o contrário.
+            Nova funcionalidade: cadastro "Atendentes por profissional"
+            (aba Configurações, só gerente) — mesma mecânica das matrizes
+            de Andar/Procedimento, mas essa trava funciona em DUAS
+            direções conforme o contexto: (1) quando é a própria atendente
+            logada lançando no Lançamento (Atendente já travado no nome
+            dela), o campo Profissional passa a mostrar só quem está
+            vinculado a ela, bloqueando o lançamento se não houver
+            nenhum; (2) quando é o gerente lançando, ou em qualquer edição
+            pelo Modal (onde o Atendente nunca é travado), é o contrário —
+            escolher o Profissional filtra o Atendente. Requer uma tabela
+            nova no Supabase, `atendentes_profissionais` — a própria tela
+            mostra o SQL certinho se ela não existir ainda.
+   v6.3.0 — Nova funcionalidade: cadastro "Profissionais por exame" (aba
+            Configurações, só gerente) — mesma mecânica de Andar/
+            Procedimento: marca quais exames cada profissional pode
+            realizar, travando/filtrando o campo "Exame" no Lançamento e
+            no modal de edição. Diferente de Andar/Procedimento, o campo
+            Exame não é obrigatório, então não bloqueia o lançamento se
+            ficar vazio. Requer uma tabela nova no Supabase,
+            `profissionais_exames` — a própria tela mostra o SQL certinho
+            se ela não existir ainda.
+===================================================================== */
+const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
+const supabaseClient = (SUPABASE_URL && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+

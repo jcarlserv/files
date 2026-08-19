@@ -1,0 +1,694 @@
+/* =====================================================================
+   ProdClin — api.js
+   Camada de API: fala com o Supabase de verdade (supabaseApi) ou com o mock de demonstração
+   (mockApi), sempre através da função api(acao, dados). Contém também os helpers de paginação
+   e de conversão de datas/mês usados por todo o resto do sistema.
+   Este arquivo é carregado via <script src> em index.html, na mesma ordem
+   em que aparecia originalmente dentro do <script> único — variáveis e
+   funções continuam compartilhando o escopo global, exatamente como antes.
+===================================================================== */
+
+
+
+/* ---------------------------------------------------------------------
+   CAMADA DE API — chama o Supabase de verdade, ou o mock de demo
+--------------------------------------------------------------------- */
+let chamadasApiEmAndamento = 0;
+function mostrarBarraProgresso(mostrar){
+  const el = document.getElementById('barra-progresso-topo');
+  if(mostrar){
+    chamadasApiEmAndamento++;
+  } else {
+    chamadasApiEmAndamento = Math.max(0, chamadasApiEmAndamento-1);
+  }
+  el.classList.toggle('ativa', chamadasApiEmAndamento>0);
+}
+
+
+async function api(acao, dados={}) {
+  mostrarBarraProgresso(true);
+  try {
+    if (MODO_DEMO) return await mockApi(acao, dados);
+    return await supabaseApi(acao, dados);
+  } catch(e) {
+    return {ok:false, erro: String((e&&e.message)||e)};
+  } finally {
+    mostrarBarraProgresso(false);
+  }
+}
+
+
+/* Converte um nome de mês + ano no primeiro e último dia daquele mês, em
+   ISO (yyyy-MM-dd) — usado para mandar o filtro de período DIRETO pro
+   Supabase (gte/lte na própria query), em vez de buscar o ano inteiro e
+   filtrar o mês depois no navegador. Buscar o ano inteiro é o que fazia
+   o Dashboard/Análises/Crítica sofrerem corte silencioso quando o total
+   de linhas do ano passava do limite de retorno de uma única consulta do
+   Supabase (o banco corta e não avisa — some com dados sem dar erro). */
+function primeiroEUltimoDiaDoMes(nomeMes, ano){
+  const idx = MESES.indexOf(nomeMes);
+  if(idx===-1 || !ano) return {dataInicio:null, dataFim:null};
+  const primeiro = new Date(Number(ano), idx, 1);
+  const ultimo = new Date(Number(ano), idx+1, 0);
+  const paraISO = d => d.toISOString().slice(0,10);
+  return {dataInicio: paraISO(primeiro), dataFim: paraISO(ultimo)};
+}
+
+
+/* Busca produção em PÁGINAS de 1000 linhas até trazer tudo, em vez de uma
+   chamada só — necessário para buscas por ano inteiro (RMR, Evolução do
+   ano), que só com uma chamada normal correm o mesmo risco de corte
+   silencioso do Supabase citado acima. Uma única chamada de listarProducao
+   já é segura quando o período é curto (um mês), mas não quando é um ano. */
+async function buscarProducaoCompleta(paramsBase){
+  const TAMANHO_PAGINA = 1000;
+  let todos = [];
+  let pagina = 0;
+  while(true){
+    const resp = await api('listarProducao', Object.assign({}, paramsBase, {
+      limitePagina: TAMANHO_PAGINA, offsetPagina: pagina*TAMANHO_PAGINA
+    }));
+    if(!resp.ok) return resp;
+    const lote = resp.registros || [];
+    todos = todos.concat(lote);
+    if(lote.length < TAMANHO_PAGINA) break; // última página (veio menos que o tamanho cheio)
+    pagina++;
+    if(pagina > 50) break; // trava de segurança (50 mil linhas) contra loop infinito
+  }
+  return {ok:true, registros: todos};
+}
+
+
+/* ---------------------------------------------------------------------
+   Auxiliares de conversão mês (nome <-> número) e mês/ano a partir da data
+   — a tabela do Supabase guarda "data" (yyyy-MM-dd) e "mes" como número
+   nas metas/notas; o front-end inteiro trabalha com nomes de mês
+   (ex.: "Maio") e com r.mes/r.ano em cada registro de produção, então
+   fazemos essa ponte aqui em vez de mudar o resto do código.
+--------------------------------------------------------------------- */
+function nomeMesParaNumero(nome){
+  const i = MESES.indexOf(nome);
+  return i>-1 ? i+1 : null;
+}
+function numeroMesParaNome(num){
+  return MESES[Number(num)-1] || '';
+}
+function anexarMesAnoPelaData(registro){
+  if(registro && registro.data){
+    const [ano, mes] = String(registro.data).slice(0,10).split('-');
+    registro.mes = numeroMesParaNome(Number(mes));
+    registro.ano = Number(ano);
+  }
+  return registro;
+}
+
+
+// Converte uma lista de linhas [{<campoChave>, <campoValor>}] (vinda de
+// profissionais_andares, profissionais_procedimentos ou
+// atendentes_profissionais) num mapa {chave: [valor1, valor2, ...]} —
+// usado pelas travas de formulário. campoChave é opcional e default 'prof'
+// (mantém compatível com as chamadas mais antigas, que só agrupavam por
+// profissional).
+function agruparProfPorCampo(linhas, campoValor, campoChave){
+  campoChave = campoChave || 'prof';
+  const mapa = {};
+  (linhas||[]).forEach(l=>{
+    if(!l || !l[campoChave] || !l[campoValor]) return;
+    if(!mapa[l[campoChave]]) mapa[l[campoChave]] = [];
+    mapa[l[campoChave]].push(l[campoValor]);
+  });
+  return mapa;
+}
+
+
+/* ---------------------------------------------------------------------
+   CAMADA SUPABASE — substitui as ações que antes iam para o Code.gs
+--------------------------------------------------------------------- */
+async function supabaseApi(acao, dados) {
+  switch(acao){
+    case 'login': {
+      const { data, error } = await supabaseClient.from('usuarios').select('*')
+        .eq('usuario', dados.usuario).eq('senha', dados.senha).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      if(!data) return {ok:false, erro:'Usuário ou senha inválidos.'};
+      let permissoes = {};
+      if(data.papel !== 'gerente'){
+        const { data: sobrescritas, error: errPerm } = await supabaseClient.from('permissoes')
+          .select('chave, valor').eq('usuario', data.usuario);
+        if(errPerm) return {ok:false, erro:errPerm.message};
+        permissoes = calcularPermissoesEfetivas(data.papel, sobrescritas);
+      }
+      return {ok:true, usuario:data.usuario, papel:data.papel, nomeProfissional:data.nome_profissional, permissoes};
+    }
+
+
+    case 'listarListas': {
+      const { data, error } = await supabaseClient.from('listas').select('*').order('ordem');
+      if(error) return {ok:false, erro:error.message};
+      const listas = {};
+      (data||[]).forEach(item=>{
+        if(!listas[item.tipo]) listas[item.tipo] = [];
+        listas[item.tipo].push(item.valor);
+      });
+      return {ok:true, listas};
+    }
+
+
+    case 'adicionarItemLista': {
+      const { data: existentes, error: errBusca } = await supabaseClient.from('listas').select('valor').eq('tipo', dados.coluna);
+      if(errBusca) return {ok:false, erro:errBusca.message};
+      const jaExiste = (existentes||[]).some(v=>String(v.valor).trim().toUpperCase()===String(dados.valor).trim().toUpperCase());
+      if(jaExiste) return {ok:false, erro:'Esse item já existe nessa lista.'};
+      const { error } = await supabaseClient.from('listas').insert({tipo:dados.coluna, valor:dados.valor, ordem:(existentes||[]).length+1});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    case 'removerItemLista': {
+      const { error } = await supabaseClient.from('listas').delete().eq('tipo', dados.coluna).eq('valor', dados.valor);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    case 'listarProducao': {
+      let query = supabaseClient.from('producao').select('*');
+      if(dados.dataInicio) query = query.gte('data', dados.dataInicio);
+      if(dados.dataFim) query = query.lte('data', dados.dataFim);
+      if(!dados.dataInicio && !dados.dataFim && dados.ano){
+        query = query.gte('data', `${dados.ano}-01-01`).lte('data', `${dados.ano}-12-31`);
+      }
+      if(dados.prof) query = query.eq('prof', dados.prof);
+      if(dados.limite) query = query.limit(Number(dados.limite));
+      // Paginação (usada por buscarProducaoCompleta, para buscas de ano
+      // inteiro que passariam do limite de linhas de uma consulta só) —
+      // independente do "limite" acima, que é usado em outros lugares
+      // (ex.: "Meus últimos lançamentos", limite:15).
+      if(dados.limitePagina){
+        const deslocamento = Number(dados.offsetPagina)||0;
+        query = query.range(deslocamento, deslocamento + Number(dados.limitePagina) - 1);
+      }
+      const { data, error } = await query.order('data', {ascending:false});
+      if(error) return {ok:false, erro:error.message};
+      let registros = (data||[]).map(anexarMesAnoPelaData);
+      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+      return {ok:true, registros};
+    }
+
+
+    case 'adicionarProducao': {
+      const registro = Object.assign({}, dados);
+      delete registro.id; delete registro.mes; delete registro.ano; delete registro.timestamp;
+      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
+      const { data, error } = await supabaseClient.from('producao').insert(registro).select().single();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, registro:anexarMesAnoPelaData(data)};
+    }
+
+
+    case 'atualizarProducao': {
+      const registro = Object.assign({}, dados.registro);
+      delete registro.id; delete registro.mes; delete registro.ano; delete registro.timestamp;
+      if(registro.valor !== undefined) registro.valor = Number(registro.valor)||0;
+      const { error } = await supabaseClient.from('producao').update(registro).eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    case 'excluirProducao': {
+      const { error } = await supabaseClient.from('producao').delete().eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    case 'listarMetas': {
+      let query = supabaseClient.from('metas').select('*');
+      const mesNum = nomeMesParaNumero(dados.mes);
+      if(mesNum) query = query.eq('mes', mesNum);
+      if(dados.ano) query = query.eq('ano', dados.ano);
+      const { data, error } = await query;
+      if(error) return {ok:false, erro:error.message};
+      const metas = (data||[]).map(m=>Object.assign({}, m, {mes:numeroMesParaNome(m.mes)}));
+      return {ok:true, metas};
+    }
+
+
+    case 'salvarMeta': {
+      const registro = {
+        prof: dados.prof,
+        mes: nomeMesParaNumero(dados.mes),
+        ano: Number(dados.ano),
+        turnos_disponibilizados: Number(dados.turnos_disponibilizados)||0,
+        meta_valor: Number(dados.meta_valor)||0,
+        meta_qtd: Number(dados.meta_qtd)||0
+      };
+      const { error } = await supabaseClient.from('metas').upsert(registro, {onConflict:'prof,mes,ano'});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    case 'obterNota': {
+      const { data, error } = await supabaseClient.from('notas').select('texto')
+        .eq('mes', nomeMesParaNumero(dados.mes)).eq('ano', dados.ano).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, texto: data ? data.texto : ''};
+    }
+
+
+    case 'salvarNota': {
+      const { error } = await supabaseClient.from('notas').upsert(
+        {mes:nomeMesParaNumero(dados.mes), ano:Number(dados.ano), texto:dados.texto},
+        {onConflict:'mes,ano'}
+      );
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    case 'obterConfiguracoes': {
+      const { data, error } = await supabaseClient.from('configuracoes').select('*');
+      if(error) return {ok:false, erro:error.message};
+      const configuracoes = {};
+      (data||[]).forEach(c=>configuracoes[c.chave]=c.valor);
+      return {ok:true, configuracoes};
+    }
+
+
+    case 'salvarConfiguracao': {
+      const { error } = await supabaseClient.from('configuracoes').upsert({chave:dados.chave, valor:dados.valor});
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    case 'alterarConta': {
+      const { data: usuario, error: errBusca } = await supabaseClient.from('usuarios').select('*')
+        .eq('usuario', dados.usuario).eq('senha', dados.senhaAtual).maybeSingle();
+      if(errBusca) return {ok:false, erro:errBusca.message};
+      if(!usuario) return {ok:false, erro:'Senha atual incorreta.'};
+      const atualizacao = {};
+      if(dados.novoNome) atualizacao.nome_profissional = dados.novoNome;
+      if(dados.novaSenha) atualizacao.senha = dados.novaSenha;
+      const { error } = await supabaseClient.from('usuarios').update(atualizacao).eq('usuario', dados.usuario);
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, nomeProfissional: dados.novoNome || usuario.nome_profissional};
+    }
+
+
+    // Direitos e Privilégios — lista todo usuário que não seja gerente (o gerente já
+    // tem acesso completo por papel, não precisa de permissão individual nenhuma),
+    // com a permissão EFETIVA de cada chave (padrão do papel + sobrescritas).
+    case 'listarPermissoesTodos': {
+      const { data: usuarios, error: errUsuarios } = await supabaseClient.from('usuarios')
+        .select('usuario, papel, nome_profissional').order('nome_profissional');
+      if(errUsuarios) return {ok:false, erro:errUsuarios.message};
+      const { data: todasSobrescritas, error: errPerm } = await supabaseClient.from('permissoes').select('*');
+      if(errPerm) return {ok:false, erro:errPerm.message};
+      const resultado = (usuarios||[]).map(u=>{
+        const sobrescritasDoUsuario = (todasSobrescritas||[]).filter(s=>s.usuario===u.usuario);
+        return Object.assign({}, u, { permissoes: calcularPermissoesEfetivas(u.papel, sobrescritasDoUsuario) });
+      });
+      return {ok:true, usuarios:resultado};
+    }
+
+
+    case 'definirPermissao': {
+      const { error } = await supabaseClient.from('permissoes')
+        .upsert({ usuario: dados.usuario, chave: dados.chave, valor: !!dados.valor }, { onConflict: 'usuario,chave' });
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
+    // Andares por profissional — cadastro (n:n) usado pra travar/filtrar o
+    // campo "Andar" de acordo com o "Profissional" escolhido no Lançamento
+    // e no modal de edição. Tabela pequena (poucos andares), sem paginação.
+    case 'listarProfissionaisAndares': {
+      const { data, error } = await supabaseClient.from('profissionais_andares').select('prof, andar');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, linhas: data||[]};
+    }
+
+
+    case 'definirProfissionalAndar': {
+      if(dados.valor){
+        const { error } = await supabaseClient.from('profissionais_andares')
+          .upsert({ prof: dados.prof, andar: dados.andar }, { onConflict: 'prof,andar' });
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      } else {
+        const { error } = await supabaseClient.from('profissionais_andares')
+          .delete().eq('prof', dados.prof).eq('andar', dados.andar);
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      }
+    }
+
+
+    // Procedimentos por profissional — mesma ideia de profissionais_andares,
+    // mas pra travar/filtrar o campo "Procedimento" em vez de "Andar".
+    case 'listarProfissionaisProcedimentos': {
+      const { data, error } = await supabaseClient.from('profissionais_procedimentos').select('prof, procedimento');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, linhas: data||[]};
+    }
+
+
+    case 'definirProfissionalProcedimento': {
+      if(dados.valor){
+        const { error } = await supabaseClient.from('profissionais_procedimentos')
+          .upsert({ prof: dados.prof, procedimento: dados.procedimento }, { onConflict: 'prof,procedimento' });
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      } else {
+        const { error } = await supabaseClient.from('profissionais_procedimentos')
+          .delete().eq('prof', dados.prof).eq('procedimento', dados.procedimento);
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      }
+    }
+
+
+    // Exames por profissional — mesma ideia de profissionais_andares e
+    // profissionais_procedimentos, mas pra travar/filtrar o campo "Exame".
+    // Diferente dos outros dois, o campo Exame não é obrigatório no
+    // formulário, então essa trava só restringe as opções — nunca bloqueia
+    // o salvamento por falta de exame cadastrado.
+    case 'listarProfissionaisExames': {
+      const { data, error } = await supabaseClient.from('profissionais_exames').select('prof, exame');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, linhas: data||[]};
+    }
+
+
+    case 'definirProfissionalExame': {
+      if(dados.valor){
+        const { error } = await supabaseClient.from('profissionais_exames')
+          .upsert({ prof: dados.prof, exame: dados.exame }, { onConflict: 'prof,exame' });
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      } else {
+        const { error } = await supabaseClient.from('profissionais_exames')
+          .delete().eq('prof', dados.prof).eq('exame', dados.exame);
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      }
+    }
+
+
+    // Atendentes por profissional — cadastro (n:n) usado nos dois sentidos:
+    // quando o Atendente logado está travado no próprio nome (Lançamento),
+    // filtra quem ele pode escolher em "Profissional"; quando o Atendente
+    // está livre (gerente no Lançamento, ou qualquer edição no Modal), o
+    // Profissional escolhido filtra quem pode ser escolhido em "Atendente".
+    case 'listarAtendentesProfissionais': {
+      const { data, error } = await supabaseClient.from('atendentes_profissionais').select('atendente, prof');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, linhas: data||[]};
+    }
+
+
+    case 'definirAtendenteProfissional': {
+      if(dados.valor){
+        const { error } = await supabaseClient.from('atendentes_profissionais')
+          .upsert({ atendente: dados.atendente, prof: dados.prof }, { onConflict: 'atendente,prof' });
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      } else {
+        const { error } = await supabaseClient.from('atendentes_profissionais')
+          .delete().eq('atendente', dados.atendente).eq('prof', dados.prof);
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      }
+    }
+
+
+    // Repasse de coparticipados — uma única linha "global" por mês/ano (prof
+    // fixo = 'GERAL', já que a taxa/rateio é a mesma para todo mundo). Não
+    // usamos upsert com onConflict aqui porque não temos certeza de que existe
+    // uma constraint unique(prof,mes,ano) na tabela — fazemos select e depois
+    // insert OU update manualmente, o que funciona independente disso.
+    case 'obterConfigCoparticipados': {
+      const { data, error } = await supabaseClient.from('coparticipados')
+        .select('taxa, rateio_clinica, rateio_coparticipado')
+        .eq('mes', dados.mes).eq('ano', Number(dados.ano)).eq('prof', REPASSE_COPARTICIPADOS_PROF_GLOBAL)
+        .maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, config: data || null};
+    }
+
+
+    case 'salvarConfigCoparticipados': {
+      const { data: existente, error: errBusca } = await supabaseClient.from('coparticipados')
+        .select('id').eq('mes', dados.mes).eq('ano', Number(dados.ano)).eq('prof', REPASSE_COPARTICIPADOS_PROF_GLOBAL)
+        .maybeSingle();
+      if(errBusca) return {ok:false, erro:errBusca.message};
+      const registro = {
+        prof: REPASSE_COPARTICIPADOS_PROF_GLOBAL, mes: dados.mes, ano: Number(dados.ano),
+        taxa: Number(dados.taxa)||0, rateio_clinica: Number(dados.rateio_clinica)||0,
+        rateio_coparticipado: Number(dados.rateio_coparticipado)||0,
+        atualizado_em: new Date().toISOString()
+      };
+      if(existente){
+        const { error } = await supabaseClient.from('coparticipados').update(registro).eq('id', existente.id);
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      } else {
+        const { error } = await supabaseClient.from('coparticipados').insert(registro);
+        return error ? {ok:false, erro:error.message} : {ok:true};
+      }
+    }
+
+
+    case 'dashboard': {
+      // Busca o intervalo de datas do mês selecionado EM PÁGINAS (não uma
+      // chamada só) — filtrar por mês reduz o volume, mas não garante ficar
+      // abaixo do limite de linhas de uma consulta do Supabase se a clínica
+      // tiver muitos lançamentos naquele mês. buscarProducaoCompleta pagina
+      // até trazer tudo, então funciona independente do volume.
+      const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(dados.mes, dados.ano);
+      const respProd = await buscarProducaoCompleta({dataInicio, dataFim});
+      if(!respProd.ok) return respProd;
+      let registros = respProd.registros;
+      if(dados.andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===String(dados.andar).trim().toUpperCase());
+      const porProfissional = {}, porConvenio = {}, porAndar = {};
+      let totalValor = 0;
+      registros.forEach(r=>{
+        const prof = r.prof || 'Não informado';
+        const conv = r.convenio || 'PARTICULAR';
+        const andar = r.andar || 'Não informado';
+        const valor = Number(r.valor)||0;
+        if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
+        porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
+        if(!porConvenio[conv]) porConvenio[conv]=0;
+        porConvenio[conv]+=valor;
+        if(!porAndar[andar]) porAndar[andar]=0;
+        porAndar[andar]+=valor;
+        totalValor+=valor;
+      });
+      const respMetas = await supabaseApi('listarMetas', {mes:dados.mes, ano:dados.ano});
+      const metas = respMetas.ok ? respMetas.metas : [];
+      const metaPorProf = {}; metas.forEach(m=>metaPorProf[m.prof]=m);
+      const comparativo = Object.keys(porProfissional).map(prof=>{
+        const m = metaPorProf[prof]||{};
+        return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
+                metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
+      });
+      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, porAndar, comparativo};
+    }
+
+
+    default: return {ok:false, erro:'Ação desconhecida (Supabase): '+acao};
+  }
+}
+
+
+function mockApi(acao, dados) {
+  switch(acao){
+    case 'login': {
+      const achado = demo.usuarios.find(u => u.usuario===dados.usuario && u.senha===dados.senha);
+      if(!achado) return {ok:false, erro:'Usuário ou senha inválidos.'};
+      const sobrescritas = demo.permissoes.filter(p=>p.usuario===achado.usuario);
+      const permissoes = achado.papel==='gerente' ? {} : calcularPermissoesEfetivas(achado.papel, sobrescritas);
+      return {ok:true, usuario:achado.usuario, papel:achado.papel, nomeProfissional:achado.nome_profissional, permissoes};
+    }
+    case 'listarPermissoesTodos': {
+      const usuarios = demo.usuarios.map(u=>{
+        const sobrescritas = demo.permissoes.filter(p=>p.usuario===u.usuario);
+        return {usuario:u.usuario, papel:u.papel, nome_profissional:u.nome_profissional, permissoes: calcularPermissoesEfetivas(u.papel, sobrescritas)};
+      });
+      return {ok:true, usuarios};
+    }
+    case 'definirPermissao': {
+      const existente = demo.permissoes.find(p=>p.usuario===dados.usuario && p.chave===dados.chave);
+      if(existente) existente.valor = !!dados.valor;
+      else demo.permissoes.push({usuario:dados.usuario, chave:dados.chave, valor:!!dados.valor});
+      return {ok:true};
+    }
+    case 'listarProfissionaisAndares': {
+      return {ok:true, linhas: demo.profissionaisAndares.slice()};
+    }
+    case 'definirProfissionalAndar': {
+      const idx = demo.profissionaisAndares.findIndex(l=>l.prof===dados.prof && l.andar===dados.andar);
+      if(dados.valor){
+        if(idx===-1) demo.profissionaisAndares.push({prof:dados.prof, andar:dados.andar});
+      } else {
+        if(idx>-1) demo.profissionaisAndares.splice(idx,1);
+      }
+      return {ok:true};
+    }
+    case 'listarProfissionaisProcedimentos': {
+      return {ok:true, linhas: demo.profissionaisProcedimentos.slice()};
+    }
+    case 'definirProfissionalProcedimento': {
+      const idx = demo.profissionaisProcedimentos.findIndex(l=>l.prof===dados.prof && l.procedimento===dados.procedimento);
+      if(dados.valor){
+        if(idx===-1) demo.profissionaisProcedimentos.push({prof:dados.prof, procedimento:dados.procedimento});
+      } else {
+        if(idx>-1) demo.profissionaisProcedimentos.splice(idx,1);
+      }
+      return {ok:true};
+    }
+    case 'listarProfissionaisExames': {
+      return {ok:true, linhas: demo.profissionaisExames.slice()};
+    }
+    case 'definirProfissionalExame': {
+      const idx = demo.profissionaisExames.findIndex(l=>l.prof===dados.prof && l.exame===dados.exame);
+      if(dados.valor){
+        if(idx===-1) demo.profissionaisExames.push({prof:dados.prof, exame:dados.exame});
+      } else {
+        if(idx>-1) demo.profissionaisExames.splice(idx,1);
+      }
+      return {ok:true};
+    }
+    case 'listarAtendentesProfissionais': {
+      return {ok:true, linhas: demo.atendentesProfissionais.slice()};
+    }
+    case 'definirAtendenteProfissional': {
+      const idx = demo.atendentesProfissionais.findIndex(l=>l.atendente===dados.atendente && l.prof===dados.prof);
+      if(dados.valor){
+        if(idx===-1) demo.atendentesProfissionais.push({atendente:dados.atendente, prof:dados.prof});
+      } else {
+        if(idx>-1) demo.atendentesProfissionais.splice(idx,1);
+      }
+      return {ok:true};
+    }
+    case 'obterConfigCoparticipados': {
+      const chave = dados.mes+'-'+dados.ano;
+      return {ok:true, config: demo.coparticipados[chave] || null};
+    }
+    case 'salvarConfigCoparticipados': {
+      const chave = dados.mes+'-'+dados.ano;
+      demo.coparticipados[chave] = {
+        taxa: Number(dados.taxa)||0,
+        rateio_clinica: Number(dados.rateio_clinica)||0,
+        rateio_coparticipado: Number(dados.rateio_coparticipado)||0
+      };
+      return {ok:true};
+    }
+    case 'listarListas': {
+      const copiaListas = {};
+      Object.keys(demo.listas).forEach(k=>copiaListas[k]=demo.listas[k].slice());
+      return {ok:true, listas:copiaListas};
+    }
+    case 'listarProducao': {
+      let registros = demo.producao.slice();
+      if(dados.dataInicio || dados.dataFim){
+        if(dados.dataInicio) registros = registros.filter(r=>r.data >= dados.dataInicio);
+        if(dados.dataFim) registros = registros.filter(r=>r.data <= dados.dataFim);
+      } else {
+        if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+        if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
+      }
+      if(dados.prof) registros = registros.filter(r=>r.prof.toUpperCase()===dados.prof.toUpperCase());
+      registros.sort((a,b)=> String(b.data).localeCompare(String(a.data))); // mais recente primeiro, igual ao Supabase
+      if(dados.limite) registros = registros.slice(0, Number(dados.limite));
+      return {ok:true, registros};
+    }
+    case 'adicionarProducao': {
+      const d = new Date(dados.data+'T00:00:00');
+      const novo = Object.assign({id:'d'+Math.random().toString(36).slice(2,9)}, dados, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
+      demo.producao.unshift(novo);
+      return {ok:true};
+    }
+    case 'atualizarProducao': {
+      const idx = demo.producao.findIndex(r=>r.id===dados.id);
+      if(idx===-1) return {ok:false, erro:'Não encontrado'};
+      const d = new Date(dados.registro.data+'T00:00:00');
+      demo.producao[idx] = Object.assign({id:dados.id}, dados.registro, {mes:MESES[d.getMonth()], ano:d.getFullYear()});
+      return {ok:true};
+    }
+    case 'excluirProducao': {
+      demo.producao = demo.producao.filter(r=>r.id!==dados.id);
+      return {ok:true};
+    }
+    case 'listarMetas': {
+      let metas = demo.metas.slice();
+      if(dados.mes) metas = metas.filter(m=>m.mes===dados.mes);
+      if(dados.ano) metas = metas.filter(m=>String(m.ano)===String(dados.ano));
+      return {ok:true, metas};
+    }
+    case 'salvarMeta': {
+      const idx = demo.metas.findIndex(m=>m.prof===dados.prof && m.mes===dados.mes && String(m.ano)===String(dados.ano));
+      if(idx>-1) demo.metas[idx] = dados; else demo.metas.push(dados);
+      return {ok:true};
+    }
+    case 'obterNota': {
+      const chave = dados.mes+'-'+dados.ano;
+      return {ok:true, texto: demo.notas[chave] || ''};
+    }
+    case 'salvarNota': {
+      demo.notas[dados.mes+'-'+dados.ano] = dados.texto;
+      return {ok:true};
+    }
+    case 'obterConfiguracoes': {
+      return {ok:true, configuracoes: demo.configuracoes};
+    }
+    case 'salvarConfiguracao': {
+      demo.configuracoes[dados.chave] = dados.valor;
+      return {ok:true};
+    }
+    case 'adicionarItemLista': {
+      if(!demo.listas[dados.coluna]) return {ok:false, erro:'Lista desconhecida.'};
+      const jaExiste = demo.listas[dados.coluna].some(v=>String(v).trim().toUpperCase()===String(dados.valor).trim().toUpperCase());
+      if(jaExiste) return {ok:false, erro:'Esse item já existe nessa lista.'};
+      demo.listas[dados.coluna].push(dados.valor);
+      return {ok:true};
+    }
+    case 'removerItemLista': {
+      if(!demo.listas[dados.coluna]) return {ok:false, erro:'Lista desconhecida.'};
+      demo.listas[dados.coluna] = demo.listas[dados.coluna].filter(v=>v!==dados.valor);
+      return {ok:true};
+    }
+    case 'alterarConta': {
+      const usuario = demo.usuarios.find(u=>u.usuario===dados.usuario);
+      if(!usuario) return {ok:false, erro:'Usuário não encontrado.'};
+      if(usuario.senha !== dados.senhaAtual) return {ok:false, erro:'Senha atual incorreta.'};
+      if(dados.novoNome) usuario.nome_profissional = dados.novoNome;
+      if(dados.novaSenha) usuario.senha = dados.novaSenha;
+      return {ok:true, nomeProfissional: usuario.nome_profissional};
+    }
+    case 'dashboard': {
+      let registros = demo.producao.slice();
+      if(dados.mes) registros = registros.filter(r=>r.mes===dados.mes);
+      if(dados.ano) registros = registros.filter(r=>String(r.ano)===String(dados.ano));
+      if(dados.andar) registros = registros.filter(r=>String(r.andar||'').trim().toUpperCase()===String(dados.andar).trim().toUpperCase());
+      const porProfissional = {}, porConvenio = {}, porAndar = {};
+      let totalValor = 0;
+      registros.forEach(r=>{
+        const prof = r.prof || 'Não informado';
+        const conv = r.convenio || 'PARTICULAR';
+        const andar = r.andar || 'Não informado';
+        const valor = Number(r.valor)||0;
+        if(!porProfissional[prof]) porProfissional[prof] = {quantidade:0, valor:0};
+        porProfissional[prof].quantidade++; porProfissional[prof].valor += valor;
+        if(!porConvenio[conv]) porConvenio[conv]=0;
+        porConvenio[conv]+=valor;
+        if(!porAndar[andar]) porAndar[andar]=0;
+        porAndar[andar]+=valor;
+        totalValor+=valor;
+      });
+      let metas = demo.metas.filter(m=>m.mes===dados.mes && String(m.ano)===String(dados.ano));
+      const metaPorProf = {}; metas.forEach(m=>metaPorProf[m.prof]=m);
+      const comparativo = Object.keys(porProfissional).map(prof=>{
+        const m = metaPorProf[prof]||{};
+        return {prof, quantidade:porProfissional[prof].quantidade, valorRealizado:porProfissional[prof].valor,
+                metaValor:Number(m.meta_valor)||0, turnosDisponibilizados:Number(m.turnos_disponibilizados)||0};
+      });
+      return {ok:true, totalAtendimentos:registros.length, totalValor, porProfissional, porConvenio, porAndar, comparativo};
+    }
+    default: return {ok:false, erro:'Ação desconhecida em modo demo: '+acao};
+  }
+}
+
+
+/* ---------------------------------------------------------------------
+   FORMATAÇÃO
+--------------------------------------------------------------------- */
