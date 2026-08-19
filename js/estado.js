@@ -47,7 +47,9 @@ const DEFINICAO_PERMISSOES = [
   {tela:'RMR',            chave:'ver_rmr_squad',           rotulo:'Ver'},
   {tela:'Configurações',  chave:'ver_configuracoes',       rotulo:'Ver'},
   {tela:'Configurações',  chave:'editar_configuracoes',    rotulo:'Editar'},
-  {tela:'Apresentação',   chave:'ver_apresentacao',        rotulo:'Ver'}
+  {tela:'Apresentação',   chave:'ver_apresentacao',        rotulo:'Ver'},
+  {tela:'Financeiro',     chave:'ver_financeiro',          rotulo:'Ver'},
+  {tela:'Financeiro',     chave:'editar_financeiro',       rotulo:'Editar'}
 ];
 
 

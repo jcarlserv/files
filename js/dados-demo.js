@@ -19,6 +19,74 @@ const demo = {
   // chave "Mês-Ano" -> {faturamento_bruto, deducoes_impostos, ...} — equivalente à
   // tabela `financeiro_dre` (DRE mensal, cadastrado manualmente na aba Metas).
   financeiroDre: {},
+  // Plano de contas (árvore, via conta_pai_codigo) — estrutura equivalente à
+  // tabela `plano_contas`. Só contas-FOLHA (sem filhos) guardam valor — as
+  // demais são só agrupadoras/somatórias, calculadas na hora.
+  planoContas: [
+    {codigo:'3', nome:'RECEITAS', conta_pai_codigo:null, natureza:'entrada', ordem:1},
+    {codigo:'3.1', nome:'Receita Bruta de Serviços Prestados', conta_pai_codigo:'3', natureza:'entrada', ordem:1},
+    {codigo:'3.1.1', nome:'Receitas de Serviços Médicos e Exames', conta_pai_codigo:'3.1', natureza:'entrada', ordem:1},
+    {codigo:'3.1.1.01', nome:'Produção Térreo', conta_pai_codigo:'3.1.1', natureza:'entrada', ordem:1},
+    {codigo:'3.1.1.02', nome:'Produção Coparticipados', conta_pai_codigo:'3.1.1', natureza:'entrada', ordem:2},
+    {codigo:'3.1.1.03', nome:'Cirurgias', conta_pai_codigo:'3.1.1', natureza:'entrada', ordem:3},
+    {codigo:'3.1.1.04', nome:'Polipectomias', conta_pai_codigo:'3.1.1', natureza:'entrada', ordem:4},
+    {codigo:'3.1.1.05', nome:'Larbos', conta_pai_codigo:'3.1.1', natureza:'entrada', ordem:5},
+    {codigo:'3.1.1.06', nome:'Pathus — Nosso Lucro', conta_pai_codigo:'3.1.1', natureza:'entrada', ordem:6},
+    {codigo:'3.1.1.07', nome:'Produção do Sábado', conta_pai_codigo:'3.1.1', natureza:'entrada', ordem:7},
+    {codigo:'3.1.2', nome:'Receitas de Locação e Diversas', conta_pai_codigo:'3.1', natureza:'entrada', ordem:2},
+    {codigo:'3.1.2.01', nome:'Aluguéis de Sala', conta_pai_codigo:'3.1.2', natureza:'entrada', ordem:1},
+    {codigo:'3.1.2.02', nome:'Receitas Diversas', conta_pai_codigo:'3.1.2', natureza:'entrada', ordem:2},
+    {codigo:'3.2', nome:'Deduções da Receita Bruta', conta_pai_codigo:'3', natureza:'saida', ordem:2},
+    {codigo:'3.2.01', nome:'Impostos Térreo', conta_pai_codigo:'3.2', natureza:'saida', ordem:1},
+    {codigo:'3.2.02', nome:'Impostos Coparticipado', conta_pai_codigo:'3.2', natureza:'saida', ordem:2},
+    {codigo:'3.2.03', nome:'Impostos sobre Aluguéis de Sala', conta_pai_codigo:'3.2', natureza:'saida', ordem:3},
+    {codigo:'3.2.04', nome:'Provisão de ISS', conta_pai_codigo:'3.2', natureza:'saida', ordem:4},
+
+    {codigo:'4', nome:'CUSTO DO SERVIÇO PRESTADO', conta_pai_codigo:null, natureza:'saida', ordem:2},
+    {codigo:'4.1', nome:'Custos Diretos e Repasses Médicos', conta_pai_codigo:'4', natureza:'saida', ordem:1},
+    {codigo:'4.1.1', nome:'Repasses e Coparticipação Médica', conta_pai_codigo:'4.1', natureza:'saida', ordem:1},
+    {codigo:'4.1.1.01', nome:'Coparticipação Dra. Ivna', conta_pai_codigo:'4.1.1', natureza:'saida', ordem:1},
+    {codigo:'4.1.1.02', nome:'Coparticipação Dr. Maurício', conta_pai_codigo:'4.1.1', natureza:'saida', ordem:2},
+    {codigo:'4.1.2', nome:'Anestesia e Laboratório Especializado', conta_pai_codigo:'4.1', natureza:'saida', ordem:2},
+    {codigo:'4.1.2.01', nome:'Anestesista Centro Cirúrgico', conta_pai_codigo:'4.1.2', natureza:'saida', ordem:1},
+    {codigo:'4.1.2.02', nome:'Anestesista Clínica', conta_pai_codigo:'4.1.2', natureza:'saida', ordem:2},
+    {codigo:'4.1.2.03', nome:'Gastos de Preparo', conta_pai_codigo:'4.1.2', natureza:'saida', ordem:3},
+    {codigo:'4.1.3', nome:'Insumos e Materiais Aplicados', conta_pai_codigo:'4.1', natureza:'saida', ordem:3},
+    {codigo:'4.1.3.01', nome:'Materiais Hospitalares Diretos', conta_pai_codigo:'4.1.3', natureza:'saida', ordem:1},
+
+    {codigo:'5', nome:'DESPESAS OPERACIONAIS E FINANCEIRAS', conta_pai_codigo:null, natureza:'saida', ordem:3},
+    {codigo:'5.1', nome:'Setor Pessoal', conta_pai_codigo:'5', natureza:'saida', ordem:1},
+    {codigo:'5.1.01', nome:'Salários de Funcionários', conta_pai_codigo:'5.1', natureza:'saida', ordem:1},
+    {codigo:'5.1.02', nome:'Horas Extras', conta_pai_codigo:'5.1', natureza:'saida', ordem:2},
+    {codigo:'5.1.03', nome:'Férias de Funcionários', conta_pai_codigo:'5.1', natureza:'saida', ordem:3},
+    {codigo:'5.1.04', nome:'FGTS e INSS', conta_pai_codigo:'5.1', natureza:'saida', ordem:4},
+    {codigo:'5.1.05', nome:'Alimentação de Funcionários', conta_pai_codigo:'5.1', natureza:'saida', ordem:5},
+    {codigo:'5.2', nome:'Compras e Manutenção', conta_pai_codigo:'5', natureza:'saida', ordem:2},
+    {codigo:'5.2.01', nome:'Equipamentos e Materiais', conta_pai_codigo:'5.2', natureza:'saida', ordem:1},
+    {codigo:'5.2.02', nome:'Manutenção das Instalações', conta_pai_codigo:'5.2', natureza:'saida', ordem:2},
+    {codigo:'5.3', nome:'Despesas Operacionais e Administrativas', conta_pai_codigo:'5', natureza:'saida', ordem:3},
+    {codigo:'5.3.01', nome:'Água, Energia e Internet', conta_pai_codigo:'5.3', natureza:'saida', ordem:1},
+    {codigo:'5.3.02', nome:'Contabilidade', conta_pai_codigo:'5.3', natureza:'saida', ordem:2},
+    {codigo:'5.3.03', nome:'Sistema / TI', conta_pai_codigo:'5.3', natureza:'saida', ordem:3},
+    {codigo:'5.5', nome:'Despesas Financeiras', conta_pai_codigo:'5', natureza:'saida', ordem:4},
+    {codigo:'5.5.01', nome:'Tarifas Bancárias', conta_pai_codigo:'5.5', natureza:'saida', ordem:1},
+    {codigo:'5.5.02', nome:'Juros de Empréstimos', conta_pai_codigo:'5.5', natureza:'saida', ordem:2},
+    {codigo:'5.6', nome:'Prolabore e Retiradas', conta_pai_codigo:'5', natureza:'saida', ordem:5},
+    {codigo:'5.6.01', nome:'Retiradas Dr. Maurício', conta_pai_codigo:'5.6', natureza:'saida', ordem:1},
+    {codigo:'5.6.02', nome:'Retiradas Dra. Ivna', conta_pai_codigo:'5.6', natureza:'saida', ordem:2}
+  ],
+  // chave "codigo|Mês-Ano" -> valor (número) — equivalente à tabela
+  // `plano_contas_valores`. Seed de Junho/2026 batendo com o DRE real já
+  // conferido (Resultado da operação: -R$ 28.607,14).
+  planoContasValores: {
+    '3.1.1.01|Junho-2026': 210917.03, '3.1.1.02|Junho-2026': 86936.54, '3.1.1.03|Junho-2026': 12600.00,
+    '3.1.1.04|Junho-2026': 38321.26, '3.1.1.05|Junho-2026': 5425.00, '3.1.1.06|Junho-2026': 8830.00,
+    '3.1.1.07|Junho-2026': 17118.57, '3.1.2.01|Junho-2026': 15250.90,
+    '3.2.01|Junho-2026': 18093.00, '3.2.02|Junho-2026': 8473.95, '3.2.04|Junho-2026': 9632.92,
+    '4.1.1.01|Junho-2026': 44581.24, '4.1.1.02|Junho-2026': 44581.23,
+    '5.1.01|Junho-2026': 56880.39, '5.2.01|Junho-2026': 116200.19,
+    '5.3.01|Junho-2026': 44525.50, '5.5.01|Junho-2026': 11138.55, '5.6.01|Junho-2026': 69899.47
+  },
   // Lista de {prof, andar} — equivalente à tabela profissionais_andares.
   profissionaisAndares:[
     {prof:'ANGELINA', andar:'TÉRREO'},

@@ -98,6 +98,7 @@ function montarNavegacao(){
     {id:'rmr', rotulo:'Análises', chave:'ver_rmr'},
     {id:'rmr-squad', rotulo:'RMR', chave:'ver_rmr_squad'},
     {id:'apresentacao', rotulo:'Apresentação', chave:'ver_apresentacao'},
+    {id:'financeiro', rotulo:'Financeiro', chave:'ver_financeiro'},
     {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
   ];
   const abasDisponiveis = TODAS_ABAS.filter(a => temPermissao(a.chave));
@@ -134,6 +135,7 @@ async function atualizarPainelAtivo(){
   if(estado.abaAtiva==='rmr') await atualizarRMR();
   if(estado.abaAtiva==='rmr-squad') await atualizarRmrSquad();
   if(estado.abaAtiva==='apresentacao') await atualizarApresentacao();
+  if(estado.abaAtiva==='financeiro') await atualizarFinanceiro();
 }
 
 
@@ -272,7 +274,6 @@ function preencherSelectsPeriodo(){
   // "+ Novo registro" segue a permissão fragmentada criar_verificar (gerente sempre tem).
   document.getElementById('botao-novo-registro-gerencial').style.display = temPermissao('criar_verificar') ? 'inline-flex' : 'none';
   document.getElementById('botao-salvar-nota').addEventListener('click', salvarNota);
-  document.getElementById('botao-salvar-dre').addEventListener('click', salvarFinanceiroDre);
   document.querySelectorAll('.botao-exportar-pdf').forEach(b=>b.addEventListener('click', ()=>window.print()));
 
 

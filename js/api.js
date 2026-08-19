@@ -121,6 +121,23 @@ function agruparProfPorCampo(linhas, campoValor, campoChave){
 }
 
 
+// Busca numa lista agrupada (ver agruparProfPorCampo) tolerando diferença de
+// maiúsculas/minúsculas e espaços nas pontas. As travas do formulário cruzam
+// 3 fontes digitadas em lugares diferentes — usuarios.nome_profissional (login
+// do atendente/profissional), a lista em Configurações > Listas, e a matriz
+// de vínculos (Configurações > Atendentes/Andares/Procedimentos/Exames por
+// profissional) — um espaço a mais ou uma letra maiúscula digitada diferente
+// em qualquer uma delas já fazia a busca exata falhar silenciosamente
+// (lista aparecia vazia mesmo com o vínculo certinho salvo no banco).
+function buscarListaTolerante(mapa, chave){
+  if(!chave) return [];
+  if(mapa[chave]) return mapa[chave]; // caminho rápido: bateu exato
+  const alvo = String(chave).trim().toUpperCase();
+  const chaveEncontrada = Object.keys(mapa).find(k => String(k).trim().toUpperCase()===alvo);
+  return chaveEncontrada ? mapa[chaveEncontrada] : [];
+}
+
+
 /* ---------------------------------------------------------------------
    CAMADA SUPABASE — substitui as ações que antes iam para o Code.gs
 --------------------------------------------------------------------- */
@@ -478,6 +495,62 @@ async function supabaseApi(acao, dados) {
     }
 
 
+    // PLANO DE CONTAS — estrutura de contas (árvore, via `conta_pai_codigo`)
+    // e valores mensais por conta-folha. Ver aba Financeiro (js/financeiro.js).
+    case 'listarPlanoContas': {
+      const { data, error } = await supabaseClient.from('plano_contas')
+        .select('*').order('ordem').order('codigo');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, contas: data||[]};
+    }
+
+    case 'criarContaPlano': {
+      const registro = {
+        codigo: dados.codigo, nome: dados.nome,
+        conta_pai_codigo: dados.conta_pai_codigo || null,
+        natureza: dados.natureza === 'entrada' ? 'entrada' : 'saida',
+        ordem: Number(dados.ordem)||0
+      };
+      const { error } = await supabaseClient.from('plano_contas').insert(registro);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'renomearContaPlano': {
+      const { error } = await supabaseClient.from('plano_contas')
+        .update({ nome: dados.nome }).eq('codigo', dados.codigo);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'excluirContaPlano': {
+      // Só permite excluir quem não tem filhos nem valores lançados — a
+      // checagem de "não tem filhos" já é feita no front antes de chamar
+      // (evita apagar uma conta que é pai de outras sem querer).
+      const { error: errValores } = await supabaseClient.from('plano_contas_valores')
+        .delete().eq('conta_codigo', dados.codigo);
+      if(errValores) return {ok:false, erro:errValores.message};
+      const { error } = await supabaseClient.from('plano_contas').delete().eq('codigo', dados.codigo);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'listarValoresContas': {
+      const { data, error } = await supabaseClient.from('plano_contas_valores')
+        .select('conta_codigo, valor')
+        .eq('mes', nomeMesParaNumero(dados.mes)).eq('ano', Number(dados.ano));
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, valores: data||[]};
+    }
+
+    case 'salvarValorConta': {
+      const registro = {
+        conta_codigo: dados.codigo, mes: nomeMesParaNumero(dados.mes), ano: Number(dados.ano),
+        valor: Number(dados.valor)||0, atualizado_em: new Date().toISOString()
+      };
+      const { error } = await supabaseClient.from('plano_contas_valores')
+        .upsert(registro, { onConflict: 'conta_codigo,mes,ano' });
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
     case 'dashboard': {
       // Busca o intervalo de datas do mês selecionado EM PÁGINAS (não uma
       // chamada só) — filtrar por mês reduz o volume, mas não garante ficar
@@ -620,6 +693,40 @@ function mockApi(acao, dados) {
         despesas_financeiras: Number(dados.despesas_financeiras)||0,
         prolabore: Number(dados.prolabore)||0
       };
+      return {ok:true};
+    }
+    case 'listarPlanoContas': {
+      return {ok:true, contas: demo.planoContas.slice()};
+    }
+    case 'criarContaPlano': {
+      demo.planoContas.push({
+        codigo: dados.codigo, nome: dados.nome, conta_pai_codigo: dados.conta_pai_codigo||null,
+        natureza: dados.natureza==='entrada'?'entrada':'saida', ordem: Number(dados.ordem)||0
+      });
+      return {ok:true};
+    }
+    case 'renomearContaPlano': {
+      const conta = demo.planoContas.find(c=>c.codigo===dados.codigo);
+      if(conta) conta.nome = dados.nome;
+      return {ok:true};
+    }
+    case 'excluirContaPlano': {
+      demo.planoContas = demo.planoContas.filter(c=>c.codigo!==dados.codigo);
+      Object.keys(demo.planoContasValores).forEach(chave=>{
+        if(chave.startsWith(dados.codigo+'|')) delete demo.planoContasValores[chave];
+      });
+      return {ok:true};
+    }
+    case 'listarValoresContas': {
+      const sufixo = '|'+dados.mes+'-'+dados.ano;
+      const valores = Object.keys(demo.planoContasValores)
+        .filter(chave=>chave.endsWith(sufixo))
+        .map(chave=>({conta_codigo: chave.split('|')[0], valor: demo.planoContasValores[chave]}));
+      return {ok:true, valores};
+    }
+    case 'salvarValorConta': {
+      const chave = dados.codigo+'|'+dados.mes+'-'+dados.ano;
+      demo.planoContasValores[chave] = Number(dados.valor)||0;
       return {ok:true};
     }
     case 'listarListas': {

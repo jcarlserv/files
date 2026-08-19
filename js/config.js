@@ -259,6 +259,75 @@
             alter table financeiro_dre enable row level security;
             create policy acesso_total_anon on financeiro_dre for all
               using (true) with check (true);
+   v6.5.1 — Correção: as travas condicionadas do Lançamento/Modal (Atendente
+            →Profissional, Profissional→Andar/Procedimento/Exame/Atendente)
+            comparavam os nomes com igualdade exata — um espaço a mais ou
+            uma letra maiúscula/minúscula digitada diferente entre o
+            cadastro do usuário, a lista em Configurações e a matriz de
+            vínculos já fazia a lista aparecer vazia, mesmo com o vínculo
+            certinho salvo no banco. As 5 buscas agora toleram diferença de
+            maiúscula/minúscula e espaços nas pontas (`buscarListaTolerante`
+            em api.js).
+   v6.5.2 — Configurações: os cartões "Identidade da clínica" e "Logo e
+            cores" mudaram de posição — antes vinham logo no topo da aba,
+            agora ficam depois de "Atendentes por profissional" e antes de
+            "Importar produção em massa (CSV)". Só reorganização visual,
+            nenhum campo ou comportamento mudou.
+   v6.6.0 — Nova aba "Financeiro" (permissões `ver_financeiro`/
+            `editar_financeiro`): plano de contas hierárquico (código
+            estilo Fortes Contábil, ex. 3.1.1.01) com valor por conta-folha
+            por mês — substitui o formulário simples de DRE que tinha ido
+            pra aba Metas na v6.5.0 (removido). Só conta sem subconta
+            aceita valor; contas com filho somam automaticamente (por
+            "natureza": entrada soma, saída subtrai — assim uma dedução
+            dentro de Receitas ainda subtrai certo, não importa a
+            profundidade). Botão "+ subconta" em cada linha da árvore cria
+            conta nova ali dentro com código gerado sozinho (1 dígito nos
+            3 primeiros níveis, 2 dígitos no 4º, 4 dígitos no 5º, 2 dígitos
+            daí em diante). "Baixar planilha-modelo" e "Importar planilha"
+            (CSV, colunas codigo;nome;mes;ano;valor) — importar só
+            atualiza valor de conta que já existe, não cria conta nova
+            (evita conta fantasma por erro de digitação; pra isso, usa o
+            "+ subconta" na tela mesmo). Configurações ganhou o cartão
+            "Plano de contas da DRE" — mesma árvore, sem os valores, pra
+            criar contas-mãe (categorias grandes) — chamado gerente only,
+            reaproveitando as mesmas funções da aba Financeiro
+            (js/financeiro.js, carregado antes de configuracoes.js na
+            ordem dos <script>). Populado com a estrutura do plano de
+            contas real da clínica (Receitas/Custo do Serviço/Despesas);
+            modo demonstração já vem com Junho/2026 preenchido e bate
+            exatamente com o DRE real conferido antes (Resultado:
+            -R$ 28.607,14).
+            Requer duas tabelas novas no Supabase — SQL:
+            create table if not exists plano_contas (
+              id uuid primary key default gen_random_uuid(),
+              codigo text not null unique,
+              nome text not null,
+              conta_pai_codigo text,
+              natureza text not null default 'saida' check (natureza in ('entrada','saida')),
+              ordem integer not null default 0,
+              criado_em timestamptz not null default now()
+            );
+            alter table plano_contas enable row level security;
+            create policy acesso_total_anon on plano_contas for all
+              using (true) with check (true);
+            create table if not exists plano_contas_valores (
+              id uuid primary key default gen_random_uuid(),
+              conta_codigo text not null,
+              mes integer not null, ano integer not null,
+              valor numeric not null default 0,
+              atualizado_em timestamptz not null default now(),
+              unique(conta_codigo, mes, ano)
+            );
+            alter table plano_contas_valores enable row level security;
+            create policy acesso_total_anon on plano_contas_valores for all
+              using (true) with check (true);
+            A tabela `financeiro_dre` da v6.5.0 fica sem uso por ora — as
+            rotas obterFinanceiroDre/salvarFinanceiroDre continuam em
+            api.js só pra não quebrar a aba Apresentação enquanto ela não
+            for atualizada pra ler do plano de contas (isso fica pra uma
+            próxima entrega, junto com o botão de Apresentação dentro de
+            Análises, a aba Início e o Squad Financeiro na aba RMR).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

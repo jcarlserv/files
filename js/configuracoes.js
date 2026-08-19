@@ -49,23 +49,28 @@ async function atualizarConfiguracoes(){
   const cartaoProfProcedimentos = document.getElementById('cartao-profissionais-procedimentos');
   const cartaoProfExames = document.getElementById('cartao-profissionais-exames');
   const cartaoAtendentesProf = document.getElementById('cartao-atendentes-profissionais');
+  const cartaoPlanoContas = document.getElementById('cartao-plano-contas-admin');
   if(estado.papel === 'gerente'){
     cartaoPermissoes.style.display = '';
     cartaoProfAndares.style.display = '';
     cartaoProfProcedimentos.style.display = '';
     cartaoProfExames.style.display = '';
     cartaoAtendentesProf.style.display = '';
+    cartaoPlanoContas.style.display = '';
     await carregarPermissoes();
     await carregarProfissionaisAndares();
     await carregarProfissionaisProcedimentos();
     await carregarProfissionaisExames();
     await carregarAtendentesProfissionais();
+    await financeiroCarregarContas();
+    montarArvoreContas('financeiro-arvore-config', {comValores:false, podeEditar:true});
   } else {
     cartaoPermissoes.style.display = 'none';
     cartaoProfAndares.style.display = 'none';
     cartaoProfProcedimentos.style.display = 'none';
     cartaoProfExames.style.display = 'none';
     cartaoAtendentesProf.style.display = 'none';
+    cartaoPlanoContas.style.display = 'none';
   }
 
 
@@ -642,7 +647,6 @@ async function atualizarMetas(){
   document.getElementById('tabela-metas').innerHTML = '<tr><td class="vazio">Carregando metas...</td></tr>';
   await atualizarTabelaMetas(mes, ano);
   await carregarNota(mes, ano);
-  await carregarFinanceiroDre(mes, ano);
   const podeEditarMetas = temPermissao('editar_metas');
   document.getElementById('botao-salvar-nota').style.display = podeEditarMetas ? 'inline-flex' : 'none';
   document.getElementById('texto-nota').disabled = !podeEditarMetas;
@@ -701,80 +705,6 @@ async function salvarNota(){
   await api('salvarNota', {mes, ano, texto});
   botao.textContent = 'Anotação salva ✓';
   setTimeout(()=>botao.textContent='Salvar anotação', 1800);
-}
-
-
-/* ---------------------------------------------------------------------
-   FINANCEIRO (DRE) — cartão na aba Metas. Dado contábil digitado
-   manualmente (não é derivado da produção) — uma linha por mês/ano.
-   Alimenta a aba Apresentação; ver tabela `financeiro_dre` no Supabase.
---------------------------------------------------------------------- */
-const CAMPOS_DRE = [
-  ['dre-faturamento-bruto', 'faturamento_bruto'],
-  ['dre-deducoes-impostos', 'deducoes_impostos'],
-  ['dre-custo-servico', 'custo_servico_prestado'],
-  ['dre-despesas-pessoal', 'despesas_pessoal'],
-  ['dre-despesas-compras', 'despesas_compras_manutencao'],
-  ['dre-despesas-operacionais', 'despesas_operacionais'],
-  ['dre-despesas-financeiras', 'despesas_financeiras'],
-  ['dre-prolabore', 'prolabore']
-];
-
-// Soma a margem/resultado a partir dos campos já digitados na tela (chamado a
-// cada digitação, pra já mostrar o resultado antes mesmo de salvar).
-function recalcularDreNaTela(){
-  const v = campo => Number(document.getElementById(campo).value) || 0;
-  const faturamento = v('dre-faturamento-bruto');
-  const margemContribuicao = faturamento - v('dre-deducoes-impostos') - v('dre-custo-servico');
-  const resultado = margemContribuicao - v('dre-despesas-pessoal') - v('dre-despesas-compras')
-    - v('dre-despesas-operacionais') - v('dre-despesas-financeiras') - v('dre-prolabore');
-  document.getElementById('dre-margem-contribuicao').textContent = formatarMoeda(margemContribuicao);
-  const elResultado = document.getElementById('dre-resultado-operacao');
-  elResultado.textContent = formatarMoeda(resultado);
-  elResultado.className = 'valor' + (resultado < 0 ? '' : ' teal');
-  elResultado.style.color = resultado < 0 ? 'var(--danger)' : '';
-}
-
-let dreCamposProntos = false;
-function prepararCamposDre(){
-  if(dreCamposProntos) return;
-  CAMPOS_DRE.forEach(([id])=>document.getElementById(id).addEventListener('input', recalcularDreNaTela));
-  dreCamposProntos = true;
-}
-
-async function carregarFinanceiroDre(mes, ano){
-  prepararCamposDre();
-  document.getElementById('dre-mes-referencia').textContent = `${mes} de ${ano}`;
-  const resp = await api('obterFinanceiroDre', {mes, ano});
-  const dre = (resp.ok && resp.dre) ? resp.dre : null;
-  CAMPOS_DRE.forEach(([id, campoBanco])=>{
-    document.getElementById(id).value = dre ? (dre[campoBanco] || '') : '';
-  });
-  recalcularDreNaTela();
-
-  const podeEditarMetas = temPermissao('editar_metas');
-  CAMPOS_DRE.forEach(([id])=>document.getElementById(id).disabled = !podeEditarMetas);
-  document.getElementById('botao-salvar-dre').style.display = podeEditarMetas ? 'inline-flex' : 'none';
-}
-
-async function salvarFinanceiroDre(){
-  const mes = document.getElementById('filtro-mes-metas').value;
-  const ano = document.getElementById('filtro-ano-metas').value;
-  const confirmacao = document.getElementById('confirmacao-dre');
-  const dados = { mes, ano };
-  CAMPOS_DRE.forEach(([id, campoBanco])=>{ dados[campoBanco] = document.getElementById(id).value; });
-
-  confirmacao.style.color = 'var(--ink-400)';
-  confirmacao.textContent = 'Salvando...';
-  const resp = await api('salvarFinanceiroDre', dados);
-  if(!resp.ok){
-    confirmacao.style.color = 'var(--danger)';
-    confirmacao.textContent = resp.erro || 'Não foi possível salvar o DRE deste mês.';
-    return;
-  }
-  confirmacao.style.color = 'var(--teal-700)';
-  confirmacao.textContent = 'DRE salvo ✓';
-  setTimeout(()=>{ if(confirmacao.textContent==='DRE salvo ✓') confirmacao.textContent=''; }, 2500);
 }
 
 

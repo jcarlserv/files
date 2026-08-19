@@ -62,21 +62,21 @@ function aplicarTravasCondicionadasDoFormulario(prefixo){
   // está logado como atendente) → filtra o Profissional por ele.
   const atendenteTravado = (prefixo==='campo_' && estado.papel==='atendente');
   if(atendenteTravado && elProf){
-    const profissionaisPermitidos = estado.atendentesProfissionais[estado.nomeProfissional] || [];
+    const profissionaisPermitidos = buscarListaTolerante(estado.atendentesProfissionais, estado.nomeProfissional);
     restringirSelect(prefixo+'prof', profissionaisPermitidos, estado.listas.profissionais||[], true);
   }
 
   // 2) Profissional (já filtrado pelo passo 1a, se for o caso) → Andar,
   // Procedimento e Exame.
   const prof = elProf ? elProf.value : '';
-  restringirSelect(prefixo+'andar', prof ? (estado.profissionaisAndares[prof]||[]) : [], estado.listas.andares||[], !!prof);
-  restringirSelect(prefixo+'procedimento', prof ? (estado.profissionaisProcedimentos[prof]||[]) : [], estado.listas.procedimentos||[], !!prof);
-  restringirSelect(prefixo+'exames', prof ? (estado.profissionaisExames[prof]||[]) : [], estado.listas.exames||[], !!prof);
+  restringirSelect(prefixo+'andar', prof ? buscarListaTolerante(estado.profissionaisAndares, prof) : [], estado.listas.andares||[], !!prof);
+  restringirSelect(prefixo+'procedimento', prof ? buscarListaTolerante(estado.profissionaisProcedimentos, prof) : [], estado.listas.procedimentos||[], !!prof);
+  restringirSelect(prefixo+'exames', prof ? buscarListaTolerante(estado.profissionaisExames, prof) : [], estado.listas.exames||[], !!prof);
 
   // 1b) Atendente livre (gerente no Lançamento, ou qualquer edição pelo
   // Modal) → o Profissional escolhido filtra o Atendente.
   if(!atendenteTravado){
-    const atendentesPermitidos = prof ? (estado.profissionaisAtendentes[prof]||[]) : [];
+    const atendentesPermitidos = prof ? buscarListaTolerante(estado.profissionaisAtendentes, prof) : [];
     restringirSelect(prefixo+'atendente', atendentesPermitidos, estado.listas.atendentes||[], !!prof);
   }
 }

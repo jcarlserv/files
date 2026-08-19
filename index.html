@@ -284,58 +284,6 @@
         <textarea id="texto-nota" style="width:100%;" placeholder="Anote aqui os pontos discutidos na reunião mensal..."></textarea>
         <div class="rodape-nota"><button class="botao secundario pequeno" id="botao-salvar-nota">Salvar anotação</button></div>
       </div>
-
-
-      <div class="cartao" id="cartao-financeiro-dre">
-        <h3>Financeiro (DRE) — <span id="dre-mes-referencia">—</span></h3>
-        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-          Dado contábil (vem do banco/conciliação), não é calculado a partir da produção — por isso
-          precisa ser digitado manualmente, uma vez por mês. Alimenta a aba Apresentação; enquanto
-          não for preenchido, aquelas telas ficam em branco para este mês.
-        </p>
-        <div class="grade-form">
-          <div class="campo">
-            <label>Faturamento bruto (R$)</label>
-            <input type="number" id="dre-faturamento-bruto" step="0.01">
-          </div>
-          <div class="campo">
-            <label>Deduções e impostos (R$)</label>
-            <input type="number" id="dre-deducoes-impostos" step="0.01">
-          </div>
-          <div class="campo">
-            <label>Custo do serviço prestado (R$)</label>
-            <input type="number" id="dre-custo-servico" step="0.01">
-          </div>
-          <div class="campo">
-            <label>Despesas — Setor pessoal (R$)</label>
-            <input type="number" id="dre-despesas-pessoal" step="0.01">
-          </div>
-          <div class="campo">
-            <label>Despesas — Compras e manutenções (R$)</label>
-            <input type="number" id="dre-despesas-compras" step="0.01">
-          </div>
-          <div class="campo">
-            <label>Despesas — Operacionais (R$)</label>
-            <input type="number" id="dre-despesas-operacionais" step="0.01">
-          </div>
-          <div class="campo">
-            <label>Despesas — Financeiras (R$)</label>
-            <input type="number" id="dre-despesas-financeiras" step="0.01">
-          </div>
-          <div class="campo">
-            <label>Prolabore (R$)</label>
-            <input type="number" id="dre-prolabore" step="0.01">
-          </div>
-        </div>
-        <div class="grade-kpi" style="margin:18px 0 0;">
-          <div class="kpi"><div class="rotulo">Margem de contribuição</div><div class="valor teal" id="dre-margem-contribuicao">—</div></div>
-          <div class="kpi"><div class="rotulo">Resultado da operação</div><div class="valor" id="dre-resultado-operacao">—</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:16px;">
-          <button class="botao secundario" id="botao-salvar-dre">Salvar DRE do mês</button>
-          <span id="confirmacao-dre" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
-        </div>
-      </div>
     </section>
 
 
@@ -552,6 +500,50 @@
     </section>
 
 
+    <!-- ---------- FINANCEIRO (plano de contas / DRE) ---------- -->
+    <section class="painel" id="painel-financeiro">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Financeiro</h2>
+          <p>Plano de contas e DRE mensal — dado contábil, digitado manualmente (não vem da produção).</p>
+        </div>
+        <div class="filtros">
+          <div class="campo"><label>Mês</label><select id="financeiro-mes"></select></div>
+          <div class="campo"><label>Ano</label><select id="financeiro-ano"></select></div>
+          <button class="botao sutil pequeno" id="botao-baixar-modelo-financeiro">Baixar planilha-modelo</button>
+          <label class="botao sutil pequeno" style="cursor:pointer;">
+            Importar planilha (CSV)
+            <input type="file" id="input-importar-financeiro" accept=".csv,text/csv" style="display:none;">
+          </label>
+        </div>
+      </div>
+
+      <div id="resumo-importacao-financeiro" style="margin:-10px 0 16px;font-size:13px;color:var(--ink-600);"></div>
+
+      <div class="grade-kpi">
+        <div class="kpi"><div class="rotulo">Receita líquida</div><div class="valor teal" id="financeiro-kpi-receita">—</div></div>
+        <div class="kpi"><div class="rotulo">Margem de contribuição</div><div class="valor" id="financeiro-kpi-margem">—</div></div>
+        <div class="kpi"><div class="rotulo">Resultado da operação</div><div class="valor" id="financeiro-kpi-resultado">—</div></div>
+      </div>
+
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <h3 style="margin:0;">Plano de contas</h3>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="botao secundario" id="botao-salvar-valores-financeiro">Salvar valores do mês</button>
+            <span id="confirmacao-financeiro" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+          </div>
+        </div>
+        <p style="margin:-6px 0 14px;color:var(--ink-400);font-size:12.5px;">
+          Clique na seta pra abrir/fechar uma conta. Só contas sem subconta aceitam valor — as demais
+          somam automaticamente o que está por baixo delas. "+ subconta" cria uma conta nova ali
+          dentro, com o código gerado sozinho.
+        </p>
+        <div id="financeiro-arvore"><p class="vazio">Carregando...</p></div>
+      </div>
+    </section>
+
+
     <!-- ---------- CONFIGURAÇÕES ---------- -->
     <section class="painel" id="painel-configuracoes">
       <div class="cabecalho-painel">
@@ -560,53 +552,6 @@
           <p>Dados gerais do sistema, salvos no Supabase.</p>
         </div>
         <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
-      </div>
-
-
-      <div class="cartao" style="max-width:480px;">
-        <h3>Identidade da clínica</h3>
-        <div class="campo">
-          <label>Nome da clínica</label>
-          <input type="text" id="config-nome-clinica" placeholder="Ex.: Clínica Cliza" />
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <button class="botao secundario" id="botao-salvar-config">Salvar</button>
-          <span id="confirmacao-config" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
-        </div>
-        <p style="margin:14px 0 0;color:var(--ink-400);font-size:12px;">
-          Esse nome aparece no cabeçalho do sistema e na tela de login, para todos os usuários.
-        </p>
-      </div>
-
-
-      <div class="cartao" style="max-width:480px;">
-        <h3>Logo e cores</h3>
-        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-          Envie a logo da clínica — ela substitui o selo "C" no topo do sistema e na tela de
-          login, para todos os usuários. Ao enviar, o sistema sugere uma nova cor principal com
-          base na imagem (sem usar nenhuma IA — é só uma leitura das cores do arquivo).
-        </p>
-        <div class="campo">
-          <label>Arquivo da logo (PNG ou JPG)</label>
-          <input type="file" id="config-input-logo" accept="image/png,image/jpeg" />
-        </div>
-        <div id="config-preview-logo" style="display:none;margin:6px 0 16px;">
-          <img id="config-preview-logo-img" alt="Prévia da logo" style="max-width:110px;max-height:110px;border-radius:12px;border:1.5px solid var(--line);display:block;object-fit:contain;background:#fff;" />
-        </div>
-        <div id="config-sugestao-cor" style="display:none;margin:0 0 16px;padding:14px;border-radius:10px;background:var(--rose-100);">
-          <p style="margin:0 0 10px;font-size:12.5px;color:var(--ink-600);font-weight:600;">Cor sugerida com base na logo</p>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <div id="config-amostra-cor" style="width:34px;height:34px;border-radius:8px;border:1.5px solid var(--line);flex-shrink:0;"></div>
-            <span id="config-codigo-cor" class="mono" style="font-size:12.5px;"></span>
-            <button type="button" class="botao secundario pequeno" id="botao-aplicar-cor">Aplicar essa cor</button>
-            <button type="button" class="botao sutil pequeno" id="botao-descartar-cor">Ignorar sugestão</button>
-          </div>
-          <p id="config-cor-aplicada-aviso" style="display:none;margin:10px 0 0;font-size:12px;color:var(--teal-700);font-weight:600;">Cor aplicada — clique em "Salvar logo" para confirmar de vez.</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <button class="botao secundario" id="botao-salvar-logo">Salvar logo</button>
-          <span id="confirmacao-logo" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
-        </div>
       </div>
 
 
@@ -702,6 +647,64 @@
       </div>
 
 
+      <div class="cartao" id="cartao-plano-contas-admin" style="max-width:100%;">
+        <h3>Plano de contas da DRE</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Estrutura de contas usada na aba <b>Financeiro</b> e no financeiro da <b>Apresentação</b>.
+          Aqui dá pra criar contas-mãe novas (categorias grandes); pra criar subconta dentro de uma
+          já existente, o mesmo botão "+ subconta" também está disponível direto na aba Financeiro.
+        </p>
+        <div id="financeiro-arvore-config"><p class="vazio">Carregando...</p></div>
+      </div>
+
+
+      <div class="cartao" style="max-width:480px;">
+        <h3>Identidade da clínica</h3>
+        <div class="campo">
+          <label>Nome da clínica</label>
+          <input type="text" id="config-nome-clinica" placeholder="Ex.: Clínica Cliza" />
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="botao secundario" id="botao-salvar-config">Salvar</button>
+          <span id="confirmacao-config" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+        </div>
+        <p style="margin:14px 0 0;color:var(--ink-400);font-size:12px;">
+          Esse nome aparece no cabeçalho do sistema e na tela de login, para todos os usuários.
+        </p>
+      </div>
+
+
+      <div class="cartao" style="max-width:480px;">
+        <h3>Logo e cores</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Envie a logo da clínica — ela substitui o selo "C" no topo do sistema e na tela de
+          login, para todos os usuários. Ao enviar, o sistema sugere uma nova cor principal com
+          base na imagem (sem usar nenhuma IA — é só uma leitura das cores do arquivo).
+        </p>
+        <div class="campo">
+          <label>Arquivo da logo (PNG ou JPG)</label>
+          <input type="file" id="config-input-logo" accept="image/png,image/jpeg" />
+        </div>
+        <div id="config-preview-logo" style="display:none;margin:6px 0 16px;">
+          <img id="config-preview-logo-img" alt="Prévia da logo" style="max-width:110px;max-height:110px;border-radius:12px;border:1.5px solid var(--line);display:block;object-fit:contain;background:#fff;" />
+        </div>
+        <div id="config-sugestao-cor" style="display:none;margin:0 0 16px;padding:14px;border-radius:10px;background:var(--rose-100);">
+          <p style="margin:0 0 10px;font-size:12.5px;color:var(--ink-600);font-weight:600;">Cor sugerida com base na logo</p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div id="config-amostra-cor" style="width:34px;height:34px;border-radius:8px;border:1.5px solid var(--line);flex-shrink:0;"></div>
+            <span id="config-codigo-cor" class="mono" style="font-size:12.5px;"></span>
+            <button type="button" class="botao secundario pequeno" id="botao-aplicar-cor">Aplicar essa cor</button>
+            <button type="button" class="botao sutil pequeno" id="botao-descartar-cor">Ignorar sugestão</button>
+          </div>
+          <p id="config-cor-aplicada-aviso" style="display:none;margin:10px 0 0;font-size:12px;color:var(--teal-700);font-weight:600;">Cor aplicada — clique em "Salvar logo" para confirmar de vez.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="botao secundario" id="botao-salvar-logo">Salvar logo</button>
+          <span id="confirmacao-logo" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+        </div>
+      </div>
+
+
       <div class="cartao" style="max-width:820px;">
         <h3>Importar produção em massa (CSV)</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
@@ -728,7 +731,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.5.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.6.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -796,6 +799,7 @@
 <script src="js/modal.js"></script>
 <script src="js/analises.js"></script>
 <script src="js/apresentacao.js"></script>
+<script src="js/financeiro.js"></script>
 <script src="js/rmr-squad.js"></script>
 <!-- sessao-login.js precisa ser o ÚLTIMO: ele roda código imediatamente ao
      carregar (tenta retomar sessão salva, chamando iniciarApp()), então
