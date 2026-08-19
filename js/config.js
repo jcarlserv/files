@@ -334,6 +334,27 @@
             caiu de 940 pra 873 linhas. Nenhuma mudança de comportamento,
             só separação por aba, seguindo o mesmo padrão do resto do
             sistema (um arquivo por aba).
+   v6.7.0 — Aba "Apresentação" deixou de ser uma aba própria: virou um
+            botão ("Apresentação") no cabeçalho da aba Análises, que abre
+            a reunião mensal de resultados em um overlay de tela cheia,
+            usando o Mês/Ano JÁ selecionados em Análises — sem filtro
+            próprio duplicado. Fechar (×), tela cheia, exportar PDF e
+            navegação por seta/teclado continuam iguais.
+            As telas financeiras da apresentação (DRE, Principais Contas,
+            Estrutura de Custos) agora leem do plano de contas (aba
+            Financeiro) em vez da tabela `financeiro_dre` da v6.5.0 — essa
+            tabela fica de vez sem uso; as rotas obterFinanceiroDre/
+            salvarFinanceiroDre continuam em api.js só por segurança, sem
+            nada mais chamando elas. Uma conta nova, "Plano de Contas —
+            Principais Contas", foi adicionada entre o DRE e a Estrutura
+            de Custos, detalhando o valor de cada conta de nível 2
+            (Receita Bruta, Deduções, Custo do Serviço, e cada grupo de
+            Despesa) — antes só existia o total geral.
+            Seed opcional: SQL com o plano de contas completo (incluindo
+            Ativo/Passivo/Patrimônio Líquido, ~155 contas) disponível à
+            parte — roda uma vez no SQL Editor pra popular a estrutura
+            real da clínica (a tabela plano_contas nasce vazia; só o modo
+            demonstração já vem com contas de exemplo).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

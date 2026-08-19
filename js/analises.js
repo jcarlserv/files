@@ -249,6 +249,8 @@ function rmrPrepararSelects(){
   document.getElementById('rmr-botao-salvar-nota').addEventListener('click', rmrSalvarNota);
   document.getElementById('rmr-botao-exportar-dados-mes').addEventListener('click', ()=>gerarRelatorioDadosBrutos('mes'));
   document.getElementById('rmr-botao-exportar-dados-ano').addEventListener('click', ()=>gerarRelatorioDadosBrutos('ano'));
+  document.getElementById('rmr-botao-apresentar').style.display = temPermissao('ver_apresentacao') ? 'inline-flex' : 'none';
+  apresentacaoPrepararSelects();
   rmrSelectsProntos = true;
 }
 

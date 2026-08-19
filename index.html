@@ -299,6 +299,7 @@
           <div class="campo"><label>Mês</label><select id="rmr-mes"></select></div>
           <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
           <div class="campo"><label>Andar</label><select id="rmr-andar"><option value="">Todos</option></select></div>
+          <button class="botao secundario pequeno" id="rmr-botao-apresentar" title="Reunião mensal de resultados do Mês/Ano já selecionados acima">Apresentação</button>
           <button class="botao sutil pequeno botao-exportar-pdf" id="rmr-botao-imprimir">Exportar PDF</button>
           <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-mes" title="Todos os profissionais e andares do mês selecionado, sem os filtros da tela">Exportar dados (mês)</button>
           <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-ano" title="Todos os profissionais e andares do ano selecionado, sem os filtros da tela">Exportar dados (ano)</button>
@@ -471,32 +472,6 @@
         </div>
       </div>
       <div id="squad-conteudo"><p class="vazio">Carregando...</p></div>
-    </section>
-
-
-    <!-- ---------- APRESENTAÇÃO (gerada automaticamente a partir do banco) ---------- -->
-    <section class="painel" id="painel-apresentacao">
-      <div class="cabecalho-painel">
-        <div>
-          <h2>Apresentação</h2>
-          <p>Reunião mensal de resultados — montada automaticamente a partir dos dados do ProdClin, sem precisar exportar nem enviar nada.</p>
-        </div>
-        <div class="filtros">
-          <div class="campo"><label>Mês</label><select id="apresentacao-mes"></select></div>
-          <div class="campo"><label>Ano</label><select id="apresentacao-ano"></select></div>
-          <button class="botao secundario pequeno" id="apresentacao-botao-tela-cheia">Apresentar (tela cheia)</button>
-          <button class="botao sutil pequeno" id="apresentacao-botao-exportar-pdf">Exportar PDF</button>
-        </div>
-      </div>
-
-      <div id="apresentacao-stage-wrap">
-        <div id="apresentacao-stage"><p class="vazio">Carregando...</p></div>
-        <div id="apresentacao-navegacao">
-          <button class="botao sutil pequeno" id="apresentacao-anterior">← Anterior</button>
-          <span id="apresentacao-indicador" class="mono">1 / 1</span>
-          <button class="botao sutil pequeno" id="apresentacao-proxima">Próxima →</button>
-        </div>
-      </div>
     </section>
 
 
@@ -731,7 +706,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.6.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.7.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -781,6 +756,26 @@
         <button type="submit" class="botao">Salvar</button>
       </div>
     </form>
+  </div>
+</div>
+
+
+<!-- ===================== APRESENTAÇÃO (overlay em tela cheia, aberto pelo botão na aba Análises) ===================== -->
+<div class="sobreposicao" id="sobreposicao-apresentacao">
+  <div class="apresentacao-modal-conteudo">
+    <div id="apresentacao-stage-wrap">
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:10px;">
+        <button class="botao sutil pequeno" id="apresentacao-botao-tela-cheia">Tela cheia</button>
+        <button class="botao sutil pequeno" id="apresentacao-botao-exportar-pdf">Exportar PDF</button>
+        <button class="botao sutil pequeno" id="apresentacao-botao-fechar">Fechar ×</button>
+      </div>
+      <div id="apresentacao-stage"><p class="vazio">Carregando...</p></div>
+      <div id="apresentacao-navegacao">
+        <button class="botao sutil pequeno" id="apresentacao-anterior">← Anterior</button>
+        <span id="apresentacao-indicador" class="mono">1 / 1</span>
+        <button class="botao sutil pequeno" id="apresentacao-proxima">Próxima →</button>
+      </div>
+    </div>
   </div>
 </div>
 

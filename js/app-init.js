@@ -97,7 +97,6 @@ function montarNavegacao(){
     {id:'metas', rotulo:'Metas', chave:'ver_metas'},
     {id:'rmr', rotulo:'Análises', chave:'ver_rmr'},
     {id:'rmr-squad', rotulo:'RMR', chave:'ver_rmr_squad'},
-    {id:'apresentacao', rotulo:'Apresentação', chave:'ver_apresentacao'},
     {id:'financeiro', rotulo:'Financeiro', chave:'ver_financeiro'},
     {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
   ];
@@ -134,7 +133,6 @@ async function atualizarPainelAtivo(){
   if(estado.abaAtiva==='configuracoes') await atualizarConfiguracoes();
   if(estado.abaAtiva==='rmr') await atualizarRMR();
   if(estado.abaAtiva==='rmr-squad') await atualizarRmrSquad();
-  if(estado.abaAtiva==='apresentacao') await atualizarApresentacao();
   if(estado.abaAtiva==='financeiro') await atualizarFinanceiro();
 }
 

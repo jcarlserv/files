@@ -1,15 +1,19 @@
 /* =====================================================================
-   ABA APRESENTAÇÃO — monta sozinha, a partir do banco, uma "reunião mensal
+   APRESENTAÇÃO — monta sozinha, a partir do banco, uma "reunião mensal
    de resultados" navegável em slides (e exportável em PDF), sem que
    ninguém precise exportar/enviar nada manualmente todo mês.
+
+   Abre como OVERLAY em tela cheia (botão "Apresentação" na aba Análises),
+   usando o Mês/Ano JÁ selecionados ali — não tem filtro próprio, de
+   propósito, pra não duplicar a mesma escolha em dois lugares.
 
    Duas fontes de dado bem diferentes:
    1) Produção (tabela `producao`) — 100% automático, igual ao resto do
       sistema, incluindo a quebra por Andar (Térreo × Coparticipados).
-   2) Financeiro/DRE (tabela `financeiro_dre`) — digitado manualmente uma
-      vez por mês na aba Metas (não dá pra calcular a partir da produção,
-      é dado contábil). Se o mês não tiver DRE cadastrado, as telas
-      financeiras aparecem em branco, com um aviso — não inventamos nada.
+   2) Financeiro (plano de contas, aba Financeiro) — digitado manualmente
+      (não dá pra calcular a partir da produção, é dado contábil). Se o
+      mês não tiver valores lançados, as telas financeiras aparecem em
+      branco, com um aviso — não inventamos nada.
 
    Simplificação assumida (documentada aqui, não escondida): "Previsto ×
    Realizado" por andar usa a SOMA de meta_qtd/meta_valor dos profissionais
@@ -26,14 +30,12 @@ let apresentacaoIndice = 0;
 
 function apresentacaoPrepararSelects(){
   if(apresentacaoSelectsProntos) return;
-  const hoje = new Date();
-  const anos = [hoje.getFullYear()-1, hoje.getFullYear()];
-  const selAno = document.getElementById('apresentacao-ano');
-  selAno.innerHTML = anos.map(a=>`<option value="${a}" ${a===hoje.getFullYear()?'selected':''}>${a}</option>`).join('');
-  const selMes = document.getElementById('apresentacao-mes');
-  selMes.innerHTML = MESES.map((m,i)=>`<option value="${m}" ${i===hoje.getMonth()?'selected':''}>${m}</option>`).join('');
-  selAno.addEventListener('change', atualizarApresentacao);
-  selMes.addEventListener('change', atualizarApresentacao);
+
+  document.getElementById('rmr-botao-apresentar').addEventListener('click', abrirApresentacao);
+  document.getElementById('apresentacao-botao-fechar').addEventListener('click', fecharApresentacao);
+  document.getElementById('sobreposicao-apresentacao').addEventListener('click', (ev)=>{
+    if(ev.target.id==='sobreposicao-apresentacao') fecharApresentacao();
+  });
 
   document.getElementById('apresentacao-anterior').addEventListener('click', ()=>apresentacaoIrPara(apresentacaoIndice-1));
   document.getElementById('apresentacao-proxima').addEventListener('click', ()=>apresentacaoIrPara(apresentacaoIndice+1));
@@ -41,12 +43,28 @@ function apresentacaoPrepararSelects(){
   document.getElementById('apresentacao-botao-exportar-pdf').addEventListener('click', apresentacaoExportarPdf);
 
   document.addEventListener('keydown', (ev)=>{
-    if(estado.abaAtiva!=='apresentacao') return;
+    if(!document.getElementById('sobreposicao-apresentacao').classList.contains('aberta')) return;
     if(ev.key==='ArrowRight') apresentacaoIrPara(apresentacaoIndice+1);
     if(ev.key==='ArrowLeft') apresentacaoIrPara(apresentacaoIndice-1);
+    if(ev.key==='Escape') fecharApresentacao();
   });
 
   apresentacaoSelectsProntos = true;
+}
+
+// Abre o overlay e monta a apresentação com o Mês/Ano JÁ selecionados na
+// aba Análises — é por isso que esse botão só existe dentro dela.
+async function abrirApresentacao(){
+  apresentacaoPrepararSelects();
+  const mes = document.getElementById('rmr-mes').value;
+  const ano = document.getElementById('rmr-ano').value;
+  document.getElementById('sobreposicao-apresentacao').classList.add('aberta');
+  await atualizarApresentacao(mes, ano);
+}
+
+function fecharApresentacao(){
+  document.getElementById('sobreposicao-apresentacao').classList.remove('aberta');
+  if(document.fullscreenElement) document.exitFullscreen();
 }
 
 // Alterna tela cheia SÓ do palco (#apresentacao-stage) — não a janela toda.
@@ -103,27 +121,28 @@ function apresentacaoFiltrarAndar(registros, andar){
   return registros.filter(r => String(r.andar||'').trim().toUpperCase()===alvo);
 }
 
-async function atualizarApresentacao(){
-  apresentacaoPrepararSelects();
-  const mes = document.getElementById('apresentacao-mes').value;
-  const ano = Number(document.getElementById('apresentacao-ano').value);
+async function atualizarApresentacao(mes, ano){
+  ano = Number(ano);
   const anoAnterior = ano - 1;
   const { mes: mesAnt, ano: anoAnt } = apresentacaoMesAnterior(mes, ano);
 
   const stage = document.getElementById('apresentacao-stage');
   stage.innerHTML = '<p class="vazio">Montando a apresentação...</p>';
 
-  let registrosAno, registrosAnoAnterior, registrosMesAnterior, metasMes, dreResp;
+  let registrosAno, registrosAnoAnterior, registrosMesAnterior, metasMes;
   try{
     const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
     const { dataInicio: diAnt, dataFim: dfAnt } = primeiroEUltimoDiaDoMes(mesAnt, anoAnt);
-    [registrosAno, registrosAnoAnterior, registrosMesAnterior, metasMes, dreResp] = await Promise.all([
+    [registrosAno, registrosAnoAnterior, registrosMesAnterior, metasMes] = await Promise.all([
       buscarProducaoCompleta({ano}),
       buscarProducaoCompleta({ano:anoAnterior}),
       buscarProducaoCompleta({dataInicio:diAnt, dataFim:dfAnt}),
-      api('listarMetas', {mes, ano}),
-      api('obterFinanceiroDre', {mes, ano})
+      api('listarMetas', {mes, ano})
     ]);
+    // Financeiro (plano de contas) — mesmas funções da aba Financeiro
+    // (js/financeiro.js), pra não duplicar lógica de árvore/soma.
+    await financeiroCarregarContas();
+    await financeiroCarregarValores(mes, ano);
   }catch(e){
     stage.innerHTML = `<p class="vazio">Erro ao carregar os dados: ${e.message||e}</p>`;
     return;
@@ -138,11 +157,13 @@ async function atualizarApresentacao(){
   const registrosMesAnt = registrosMesAnterior.registros||[];
   const registrosAnoAnt = registrosAnoAnterior.registros||[];
   const metas = metasMes.ok ? metasMes.metas : [];
-  const dre = (dreResp.ok && dreResp.dre) ? dreResp.dre : null;
+  // "tem financeiro cadastrado" = alguma conta-folha do plano de contas tem
+  // valor lançado nesse mês (senão, as telas financeiras ficam em branco).
+  const temFinanceiro = Object.keys(financeiroValoresCache).some(cod=>Number(financeiroValoresCache[cod])>0);
 
   const dados = {
     mes, ano, mesAnt, anoAnt, anoAnterior,
-    registrosMes, registrosMesAnt, todosRegistrosAno, registrosAnoAnt, metas, dre
+    registrosMes, registrosMesAnt, todosRegistrosAno, registrosAnoAnt, metas, temFinanceiro
   };
 
   const slidesHtml = apresentacaoConstruirSlides(dados);
@@ -355,41 +376,61 @@ function apresentacaoConstruirSlides(d){
     <h1 style="font-family:'Fraunces',serif;font-size:32px;margin:0 0 8px;">ACOMPANHAMENTO FINANCEIRO</h1>
     <p class="apresentacao-legenda" style="font-size:14px;">DRE e estrutura de custos</p>`);
 
-  // ---------- 16 e 17. FINANCEIRO (DRE) ----------
-  if(d.dre){
-    const dre = d.dre;
-    const receitaLiquida = dre.faturamento_bruto - dre.deducoes_impostos;
-    const margem = receitaLiquida - dre.custo_servico_prestado;
-    const totalDespesas = dre.despesas_pessoal + dre.despesas_compras_manutencao + dre.despesas_operacionais + dre.despesas_financeiras + dre.prolabore;
-    const resultado = margem - totalDespesas;
+  // ---------- 16/17/18. FINANCEIRO — Plano de Contas ----------
+  if(d.temFinanceiro){
+    const receitaBruta = financeiroValorDaConta('3.1', financeiroContasCache, financeiroValoresCache);
+    const deducoes = Math.abs(financeiroValorDaConta('3.2', financeiroContasCache, financeiroValoresCache));
+    const custoServico = Math.abs(financeiroValorDaConta('4', financeiroContasCache, financeiroValoresCache));
+    const despesasTotal = Math.abs(financeiroValorDaConta('5', financeiroContasCache, financeiroValoresCache));
+    const receitaLiquida = receitaBruta - deducoes;
+    const margem = receitaLiquida - custoServico;
+    const resultado = margem - despesasTotal;
+
     add('', `
       <h2>DRE — Demonstrativo de Resultados</h2>
-      <p class="apresentacao-legenda">${d.mes} de ${d.ano}</p>
+      <p class="apresentacao-legenda">${d.mes} de ${d.ano} — plano de contas</p>
       <div class="tabela-scroll"><table>
         <tbody>
-          <tr class="linha-total"><td>Faturamento total</td><td class="mono">${formatarMoeda(dre.faturamento_bruto)}</td></tr>
-          <tr><td>(-) Deduções e impostos</td><td class="mono">${formatarMoeda(dre.deducoes_impostos)}</td></tr>
-          <tr><td>(-) Custo do serviço prestado</td><td class="mono">${formatarMoeda(dre.custo_servico_prestado)}</td></tr>
+          <tr class="linha-total"><td>Receita bruta de serviços</td><td class="mono">${formatarMoeda(receitaBruta)}</td></tr>
+          <tr><td>(-) Deduções da receita bruta</td><td class="mono">${formatarMoeda(deducoes)}</td></tr>
+          <tr class="linha-total"><td>(=) Receita líquida</td><td class="mono">${formatarMoeda(receitaLiquida)}</td></tr>
+          <tr><td>(-) Custo do serviço prestado</td><td class="mono">${formatarMoeda(custoServico)}</td></tr>
           <tr class="linha-total"><td>(=) Margem de contribuição</td><td class="mono">${formatarMoeda(margem)}</td></tr>
-          <tr><td>(-) Despesas — Setor pessoal</td><td class="mono">${formatarMoeda(dre.despesas_pessoal)}</td></tr>
-          <tr><td>(-) Despesas — Compras e manutenções</td><td class="mono">${formatarMoeda(dre.despesas_compras_manutencao)}</td></tr>
-          <tr><td>(-) Despesas — Operacionais</td><td class="mono">${formatarMoeda(dre.despesas_operacionais)}</td></tr>
-          <tr><td>(-) Despesas — Financeiras</td><td class="mono">${formatarMoeda(dre.despesas_financeiras)}</td></tr>
-          <tr><td>(-) Prolabore</td><td class="mono">${formatarMoeda(dre.prolabore)}</td></tr>
+          <tr><td>(-) Despesas operacionais e financeiras</td><td class="mono">${formatarMoeda(despesasTotal)}</td></tr>
           <tr class="linha-total"><td>(=) Resultado da operação</td><td class="mono" style="color:${resultado<0?'var(--danger)':'inherit'};">${formatarMoeda(resultado)}</td></tr>
         </tbody>
       </table></div>`);
 
+    // Detalhamento por conta principal (nível 2) — Receita Bruta, Deduções,
+    // Custo do Serviço e cada grupo de Despesa, com o valor agregado das
+    // subcontas de cada uma.
+    const gruposPrincipais = [];
+    ['3.1','3.2','4'].forEach(cod=>{
+      const conta = financeiroContasCache.find(c=>c.codigo===cod);
+      if(conta) gruposPrincipais.push(conta);
+    });
+    gruposPrincipais.push(...financeiroFilhosDe('5', financeiroContasCache));
+    add('', `
+      <h2>Plano de Contas — Principais Contas</h2>
+      <p class="apresentacao-legenda">${d.mes} de ${d.ano} — cada linha soma todas as subcontas dela</p>
+      <div class="tabela-scroll"><table>
+        <thead><tr><th>Código</th><th>Conta</th><th>Valor</th></tr></thead>
+        <tbody>${gruposPrincipais.map(c=>{
+          const v = Math.abs(financeiroValorDaConta(c.codigo, financeiroContasCache, financeiroValoresCache));
+          return `<tr><td class="mono">${c.codigo}</td><td>${c.nome}</td><td class="mono">${formatarMoeda(v)}</td></tr>`;
+        }).join('')}</tbody>
+      </table></div>`);
+
     add('', `
       <h2>Estrutura de Custos</h2>
-      <p class="apresentacao-legenda">${d.mes} de ${d.ano} • % sobre o faturamento bruto</p>
+      <p class="apresentacao-legenda">${d.mes} de ${d.ano} • % sobre a receita bruta</p>
       <div id="apr-grafico-estrutura-custos" class="mini-grafico" style="min-height:300px;"></div>`);
   } else {
     add('', `
       <h2>DRE — Demonstrativo de Resultados</h2>
       <p class="apresentacao-legenda">${d.mes} de ${d.ano}</p>
       <div class="cartao" style="box-shadow:none;border:1.5px dashed var(--line);">
-        <p class="vazio">Nenhum DRE cadastrado para ${d.mes} de ${d.ano} ainda. Cadastre em <b>Metas → Financeiro (DRE)</b> para essa tela aparecer preenchida.</p>
+        <p class="vazio">Nenhum valor lançado no plano de contas para ${d.mes} de ${d.ano} ainda. Cadastre na aba <b>Financeiro</b> para essa tela aparecer preenchida.</p>
       </div>`);
   }
 
@@ -479,16 +520,21 @@ function apresentacaoDesenharGraficos(d){
     {nome:String(d.anoAnterior), dados: mesesAte.map(m=>porMesUsgAnoAnt[m].quantidade), cor:'#9FD6C8', tracejado:true}
   ]);
 
-  // 17. Estrutura de custos (se tiver DRE)
-  if(d.dre && document.getElementById('apr-grafico-estrutura-custos')){
-    const dre = d.dre;
-    const faturamento = Number(dre.faturamento_bruto)||1;
-    const itens = [
-      ['Prolabore', dre.prolabore], ['Custo do serviço', dre.custo_servico_prestado],
-      ['Setor pessoal', dre.despesas_pessoal], ['Op. operacionais', dre.despesas_operacionais],
-      ['Compras/manut.', dre.despesas_compras_manutencao], ['Deduções/impostos', dre.deducoes_impostos],
-      ['Despesas fin.', dre.despesas_financeiras]
-    ];
-    miniGraficoBarras('apr-grafico-estrutura-custos', itens.map(i=>i[0]), itens.map(i=>Math.round((i[1]/faturamento)*1000)/10), '#9C6E22');
+  // 17. Estrutura de custos — grupos de nível 2 dentro de "5. Despesas",
+  // mais Custo do Serviço ("4") — cada barra em % sobre a receita bruta.
+  if(d.temFinanceiro && document.getElementById('apr-grafico-estrutura-custos')){
+    const receitaBruta = financeiroValorDaConta('3.1', financeiroContasCache, financeiroValoresCache) || 1;
+    const grupos = financeiroFilhosDe('5', financeiroContasCache).slice();
+    const contaCsp = financeiroContasCache.find(c=>c.codigo==='4');
+    if(contaCsp) grupos.unshift(contaCsp);
+    const itens = grupos.map(g=>[
+      g.nome.length>16 ? g.nome.slice(0,15)+'…' : g.nome,
+      Math.abs(financeiroValorDaConta(g.codigo, financeiroContasCache, financeiroValoresCache))
+    ]).filter(i=>i[1]>0);
+    if(itens.length){
+      miniGraficoBarras('apr-grafico-estrutura-custos', itens.map(i=>i[0]), itens.map(i=>Math.round((i[1]/receitaBruta)*1000)/10), '#9C6E22');
+    } else {
+      graficoVazio('apr-grafico-estrutura-custos');
+    }
   }
 }

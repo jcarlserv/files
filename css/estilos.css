@@ -340,8 +340,16 @@
      próprio CSS de abas, então não precisa fazer nada especial pra "escolher" a aba). */
   @media print{
     #barra-progresso-topo, #faixa-demo, header.topo, footer.rodape-sistema,
-    .filtros, .celula-acoes, .sobreposicao, .botao-multiselect, .painel-multiselect{
+    .filtros, .celula-acoes, .botao-multiselect, .painel-multiselect{
       display:none !important;
+    }
+    /* Esconde os overlays comuns (modal de edição, minha conta) — MAS não o da
+       Apresentação, que precisa aparecer inteiro quando body tem
+       .apresentacao-imprimindo (ver bloco @media print mais abaixo). */
+    .sobreposicao:not(#sobreposicao-apresentacao){display:none !important;}
+    #sobreposicao-apresentacao{display:none !important;}
+    body.apresentacao-imprimindo #sobreposicao-apresentacao{
+      display:flex !important;position:static;background:none;padding:0;
     }
     body{background:#fff;}
     main{padding:0;max-width:100%;}
@@ -357,6 +365,7 @@
      mini-biblioteca do resto do app) são desenhados em TODAS as slides de uma vez, mesmo
      as escondidas — funciona porque o SVG usa viewBox fixo, não depende do tamanho
      renderizado do container. */
+  .apresentacao-modal-conteudo{width:100%;max-width:1180px;max-height:96vh;overflow-y:auto;}
   #apresentacao-stage-wrap{max-width:1100px;margin:0 auto;}
   #apresentacao-stage{
     background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
@@ -385,6 +394,7 @@
   #apresentacao-navegacao span{font-size:13px;color:var(--ink-600);}
 
   @media print{
+    body.apresentacao-imprimindo .apresentacao-modal-conteudo{max-width:100%;max-height:none;overflow:visible;}
     body.apresentacao-imprimindo #apresentacao-stage{box-shadow:none;max-width:100%;aspect-ratio:auto;}
     body.apresentacao-imprimindo .apresentacao-slide{
       display:block !important;page-break-after:always;height:auto;min-height:90vh;
