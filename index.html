@@ -677,7 +677,6 @@
 <script src="js/dados-demo.js"></script>
 <script src="js/api.js"></script>
 <script src="js/graficos.js"></script>
-<script src="js/sessao-login.js"></script>
 <script src="js/app-init.js"></script>
 <script src="js/lancamento.js"></script>
 <script src="js/verificar.js"></script>
@@ -686,5 +685,9 @@
 <script src="js/modal.js"></script>
 <script src="js/analises.js"></script>
 <script src="js/rmr-squad.js"></script>
+<!-- sessao-login.js precisa ser o ÚLTIMO: ele roda código imediatamente ao
+     carregar (tenta retomar sessão salva, chamando iniciarApp()), então
+     todas as funções do resto do sistema já precisam existir antes disso. -->
+<script src="js/sessao-login.js"></script>
 </body>
 </html>
