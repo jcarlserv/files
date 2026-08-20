@@ -89,6 +89,10 @@ function montarArvoreContas(containerId, opcoes){
   const container = document.getElementById(containerId);
   if(!container) return;
 
+  function todosOsCodigos(){
+    return financeiroContasCache.map(c=>c.codigo);
+  }
+
   function linhaHtml(conta, profundidade){
     const ehFolha = financeiroEhFolha(conta.codigo, financeiroContasCache);
     const aberto = !!financeiroExpandido[conta.codigo];
@@ -124,11 +128,26 @@ function montarArvoreContas(containerId, opcoes){
   }
 
   const raizes = financeiroRaizes(financeiroContasCache);
+  const barraControle = `<div style="display:flex;gap:10px;margin-bottom:10px;">
+    <button type="button" class="botao sutil pequeno" id="${containerId}-expandir-tudo">Expandir tudo</button>
+    <button type="button" class="botao sutil pequeno" id="${containerId}-recolher-tudo">Recolher tudo</button>
+  </div>`;
   if(raizes.length===0){
     container.innerHTML = '<p class="vazio">Nenhuma conta cadastrada ainda.</p>';
   } else {
-    container.innerHTML = raizes.map(r=>linhaHtml(r, 0)).join('');
+    container.innerHTML = barraControle + raizes.map(r=>linhaHtml(r, 0)).join('');
   }
+
+  const btnExpandir = document.getElementById(containerId+'-expandir-tudo');
+  const btnRecolher = document.getElementById(containerId+'-recolher-tudo');
+  if(btnExpandir) btnExpandir.addEventListener('click', ()=>{
+    todosOsCodigos().forEach(cod=>{ financeiroExpandido[cod] = true; });
+    montarArvoreContas(containerId, opcoes);
+  });
+  if(btnRecolher) btnRecolher.addEventListener('click', ()=>{
+    todosOsCodigos().forEach(cod=>{ financeiroExpandido[cod] = false; });
+    montarArvoreContas(containerId, opcoes);
+  });
 
   container.querySelectorAll('.financeiro-toggle').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -497,17 +516,78 @@ function financeiroImportarCsv(ev){
    uma conta do plano, só pra ajudar a comparar depois — não é obrigatório
    nem afeta o cálculo do DRE.
 --------------------------------------------------------------------- */
-function financeiroPopularSelectContaPlano(){
-  const sel = document.getElementById('fluxo-conta-plano');
-  const folhas = financeiroContasCache.filter(c=>financeiroEhFolha(c.codigo, financeiroContasCache));
-  const valorAtual = sel.value;
-  sel.innerHTML = '<option value="">—</option>' +
-    folhas.map(c=>`<option value="${c.codigo}">${c.codigo} — ${c.nome}</option>`).join('');
-  sel.value = valorAtual;
+let financeiroSeletorContaPronto = false;
+function financeiroPrepararSeletorContaPlano(){
+  const botao = document.getElementById('fluxo-conta-plano-toggle');
+  const painel = document.getElementById('fluxo-conta-plano-painel');
+  if(financeiroSeletorContaPronto){
+    financeiroMontarArvoreSeletorConta(); // já preparado — só reconstrói com contas atualizadas
+    return;
+  }
+
+  botao.addEventListener('click', ()=>{
+    const abrir = painel.style.display === 'none';
+    painel.style.display = abrir ? 'block' : 'none';
+    if(abrir) financeiroMontarArvoreSeletorConta();
+  });
+  // fecha o painel se clicar fora dele
+  document.addEventListener('click', (ev)=>{
+    if(!painel.contains(ev.target) && ev.target!==botao && !botao.contains(ev.target)){
+      painel.style.display = 'none';
+    }
+  });
+
+  financeiroSeletorContaPronto = true;
+}
+
+function financeiroMontarArvoreSeletorConta(){
+  const painel = document.getElementById('fluxo-conta-plano-painel');
+
+  function linha(conta, profundidade){
+    const filhos = financeiroFilhosDe(conta.codigo, financeiroContasCache);
+    const ehFolha = filhos.length===0;
+    const aberto = !!financeiroExpandido[conta.codigo];
+    let html = `<div class="seletor-conta-linha" data-codigo="${conta.codigo}" data-folha="${ehFolha}"
+      style="display:flex;align-items:center;gap:6px;padding:6px 4px;padding-left:${8+profundidade*18}px;cursor:${ehFolha?'pointer':'default'};border-radius:6px;">`;
+    if(!ehFolha){
+      html += `<button type="button" class="seletor-conta-toggle" data-codigo="${conta.codigo}" style="background:none;border:none;cursor:pointer;color:var(--plum-700);width:14px;font-size:11px;">${aberto?'▾':'▸'}</button>`;
+    } else {
+      html += `<span style="width:14px;"></span>`;
+    }
+    html += `<span class="mono" style="font-size:10px;color:var(--ink-400);min-width:88px;">${conta.codigo}</span>`;
+    html += `<span style="font-size:12.5px;${!ehFolha?'font-weight:600;color:var(--plum-900);':''}">${conta.nome}</span>`;
+    html += `</div>`;
+    if(aberto && !ehFolha){
+      html += filhos.map(f=>linha(f, profundidade+1)).join('');
+    }
+    return html;
+  }
+
+  const linhaNenhuma = `<div class="seletor-conta-linha" data-codigo="" data-folha="true" style="display:flex;align-items:center;gap:6px;padding:6px 4px;cursor:pointer;border-radius:6px;color:var(--ink-400);font-style:italic;">— (nenhuma)</div>`;
+  painel.innerHTML = linhaNenhuma + financeiroRaizes(financeiroContasCache).map(r=>linha(r,0)).join('');
+
+  painel.querySelectorAll('.seletor-conta-toggle').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      financeiroExpandido[btn.dataset.codigo] = !financeiroExpandido[btn.dataset.codigo];
+      financeiroMontarArvoreSeletorConta();
+    });
+  });
+
+  painel.querySelectorAll('.seletor-conta-linha').forEach(linhaEl=>{
+    linhaEl.addEventListener('click', ()=>{
+      if(linhaEl.dataset.folha !== 'true') return; // clicar numa conta-mãe só expande, via o botão
+      const codigo = linhaEl.dataset.codigo;
+      document.getElementById('fluxo-conta-plano').value = codigo;
+      const conta = codigo ? financeiroContasCache.find(c=>c.codigo===codigo) : null;
+      document.getElementById('fluxo-conta-plano-rotulo').textContent = conta ? `${conta.codigo} — ${conta.nome}` : '— (nenhuma)';
+      painel.style.display = 'none';
+    });
+  });
 }
 
 async function financeiroRenderizarFluxoCaixa(){
-  financeiroPopularSelectContaPlano();
+  financeiroPrepararSeletorContaPlano();
   const mes = document.getElementById('financeiro-mes').value;
   const ano = document.getElementById('financeiro-ano').value;
   const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
@@ -585,6 +665,8 @@ async function financeiroAdicionarLancamentoFluxo(){
   confirmacao.textContent = 'Lançamento adicionado ✓';
   document.getElementById('fluxo-descricao').value = '';
   document.getElementById('fluxo-valor').value = '';
+  document.getElementById('fluxo-conta-plano').value = '';
+  document.getElementById('fluxo-conta-plano-rotulo').textContent = '— (nenhuma)';
   setTimeout(()=>{ if(confirmacao.textContent==='Lançamento adicionado ✓') confirmacao.textContent=''; }, 2000);
 
   // Se a data lançada cair fora do mês/ano selecionado no filtro, avisa —

@@ -15,7 +15,39 @@ const arredondar1 = v => Math.round((Number(v)||0)*10)/10;
    MINI-BIBLIOTECA DE GRÁFICOS PRÓPRIA (SVG puro, sem dependência externa)
    Substitui o Chart.js — assim os gráficos nunca dependem de internet.
 ===================================================================== */
-const PALETA_GRAFICOS = ['#5C2350','#146B5D','#B9862E','#8A3D79','#0E5548','#C495B8','#9C6E22','#4A1D45'];
+let PALETA_GRAFICOS = ['#5C2350','#146B5D','#B9862E','#8A3D79','#0E5548','#C495B8','#9C6E22','#4A1D45'];
+
+// Gera N cores distinguíveis a partir de uma cor base — gira o matiz (hue)
+// em passos largos (ângulo áureo, técnica padrão pra paleta categórica),
+// mantendo saturação/luminosidade parecidas com a base. Usa os
+// conversores hex/HSL que já existem em configuracoes.js (mesmo padrão
+// usado pra derivar a paleta de cores do app a partir da logo).
+function gerarPaletaGraficos(hexBase, n=8){
+  if(!hexBase || typeof hexParaRgb!=='function') return PALETA_GRAFICOS;
+  const {r,g,b} = hexParaRgb(hexBase);
+  const {h, s, l} = rgbParaHsl(r,g,b);
+  const satUsada = Math.max(0.30, Math.min(s, 0.65));
+  const lumUsada = Math.max(0.28, Math.min(l, 0.55));
+  const cores = [];
+  for(let i=0;i<n;i++){
+    const matiz = (h*360 + i*137.5) % 360; // 137.5° ≈ ângulo áureo
+    const {r:rr,g:gg,b:bb} = hslParaRgb(matiz/360, satUsada, lumUsada);
+    cores.push(rgbParaHex(rr,gg,bb));
+  }
+  return cores;
+}
+
+// Aplica o tema de gráficos (cor base + tamanho do texto) globalmente —
+// muda a paleta usada pelas roscas/multi-série daqui pra frente, e o
+// tamanho do texto via variável CSS (pega em todo gráfico da página,
+// incluindo os que já estão desenhados).
+function aplicarTemaGraficos(corBase, tamanho){
+  if(corBase) PALETA_GRAFICOS = gerarPaletaGraficos(corBase);
+  const tamanhos = { pequeno: [9, 8.5], medio: [10.5, 10], grande: [13, 12] };
+  const [tamEixo, tamValor] = tamanhos[tamanho] || tamanhos.medio;
+  document.documentElement.style.setProperty('--grafico-tam-eixo', tamEixo+'px');
+  document.documentElement.style.setProperty('--grafico-tam-valor', tamValor+'px');
+}
 
 
 function graficoVazio(idContainer, mensagem){
@@ -82,7 +114,7 @@ function miniGraficoBarrasEmpilhadas(idContainer, labels, series){
   const passo = areaW/labels.length;
 
 
-  let barras = '', rotulosX = '';
+  let barras = '', rotulosX = '', rotulosTotal = '';
   labels.forEach((lab,i)=>{
     const x = margemEsq + i*passo + (passo-larguraBarra)/2;
     let yAtual = margemTopo + areaH;
@@ -92,6 +124,8 @@ function miniGraficoBarrasEmpilhadas(idContainer, labels, series){
       yAtual -= altura;
       barras += `<rect x="${x.toFixed(1)}" y="${yAtual.toFixed(1)}" width="${larguraBarra.toFixed(1)}" height="${Math.max(0,altura).toFixed(1)}" fill="${serie.cor}"><title>${serie.nome} — ${lab}: ${v}</title></rect>`;
     });
+    // Total da barra (soma de todas as séries daquele rótulo), em cima dela.
+    rotulosTotal += `<text class="rotulo-valor" x="${(x+larguraBarra/2).toFixed(1)}" y="${(yAtual-6).toFixed(1)}" text-anchor="middle">${totais[i]}</text>`;
     rotulosX += `<text class="rotulo-eixo" x="${(x+larguraBarra/2).toFixed(1)}" y="${H-margemBaixo+16}" text-anchor="middle" transform="rotate(-35 ${(x+larguraBarra/2).toFixed(1)} ${H-margemBaixo+16})">${truncarRotulo(lab)}</text>`;
   });
 
@@ -103,7 +137,7 @@ function miniGraficoBarrasEmpilhadas(idContainer, labels, series){
 
 
   const legenda = series.map(s=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${s.cor};"></span>${s.nome}</div>`).join('');
-  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${linhasGuia}${barras}${rotulosX}</svg><div class="mini-legenda">${legenda}</div>`;
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${linhasGuia}${barras}${rotulosTotal}${rotulosX}</svg><div class="mini-legenda">${legenda}</div>`;
 }
 
 
@@ -134,7 +168,7 @@ function miniGraficoRosca(idContainer, labels, valores, cores=PALETA_GRAFICOS){
   });
 
 
-  const legenda = labels.map((lab,i)=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${cores[i%cores.length]};"></span>${truncarRotulo(lab,18)} (${Math.round((valores[i]||0)/total*100)}%)</div>`).join('');
+  const legenda = labels.map((lab,i)=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${cores[i%cores.length]};"></span>${truncarRotulo(lab,18)} — ${valores[i]||0} (${Math.round((valores[i]||0)/total*100)}%)</div>`).join('');
   container.innerHTML = `<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" style="max-width:240px;margin:0 auto;display:block;">${fatias}</svg><div class="mini-legenda">${legenda}</div>`;
 }
 
@@ -167,18 +201,27 @@ function miniGraficoLinhas(idContainer, labels, series){
 
 
   let linhas = '';
-  series.forEach(serie=>{
+  series.forEach((serie, idxSerie)=>{
     const pontos = serie.dados.map((v,i)=>{
       const x = margemEsq + i*passo;
       const y = margemTopo + areaH - (v/maxValor)*areaH;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
+    // Rótulo do valor em cima de cada ponto — quando tem 2 séries, a segunda
+    // fica com o texto um pouco mais abaixo do ponto, pra não colidir com a
+    // primeira quando as linhas ficam próximas.
+    const rotulosPonto = serie.dados.map((v,i)=>{
+      const x = margemEsq + i*passo;
+      const y = margemTopo + areaH - (v/maxValor)*areaH;
+      const yTexto = idxSerie===0 ? y-9 : y+16;
+      return `<text class="rotulo-valor" x="${x.toFixed(1)}" y="${yTexto.toFixed(1)}" text-anchor="middle" fill="${serie.cor}">${v}</text>`;
+    }).join('');
     const circulos = serie.dados.map((v,i)=>{
       const x = margemEsq + i*passo;
       const y = margemTopo + areaH - (v/maxValor)*areaH;
       return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${serie.cor}"><title>${serie.nome} — ${labels[i]}: ${v}</title></circle>`;
     }).join('');
-    linhas += `<polyline points="${pontos}" fill="none" stroke="${serie.cor}" stroke-width="2.5" ${serie.tracejado?'stroke-dasharray="6,5"':''}/>${circulos}`;
+    linhas += `<polyline points="${pontos}" fill="none" stroke="${serie.cor}" stroke-width="2.5" ${serie.tracejado?'stroke-dasharray="6,5"':''}/>${circulos}${rotulosPonto}`;
   });
 
 

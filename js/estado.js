@@ -114,5 +114,7 @@ const estado = {
   // carregarNomeClinica() (sessao-login.js) e usadas pra trocar o selo "C" pela logo e
   // reaplicar a paleta salva. Ficam null enquanto a clínica não tiver configurado nada.
   logoClinica:null,
-  corPrimaria:null
+  corPrimaria:null,
+  graficoCorPrimaria:null,
+  graficoTamanhoTexto:'medio'
 };

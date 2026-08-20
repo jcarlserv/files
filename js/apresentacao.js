@@ -256,6 +256,27 @@ function apresentacaoConstruirSlides(d){
     <p class="apresentacao-legenda">Faturamento mensal — Térreo × Coparticipados</p>
     <div id="apr-grafico-composicao-andar" class="mini-grafico" style="min-height:280px;"></div>`);
 
+  // ---------- 4b. TODOS OS PROCEDIMENTOS (clínica inteira, Térreo + Coparticipados) ----------
+  const porProcedimentoGeral = {};
+  d.registrosMes.forEach(r=>{
+    const proc = r.procedimento || '(não informado)';
+    if(!porProcedimentoGeral[proc]) porProcedimentoGeral[proc] = {quantidade:0, valor:0};
+    porProcedimentoGeral[proc].quantidade++;
+    porProcedimentoGeral[proc].valor += Number(r.valor)||0;
+  });
+  const procedimentosGeral = Object.keys(porProcedimentoGeral).sort((a,b)=>porProcedimentoGeral[b].valor-porProcedimentoGeral[a].valor);
+  add('', `
+    <h2>Todos os Procedimentos</h2>
+    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • Térreo + Coparticipados juntos, todo procedimento com lançamento no mês</p>
+    <div class="tabela-scroll"><table>
+      <thead><tr><th>Procedimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
+      <tbody>${procedimentosGeral.length?procedimentosGeral.map(p=>{
+        const info = porProcedimentoGeral[p];
+        return `<tr><td>${p}</td><td>${info.quantidade}</td><td class="mono">${formatarMoeda(info.valor)}</td><td class="mono">${formatarMoeda(info.valor/info.quantidade)}</td></tr>`;
+      }).join('') : '<tr><td class="vazio">Nenhum lançamento nesse mês.</td></tr>'}
+      </tbody>
+    </table></div>`);
+
   // ---------- 5. DIVISOR TÉRREO ----------
   add('apresentacao-divisor', `
     <h1 style="font-family:'Fraunces',serif;font-size:32px;margin:0 0 8px;">SETOR TÉRREO</h1>

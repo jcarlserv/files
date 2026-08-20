@@ -82,6 +82,25 @@
         <div class="kpi"><div class="rotulo">Mês — Térreo</div><div class="valor" id="inicio-kpi-terreo-mes">—</div></div>
         <div class="kpi"><div class="rotulo">Mês — Coparticipados</div><div class="valor" id="inicio-kpi-copart-mes">—</div></div>
       </div>
+
+      <div class="grade-2" style="margin-top:22px;">
+        <div class="cartao">
+          <h3>Comparativo por Andar</h3>
+          <p style="margin:-6px 0 14px;color:var(--ink-400);font-size:12.5px;">Faturamento do mês atual</p>
+          <div id="inicio-grafico-andar" class="mini-grafico" style="min-height:260px;"></div>
+        </div>
+        <div class="cartao">
+          <h3>Particular × Convênios</h3>
+          <p style="margin:-6px 0 14px;color:var(--ink-400);font-size:12.5px;">Faturamento do mês atual</p>
+          <div id="inicio-grafico-convenio" class="mini-grafico" style="min-height:260px;"></div>
+        </div>
+      </div>
+
+      <div class="cartao" style="margin-top:18px;">
+        <h3>Financeiro Diário</h3>
+        <p style="margin:-6px 0 14px;color:var(--ink-400);font-size:12.5px;">Faturamento por dia — mês atual até hoje</p>
+        <div id="inicio-grafico-diario" class="mini-grafico" style="min-height:280px;"></div>
+      </div>
     </section>
 
 
@@ -547,18 +566,27 @@
           </p>
           <div class="grade-form">
             <div class="campo"><label>Data</label><input type="date" id="fluxo-data"></div>
-            <div class="campo"><label>Descrição</label><input type="text" id="fluxo-descricao" placeholder="Ex.: Pagamento conta de luz"></div>
-            <div class="campo"><label>Valor (R$)</label><input type="number" id="fluxo-valor" step="0.01"></div>
             <div class="campo"><label>Tipo</label>
               <select id="fluxo-tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
             </div>
+            <div class="campo" style="grid-column:1/-1;">
+              <label>Conta do plano de Contas (opcional)</label>
+              <div style="position:relative;max-width:520px;">
+                <button type="button" class="botao sutil" id="fluxo-conta-plano-toggle" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;">
+                  <span id="fluxo-conta-plano-rotulo">— (nenhuma)</span><span style="color:var(--ink-400);">▾</span>
+                </button>
+                <div id="fluxo-conta-plano-painel" style="display:none;position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:320px;overflow-y:auto;background:#fff;border:1.5px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;"></div>
+                <input type="hidden" id="fluxo-conta-plano" value="">
+              </div>
+            </div>
+            <div class="campo"><label>Descrição</label><input type="text" id="fluxo-descricao" placeholder="Ex.: Pagamento conta de luz"></div>
+            <div class="campo"><label>Valor (R$)</label><input type="number" id="fluxo-valor" step="0.01"></div>
             <div class="campo"><label>Banco</label>
               <select id="fluxo-banco">
                 <option value="">—</option>
                 <option>Caixa</option><option>Unicred</option><option>BNB</option><option>Cora</option><option>InfinitePay</option>
               </select>
             </div>
-            <div class="campo"><label>Conta do plano (opcional)</label><select id="fluxo-conta-plano"><option value="">—</option></select></div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
             <button class="botao secundario" id="botao-adicionar-fluxo">Adicionar lançamento</button>
@@ -781,6 +809,32 @@
       </div>
 
 
+      <div class="cartao" style="max-width:480px;">
+        <h3>Aparência dos gráficos</h3>
+        <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+          Vale pra todo gráfico do sistema (Análises, RMR, Apresentação, Início). A cor aqui
+          controla as paletas de rosca/multi-série — gráficos com cores com significado próprio
+          (ex.: Térreo × Coparticipados) continuam com as cores deles, de propósito.
+        </p>
+        <div class="campo">
+          <label>Tamanho do texto nos gráficos</label>
+          <select id="config-grafico-tamanho">
+            <option value="pequeno">Pequeno</option>
+            <option value="medio" selected>Médio</option>
+            <option value="grande">Grande</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Cor principal dos gráficos</label>
+          <input type="color" id="config-grafico-cor" value="#5C2350" style="width:70px;height:38px;padding:2px;cursor:pointer;">
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+          <button class="botao secundario" id="botao-salvar-tema-grafico">Salvar</button>
+          <span id="confirmacao-tema-grafico" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+        </div>
+      </div>
+
+
       <div class="cartao" style="max-width:820px;">
         <h3>Importar produção em massa (CSV)</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
@@ -807,7 +861,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.11.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.12.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>

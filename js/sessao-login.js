@@ -150,8 +150,11 @@ async function carregarNomeClinica(){
     // guardadas em estado pra a aba Configurações mostrar a prévia depois.
     estado.logoClinica = (resp.configuracoes && resp.configuracoes.logo_clinica) || null;
     estado.corPrimaria = (resp.configuracoes && resp.configuracoes.cor_primaria) || null;
+    estado.graficoCorPrimaria = (resp.configuracoes && resp.configuracoes.grafico_cor_primaria) || null;
+    estado.graficoTamanhoTexto = (resp.configuracoes && resp.configuracoes.grafico_tamanho_texto) || 'medio';
     if(estado.logoClinica) aplicarLogoNosSelo(estado.logoClinica);
     if(estado.corPrimaria) aplicarPaletaCor(estado.corPrimaria);
+    aplicarTemaGraficos(estado.graficoCorPrimaria, estado.graficoTamanhoTexto);
   }catch(e){
     nomeClinicaAtual = 'Clínica';
   }

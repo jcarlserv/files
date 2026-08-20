@@ -53,10 +53,55 @@ async function atualizarInicio(){
   }
 
   if(respMes.ok){
-    const s = inicioSomarPorAndar(respMes.registros||[]);
+    const registrosMes = respMes.registros||[];
+    const s = inicioSomarPorAndar(registrosMes);
     document.getElementById('inicio-kpi-atendimentos-mes').textContent = s.total.quantidade;
     document.getElementById('inicio-kpi-valor-mes').textContent = formatarMoeda(s.total.valor);
     document.getElementById('inicio-kpi-terreo-mes').textContent = `${s['TÉRREO'].quantidade} • ${formatarMoeda(s['TÉRREO'].valor)}`;
     document.getElementById('inicio-kpi-copart-mes').textContent = `${s['COPARTICIPADOS'].quantidade} • ${formatarMoeda(s['COPARTICIPADOS'].valor)}`;
+    inicioDesenharGraficos(registrosMes);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   GRÁFICOS — reaproveita a mini-biblioteca SVG de graficos.js. Todos os 3
+   olham só pro mês atual até hoje (o mesmo lote de dados já buscado acima,
+   sem chamada nova ao banco).
+--------------------------------------------------------------------- */
+function inicioDesenharGraficos(registrosMes){
+  // Pizza — comparativo por andar
+  const porAndar = inicioSomarPorAndar(registrosMes);
+  const andares = ['TÉRREO','COPARTICIPADOS'].filter(a=>porAndar[a].quantidade>0);
+  if(andares.length){
+    miniGraficoRosca('inicio-grafico-andar', andares.map(a=>a==='TÉRREO'?'Térreo':'Coparticipados'), andares.map(a=>porAndar[a].valor));
+  } else {
+    graficoVazio('inicio-grafico-andar');
+  }
+
+  // Pizza — Particular × Convênios
+  let particular = 0, convenios = 0;
+  registrosMes.forEach(r=>{
+    const c = r.convenio;
+    if(!c || String(c).trim().toUpperCase()==='PARTICULAR') particular += Number(r.valor)||0;
+    else convenios += Number(r.valor)||0;
+  });
+  if(particular>0 || convenios>0){
+    miniGraficoRosca('inicio-grafico-convenio', ['Particular','Convênios'], [particular, convenios]);
+  } else {
+    graficoVazio('inicio-grafico-convenio');
+  }
+
+  // Barras — financeiro diário (dia 1 até hoje)
+  const porDia = {};
+  registrosMes.forEach(r=>{
+    const dia = String(r.data||'').slice(8,10);
+    if(!dia) return;
+    porDia[dia] = (porDia[dia]||0) + (Number(r.valor)||0);
+  });
+  const diasOrdenados = Object.keys(porDia).sort((a,b)=>Number(a)-Number(b));
+  if(diasOrdenados.length){
+    miniGraficoBarras('inicio-grafico-diario', diasOrdenados, diasOrdenados.map(d=>Math.round(porDia[d])), '#146B5D');
+  } else {
+    graficoVazio('inicio-grafico-diario');
   }
 }

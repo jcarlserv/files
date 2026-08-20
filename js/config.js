@@ -448,6 +448,32 @@
             Volume Operacional e Ticket Médio.
             Checkbox de Cortesia no Lançamento: CANCELADA (pedido do
             usuário), não foi implementada.
+   v6.12.0 — Gráficos: linha (cada ponto) e barras empilhadas (total da
+            barra) agora mostram o número visível, não só no hover — bar
+            simples já tinha isso desde antes. Rosca ganhou o valor
+            absoluto na legenda, além do %.
+            Configurações: novo cartão "Aparência dos gráficos" — tamanho
+            do texto (Pequeno/Médio/Grande, via variável CSS) e cor
+            principal (gera uma paleta de ~8 tons distintos por rotação de
+            matiz, ângulo áureo — usada nas roscas/multi-série; gráficos
+            com cor com significado próprio, tipo Térreo×Coparticipados,
+            continuam com as cores deles). Salvo em `configuracoes`
+            (chaves grafico_cor_primaria/grafico_tamanho_texto), aplicado
+            já na tela de login.
+            Plano de Contas: botões "Expandir tudo"/"Recolher tudo" — na
+            aba Financeiro e no cartão de Configurações.
+            Fluxo de Caixa reorganizado: campos na ordem Data → Tipo →
+            Conta do Plano → Descrição → Valor → Banco. "Conta do Plano"
+            deixou de ser uma lista solta e virou um seletor em árvore de
+            verdade (abre, expande, escolhe a folha).
+            Apresentação: nova slide "Todos os Procedimentos" (Térreo +
+            Coparticipados juntos), logo após "Composição da Receita por
+            Andar" — mesmo formato das duas outras (Térreo/Coparticipados)
+            que já existiam, só que combinando os dois andares.
+            Aba Início ganhou 3 gráficos do mês atual: pizza Térreo ×
+            Coparticipados, pizza Particular × Convênios, e barras do
+            faturamento dia a dia — todos a partir dos mesmos dados já
+            buscados pros KPIs (sem chamada nova ao banco).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

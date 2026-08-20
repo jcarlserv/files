@@ -34,6 +34,7 @@ async function atualizarConfiguracoes(){
   prepararSelectListaConfig();
   renderizarItensListaConfig();
   prepararLogoCores();
+  prepararTemaGrafico();
   if(estado.logoClinica && !logoBase64Pendente){
     document.getElementById('config-preview-logo').style.display = 'block';
     document.getElementById('config-preview-logo-img').src = estado.logoClinica;
@@ -780,6 +781,37 @@ function restaurarPaletaSalva(){
       document.documentElement.style.removeProperty(v);
     });
   }
+}
+
+// ---------- Aparência dos gráficos (cartão em Configurações) ----------
+let temaGraficoPronto = false;
+function prepararTemaGrafico(){
+  document.getElementById('config-grafico-tamanho').value = estado.graficoTamanhoTexto || 'medio';
+  if(estado.graficoCorPrimaria) document.getElementById('config-grafico-cor').value = estado.graficoCorPrimaria;
+  if(temaGraficoPronto) return;
+
+  document.getElementById('botao-salvar-tema-grafico').addEventListener('click', async ()=>{
+    const cor = document.getElementById('config-grafico-cor').value;
+    const tamanho = document.getElementById('config-grafico-tamanho').value;
+    const confirmacao = document.getElementById('confirmacao-tema-grafico');
+    confirmacao.style.color = 'var(--ink-400)';
+    confirmacao.textContent = 'Salvando...';
+    try{
+      await api('salvarConfiguracao', {chave:'grafico_cor_primaria', valor: cor});
+      await api('salvarConfiguracao', {chave:'grafico_tamanho_texto', valor: tamanho});
+    }catch(e){
+      confirmacao.style.color = 'var(--danger)';
+      confirmacao.textContent = 'Não foi possível salvar.';
+      return;
+    }
+    estado.graficoCorPrimaria = cor;
+    estado.graficoTamanhoTexto = tamanho;
+    aplicarTemaGraficos(cor, tamanho);
+    confirmacao.style.color = 'var(--teal-700)';
+    confirmacao.textContent = 'Salvo ✓ — o tamanho do texto já atualizou; a cor vale a partir do próximo gráfico desenhado.';
+    setTimeout(()=>{ if(confirmacao.textContent.startsWith('Salvo')) confirmacao.textContent=''; }, 3000);
+  });
+  temaGraficoPronto = true;
 }
 
 // Troca o selo "C" pela logo (chamado tanto no boot, com a logo já salva,

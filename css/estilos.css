@@ -271,8 +271,8 @@
   .mini-legenda{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:10px;font-size:12px;color:var(--ink-600);}
   .mini-legenda-item{display:flex;align-items:center;gap:6px;}
   .mini-legenda-ponto{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0;}
-  .mini-grafico .rotulo-eixo{font-size:10.5px;fill:var(--ink-400);font-family:'Inter',sans-serif;}
-  .mini-grafico .rotulo-valor{font-size:10px;fill:var(--ink-600);font-family:'IBM Plex Mono',monospace;}
+  .mini-grafico .rotulo-eixo{font-size:var(--grafico-tam-eixo, 10.5px);fill:var(--ink-400);font-family:'Inter',sans-serif;}
+  .mini-grafico .rotulo-valor{font-size:var(--grafico-tam-valor, 10px);fill:var(--ink-600);font-family:'IBM Plex Mono',monospace;}
 
 
   /* KPIs */
