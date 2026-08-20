@@ -509,6 +509,13 @@
             — nesses dois casos, a forma escolhida é preservada e salva
             certinho, com valor 0. Caso normal (forma real sem valor
             preenchido) continua sendo descartado, como sempre foi.
+   v6.13.3 — RMR (Dashboard → RMR), card de cada médico: novo indicador
+            "Retorno (Consulta Particular)" — conta os atendimentos com
+            Procedimento=Retorno E Convênio=Particular (ou vazio, mesma
+            convenção do resto do sistema) — no mês selecionado e na
+            tabela mensal do médico. Retorno já caía dentro de
+            "Procedimentos" antes; esse indicador é um recorte específico
+            de dentro desse grupo, só pra Retorno com convênio particular.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

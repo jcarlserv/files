@@ -51,6 +51,16 @@ function squadCategoria(registro){
   return 'Procedimentos';
 }
 
+// Retorno (procedimento) atrelado a uma consulta particular (convênio vazio
+// ou "PARTICULAR", mesma convenção usada no resto do sistema pra convênio
+// não informado = particular). Card pedido especificamente pro card de
+// cada médico na RMR.
+function squadEhRetornoConsultaParticular(registro){
+  const proc = String(registro.procedimento||'').trim().toUpperCase();
+  const conv = String(registro.convenio||'').trim().toUpperCase();
+  return proc==='RETORNO' && (conv==='' || conv==='PARTICULAR');
+}
+
 
 function squadPrepararSelects(){
   if(squadSelectsProntos) return;
@@ -383,7 +393,8 @@ function squadRenderMedico(andar, prof, mesRef, ano, anoAnterior, registrosAndar
   categorias.forEach(c=>contagemMesAtual[c]=0);
   doMesAtualProf.forEach(r=>{ const c = squadCategoria(r); contagemMesAtual[c] = (contagemMesAtual[c]||0)+1; });
   contagemMesAtual['Biópsias'] = doMesAtualProf.filter(r=>r.biopsias).length;
-  const categoriasComBiopsia = [...categorias, 'Biópsias'];
+  contagemMesAtual['Retorno (Consulta Particular)'] = doMesAtualProf.filter(squadEhRetornoConsultaParticular).length;
+  const categoriasComBiopsia = [...categorias, 'Biópsias', 'Retorno (Consulta Particular)'];
 
 
   const resumoMesAtualHtml = `<div class="grade-kpi" style="margin-bottom:16px;">
@@ -397,6 +408,7 @@ function squadRenderMedico(andar, prof, mesRef, ano, anoAnterior, registrosAndar
     categorias.forEach(c=>contagem[c]=0);
     doMes.forEach(r=>{ const c = squadCategoria(r); contagem[c] = (contagem[c]||0)+1; });
     contagem['Biópsias'] = doMes.filter(r=>r.biopsias).length;
+    contagem['Retorno (Consulta Particular)'] = doMes.filter(squadEhRetornoConsultaParticular).length;
     return {mes, ...contagem};
   });
   const tabelaMensalCategoriaHtml = `<div class="tabela-scroll"><table>
