@@ -557,6 +557,32 @@ async function supabaseApi(acao, dados) {
     }
 
 
+    // FLUXO DE CAIXA — lançamentos com DATA exata (diferente do Plano de
+    // Contas, que só tem mês/ano). Regime de caixa: quando o dinheiro
+    // realmente entrou/saiu, não quando o serviço foi prestado.
+    case 'listarFluxoCaixa': {
+      const { data, error } = await supabaseClient.from('fluxo_caixa')
+        .select('*').gte('data', dados.dataInicio).lte('data', dados.dataFim).order('data');
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, lancamentos: data||[]};
+    }
+
+    case 'criarLancamentoFluxoCaixa': {
+      const registro = {
+        data: dados.data, descricao: dados.descricao, valor: Number(dados.valor)||0,
+        tipo: dados.tipo==='entrada'?'entrada':'saida', banco: dados.banco||null,
+        conta_plano_codigo: dados.conta_plano_codigo||null
+      };
+      const { error } = await supabaseClient.from('fluxo_caixa').insert(registro);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+    case 'excluirLancamentoFluxoCaixa': {
+      const { error } = await supabaseClient.from('fluxo_caixa').delete().eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
+
     case 'dashboard': {
       // Busca o intervalo de datas do mês selecionado EM PÁGINAS (não uma
       // chamada só) — filtrar por mês reduz o volume, mas não garante ficar
@@ -738,6 +764,22 @@ function mockApi(acao, dados) {
     case 'salvarValorConta': {
       const chave = dados.codigo+'|'+dados.mes+'-'+dados.ano;
       demo.planoContasValores[chave] = Number(dados.valor)||0;
+      return {ok:true};
+    }
+    case 'listarFluxoCaixa': {
+      const lancamentos = demo.fluxoCaixa.filter(l => l.data >= dados.dataInicio && l.data <= dados.dataFim);
+      return {ok:true, lancamentos: lancamentos.slice().sort((a,b)=>a.data.localeCompare(b.data))};
+    }
+    case 'criarLancamentoFluxoCaixa': {
+      demo.fluxoCaixa.push({
+        id: 'fc'+(demo.fluxoCaixa.length+1), data: dados.data, descricao: dados.descricao,
+        valor: Number(dados.valor)||0, tipo: dados.tipo==='entrada'?'entrada':'saida',
+        banco: dados.banco||null, conta_plano_codigo: dados.conta_plano_codigo||null
+      });
+      return {ok:true};
+    }
+    case 'excluirLancamentoFluxoCaixa': {
+      demo.fluxoCaixa = demo.fluxoCaixa.filter(l=>l.id!==dados.id);
       return {ok:true};
     }
     case 'listarListas': {

@@ -87,6 +87,15 @@ const demo = {
     '5.1.01|Junho-2026': 56880.39, '5.2.01|Junho-2026': 116200.19,
     '5.3.01|Junho-2026': 44525.50, '5.5.01|Junho-2026': 11138.55, '5.6.01|Junho-2026': 69899.47
   },
+  // Lançamentos de exemplo do Fluxo de Caixa (regime de caixa — data exata,
+  // diferente do plano de contas que só tem mês/ano). Equivalente à tabela
+  // `fluxo_caixa`.
+  fluxoCaixa: [
+    {id:'fc1', data:'2026-06-01', descricao:'Tarifa bancária BNB', valor:105.00, tipo:'saida', banco:'BNB', conta_plano_codigo:'5.5.01'},
+    {id:'fc2', data:'2026-06-02', descricao:'Recebimento Pix — atendimentos do dia', valor:3200.00, tipo:'entrada', banco:'Cora', conta_plano_codigo:null},
+    {id:'fc3', data:'2026-06-15', descricao:'Pagamento encargos', valor:2333.18, tipo:'saida', banco:'BNB', conta_plano_codigo:'5.5.01'},
+    {id:'fc4', data:'2026-06-15', descricao:'Transferência recebida', valor:11049.86, tipo:'entrada', banco:'BNB', conta_plano_codigo:null}
+  ],
   // Lista de {prof, andar} — equivalente à tabela profissionais_andares.
   profissionaisAndares:[
     {prof:'ANGELINA', andar:'TÉRREO'},

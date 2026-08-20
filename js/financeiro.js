@@ -151,7 +151,7 @@ function montarArvoreContas(containerId, opcoes){
       if(!resp.ok){ alert(resp.erro||'Não foi possível atualizar.'); return; }
       await financeiroCarregarContas();
       montarArvoreContas(containerId, opcoes);
-      if(typeof financeiroAtualizarResumo === 'function' && document.getElementById('financeiro-kpi-resultado')) financeiroAtualizarResumo();
+      if(financeiroSubAbaAtiva==='dre') financeiroRenderizarDre();
     });
   });
 
@@ -215,24 +215,57 @@ function financeiroPrepararSelects(){
   document.getElementById('botao-salvar-valores-financeiro').addEventListener('click', financeiroSalvarValores);
   document.getElementById('botao-baixar-modelo-financeiro').addEventListener('click', financeiroBaixarModeloCsv);
   document.getElementById('input-importar-financeiro').addEventListener('change', financeiroImportarCsv);
+  document.getElementById('botao-adicionar-fluxo').addEventListener('click', financeiroAdicionarLancamentoFluxo);
 
   financeiroSelectsProntos = true;
 }
 
+let financeiroSubAbaAtiva = null; // 'fluxo-caixa' | 'dre' | 'plano-contas'
+let financeiroSubNavPronta = false;
+
+function financeiroMontarSubNav(){
+  if(financeiroSubNavPronta) return;
+  const grupo = ['fluxo-caixa','dre','plano-contas'];
+  document.querySelectorAll('#subnav-financeiro .sub-aba').forEach((botao,i)=>{
+    if(i===0) botao.classList.add('ativa');
+    botao.addEventListener('click', async ()=>{
+      financeiroSubAbaAtiva = botao.dataset.subaba;
+      document.querySelectorAll('#subnav-financeiro .sub-aba').forEach(b=>b.classList.toggle('ativa', b===botao));
+      grupo.forEach(id=>{
+        const el = document.getElementById('financeiro-sub-'+id);
+        if(el) el.classList.toggle('ativa', id===financeiroSubAbaAtiva);
+      });
+      await financeiroRenderizarSubAbaAtiva();
+    });
+  });
+  financeiroSubAbaAtiva = grupo[0];
+  document.getElementById('financeiro-sub-'+financeiroSubAbaAtiva).classList.add('ativa');
+  financeiroSubNavPronta = true;
+}
+
 async function atualizarFinanceiro(){
   financeiroPrepararSelects();
+  financeiroMontarSubNav();
   const mes = document.getElementById('financeiro-mes').value;
   const ano = document.getElementById('financeiro-ano').value;
-  document.getElementById('financeiro-arvore').innerHTML = '<p class="vazio">Carregando...</p>';
 
   await financeiroCarregarContas();
   await financeiroCarregarValores(mes, ano);
 
+  await financeiroRenderizarSubAbaAtiva();
+}
+
+async function financeiroRenderizarSubAbaAtiva(){
+  if(financeiroSubAbaAtiva==='plano-contas') financeiroRenderizarPlanoContas();
+  if(financeiroSubAbaAtiva==='dre') financeiroRenderizarDre();
+  if(financeiroSubAbaAtiva==='fluxo-caixa') await financeiroRenderizarFluxoCaixa();
+}
+
+function financeiroRenderizarPlanoContas(){
+  document.getElementById('financeiro-arvore').innerHTML = '<p class="vazio">Carregando...</p>';
   const podeEditar = temPermissao('editar_financeiro');
   montarArvoreContas('financeiro-arvore', {comValores:true, podeEditar});
   document.getElementById('botao-salvar-valores-financeiro').style.display = podeEditar ? 'inline-flex' : 'none';
-
-  financeiroAtualizarResumo();
 }
 
 // DRE em 9 etapas (ver Documento 5 do usuário) — mesma matemática final de
@@ -261,7 +294,7 @@ function financeiroCalcularDre(){
     lucroLiquido, margemLiquidaPct };
 }
 
-function financeiroAtualizarResumo(){
+function financeiroRenderizarDre(){
   const dre = financeiroCalcularDre();
   document.getElementById('financeiro-kpi-receita').textContent = formatarMoeda(dre.receitaLiquida);
   document.getElementById('financeiro-kpi-margem').textContent = formatarMoeda(dre.lucroBruto);
@@ -270,6 +303,23 @@ function financeiroAtualizarResumo(){
   elResultado.textContent = formatarMoeda(dre.lucroLiquido);
   elResultado.style.color = dre.lucroLiquido<0 ? 'var(--danger)' : '';
   document.getElementById('financeiro-kpi-margem-pct').textContent = dre.margemLiquidaPct===null ? '—' : `${dre.margemLiquidaPct.toFixed(1)}%`;
+
+  const linhas = [
+    ['Receita bruta de serviços', dre.receitaBruta, true],
+    ['(-) Deduções da receita bruta', dre.deducoes, false],
+    ['(=) Receita líquida', dre.receitaLiquida, true],
+    ['(-) Custo do serviço prestado', dre.custoServico, false],
+    ['(=) Lucro bruto', dre.lucroBruto, true],
+    ['(-) Despesas operacionais (pessoal, compras, operacionais, cartões)', dre.despesasOperacionais, false],
+    ['(=) Resultado operacional (EBITDA)', dre.resultadoOperacional, true],
+    ['(+/-) Resultado financeiro', dre.resultadoFinanceiro, false],
+    ['(-) Prolabore e retiradas', dre.prolabore, false],
+    ['(=) Lucro líquido', dre.lucroLiquido, true]
+  ];
+  document.getElementById('tabela-dre-financeiro').innerHTML =
+    '<tbody>' + linhas.map(([rotulo,valor,total])=>
+      `<tr${total?' class="linha-total"':''}><td>${rotulo}</td><td class="mono"${valor<0?' style="color:var(--danger);"':''}>${formatarMoeda(valor)}</td></tr>`
+    ).join('') + '</tbody>';
 }
 
 async function financeiroSalvarValores(){
@@ -294,7 +344,7 @@ async function financeiroSalvarValores(){
   }
   confirmacao.style.color = 'var(--teal-700)';
   confirmacao.textContent = 'Valores salvos ✓';
-  financeiroAtualizarResumo();
+  financeiroRenderizarDre();
   setTimeout(()=>{ if(confirmacao.textContent==='Valores salvos ✓') confirmacao.textContent=''; }, 2500);
 }
 
@@ -388,4 +438,112 @@ function financeiroImportarCsv(ev){
     await atualizarFinanceiro();
   };
   leitor.readAsText(arquivo, 'UTF-8');
+}
+
+/* ---------------------------------------------------------------------
+   FLUXO DE CAIXA — regime de caixa (data exata), diferente do DRE/Plano de
+   Contas (só mês/ano). Cada lançamento pode opcionalmente se vincular a
+   uma conta do plano, só pra ajudar a comparar depois — não é obrigatório
+   nem afeta o cálculo do DRE.
+--------------------------------------------------------------------- */
+function financeiroPopularSelectContaPlano(){
+  const sel = document.getElementById('fluxo-conta-plano');
+  const folhas = financeiroContasCache.filter(c=>financeiroEhFolha(c.codigo, financeiroContasCache));
+  const valorAtual = sel.value;
+  sel.innerHTML = '<option value="">—</option>' +
+    folhas.map(c=>`<option value="${c.codigo}">${c.codigo} — ${c.nome}</option>`).join('');
+  sel.value = valorAtual;
+}
+
+async function financeiroRenderizarFluxoCaixa(){
+  financeiroPopularSelectContaPlano();
+  const mes = document.getElementById('financeiro-mes').value;
+  const ano = document.getElementById('financeiro-ano').value;
+  const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mes, ano);
+  const tabela = document.getElementById('tabela-fluxo-caixa');
+  tabela.innerHTML = '<tbody><tr><td class="vazio">Carregando...</td></tr></tbody>';
+
+  const resp = await api('listarFluxoCaixa', {dataInicio, dataFim});
+  const lancamentos = resp.ok ? resp.lancamentos : [];
+
+  const totalEntradas = lancamentos.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor||0),0);
+  const totalSaidas = lancamentos.filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor||0),0);
+  document.getElementById('fluxo-kpi-entradas').textContent = formatarMoeda(totalEntradas);
+  document.getElementById('fluxo-kpi-saidas').textContent = formatarMoeda(totalSaidas);
+  const elSaldo = document.getElementById('fluxo-kpi-saldo');
+  const saldo = totalEntradas - totalSaidas;
+  elSaldo.textContent = formatarMoeda(saldo);
+  elSaldo.style.color = saldo<0 ? 'var(--danger)' : '';
+
+  const podeEditar = temPermissao('editar_financeiro');
+  if(lancamentos.length===0){
+    tabela.innerHTML = '<tbody><tr><td class="vazio">Nenhum lançamento nesse período.</td></tr></tbody>';
+    return;
+  }
+  let acumulado = 0;
+  const linhas = lancamentos.map(l=>{
+    acumulado += l.tipo==='entrada' ? Number(l.valor||0) : -Number(l.valor||0);
+    const conta = l.conta_plano_codigo ? financeiroContasCache.find(c=>c.codigo===l.conta_plano_codigo) : null;
+    return `<tr data-id="${l.id}">
+      <td>${formatarDataExibicao(l.data)}</td>
+      <td>${l.descricao}</td>
+      <td>${l.banco||'—'}</td>
+      <td>${conta ? conta.nome : '—'}</td>
+      <td class="mono" style="color:${l.tipo==='entrada'?'var(--teal-700)':'var(--danger)'};">${l.tipo==='entrada'?'+':'-'} ${formatarMoeda(l.valor)}</td>
+      <td class="mono">${formatarMoeda(acumulado)}</td>
+      ${podeEditar ? `<td><button type="button" class="botao sutil pequeno financeiro-excluir-fluxo" data-id="${l.id}">×</button></td>` : ''}
+    </tr>`;
+  }).join('');
+  tabela.innerHTML = `
+    <thead><tr><th>Data</th><th>Descrição</th><th>Banco</th><th>Conta vinculada</th><th>Valor</th><th>Saldo acumulado</th>${podeEditar?'<th></th>':''}</tr></thead>
+    <tbody>${linhas}</tbody>`;
+
+  tabela.querySelectorAll('.financeiro-excluir-fluxo').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('Excluir esse lançamento?')) return;
+      await api('excluirLancamentoFluxoCaixa', {id: btn.dataset.id});
+      await financeiroRenderizarFluxoCaixa();
+    });
+  });
+}
+
+async function financeiroAdicionarLancamentoFluxo(){
+  const confirmacao = document.getElementById('confirmacao-fluxo');
+  const data = document.getElementById('fluxo-data').value;
+  const descricao = document.getElementById('fluxo-descricao').value.trim();
+  const valor = Number(document.getElementById('fluxo-valor').value);
+  const tipo = document.getElementById('fluxo-tipo').value;
+  const banco = document.getElementById('fluxo-banco').value;
+  const conta_plano_codigo = document.getElementById('fluxo-conta-plano').value;
+
+  if(!data || !descricao || !valor){
+    confirmacao.style.color = 'var(--danger)';
+    confirmacao.textContent = 'Preencha data, descrição e valor.';
+    return;
+  }
+
+  confirmacao.style.color = 'var(--ink-400)';
+  confirmacao.textContent = 'Salvando...';
+  const resp = await api('criarLancamentoFluxoCaixa', {data, descricao, valor, tipo, banco, conta_plano_codigo});
+  if(!resp.ok){
+    confirmacao.style.color = 'var(--danger)';
+    confirmacao.textContent = resp.erro || 'Não foi possível salvar.';
+    return;
+  }
+  confirmacao.style.color = 'var(--teal-700)';
+  confirmacao.textContent = 'Lançamento adicionado ✓';
+  document.getElementById('fluxo-descricao').value = '';
+  document.getElementById('fluxo-valor').value = '';
+  setTimeout(()=>{ if(confirmacao.textContent==='Lançamento adicionado ✓') confirmacao.textContent=''; }, 2000);
+
+  // Se a data lançada cair fora do mês/ano selecionado no filtro, avisa —
+  // o lançamento foi salvo, só não vai aparecer na lista até trocar o filtro.
+  const mesSelecionado = document.getElementById('financeiro-mes').value;
+  const anoSelecionado = document.getElementById('financeiro-ano').value;
+  const { dataInicio, dataFim } = primeiroEUltimoDiaDoMes(mesSelecionado, anoSelecionado);
+  if(data < dataInicio || data > dataFim){
+    confirmacao.textContent = `Salvo — mas essa data não é de ${mesSelecionado}/${anoSelecionado}, troque o filtro pra ver na lista.`;
+  }
+
+  await financeiroRenderizarFluxoCaixa();
 }

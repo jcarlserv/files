@@ -396,6 +396,36 @@
             lista só os procedimentos que tiveram lançamento naquele mês
             (não lista o cadastro inteiro), com quantidade, valor e ticket
             médio, ordenado por valor.
+   v6.10.0 — Cortesia no Lançamento: CANCELADA a pedido do usuário, não foi
+            implementada.
+            Aba Financeiro ganhou sub-abas: Fluxo de Caixa | DRE | Plano de
+            Contas (mesmo mecanismo de sub-abas da v6.9.0). Mês/Ano no
+            topo é compartilhado pelas três.
+            Nova sub-aba "Fluxo de Caixa" — regime de CAIXA, diferente do
+            DRE/Plano de Contas (que são por mês de competência): cada
+            lançamento tem uma DATA exata, descrição, valor, entrada ou
+            saída, banco (Caixa/Unicred/BNB/Cora/InfinitePay) e um vínculo
+            opcional com uma conta do plano (só ajuda a comparar depois,
+            não afeta o cálculo do DRE). Lista os lançamentos do mês
+            selecionado com saldo acumulado, e soma Entradas/Saídas/Saldo
+            do período. Requer tabela nova no Supabase — SQL:
+            create table if not exists fluxo_caixa (
+              id uuid primary key default gen_random_uuid(),
+              data date not null, descricao text not null,
+              valor numeric not null default 0,
+              tipo text not null check (tipo in ('entrada','saida')),
+              banco text, conta_plano_codigo text,
+              criado_em timestamptz not null default now()
+            );
+            alter table fluxo_caixa enable row level security;
+            create policy acesso_total_anon on fluxo_caixa for all
+              using (true) with check (true);
+            Nova sub-aba "DRE" — separou o que antes ficava misturado com
+            o Plano de Contas: os KPIs e agora também uma tabela com as 9
+            etapas completas (Receita Bruta → ... → Lucro Líquido).
+            Sub-aba "Plano de Contas" — é a árvore de sempre (adicionar
+            subconta, editar valor, CSV modelo/importar), só que agora
+            isolada das outras duas.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
