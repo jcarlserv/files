@@ -486,6 +486,18 @@
             Financeiro (clica na seta, abre as subcontas; "Expandir tudo"/
             "Recolher tudo" também disponível ali), só sem os botões de
             editar (a Apresentação é só consulta).
+   v6.13.1 — Correção de bug (relatado pelo usuário): ele adicionou
+            "Retorno" e "Cortesia" nas listas de Procedimento, Convênio E
+            Forma de pagamento — mas a regra de "não cobrar" só reconhecia
+            a palavra RETORNO e só olhava o campo Procedimento, então
+            lançamentos de Cortesia travavam ao salvar (Forma de pagamento
+            continuava exigindo valor>0). Agora QUALQUER UM dos 3 campos
+            (Procedimento, Convênio ou Forma de pagamento) sendo RETORNO
+            ou CORTESIA dispensa Valor e Forma de pagamento — tanto na
+            validação do formulário (Lançamento/Modal) quanto na Crítica
+            (não vira mais pendência). Caso normal (nenhum dos três com
+            esses valores) continua exigindo forma de pagamento com
+            valor, como sempre foi.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

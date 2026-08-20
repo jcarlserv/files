@@ -235,16 +235,26 @@ const CAMPOS_CRITICOS = [
 ];
 
 
-// Retorno não é cobrado — então Valor e Forma de pagamento não contam como pendência
-// (nem como obrigatórios no formulário) quando o procedimento for "RETORNO".
-const CAMPOS_DISPENSADOS_NO_RETORNO = ['valor','forma_pagamento'];
-function ehProcedimentoRetorno(valorProcedimento){
-  return String(valorProcedimento||'').trim().toUpperCase() === 'RETORNO';
+// Retorno e Cortesia não são cobrados — então Valor e Forma de pagamento não
+// contam como pendência (nem como obrigatórios no formulário) quando
+// QUALQUER UM desses 3 campos (Procedimento, Convênio ou Forma de
+// pagamento) tiver um desses dois valores. Antes só olhava Procedimento e só
+// reconhecia "RETORNO" — por isso lançamentos de Cortesia travavam ao
+// salvar (a validação de Forma de pagamento continuava exigindo valor>0).
+const CAMPOS_DISPENSADOS_SEM_COBRANCA = ['valor','forma_pagamento'];
+const VALORES_SEM_COBRANCA = ['RETORNO','CORTESIA'];
+function ehValorSemCobranca(valor){
+  return VALORES_SEM_COBRANCA.includes(String(valor||'').trim().toUpperCase());
+}
+function registroSemCobranca(registro){
+  return ehValorSemCobranca(registro.procedimento) ||
+         ehValorSemCobranca(registro.convenio) ||
+         ehValorSemCobranca(registro.forma_pagamento);
 }
 
 
 function campoCriticoVazio(registro, chave){
-  if(CAMPOS_DISPENSADOS_NO_RETORNO.includes(chave) && ehProcedimentoRetorno(registro.procedimento)){
+  if(CAMPOS_DISPENSADOS_SEM_COBRANCA.includes(chave) && registroSemCobranca(registro)){
     return false;
   }
   const v = registro[chave];
@@ -471,6 +481,16 @@ function lerLinhasPagamento(prefixo){
 }
 
 
+// Só as formas escolhidas nas linhas de pagamento, SEM o filtro de valor>0
+// (lerLinhasPagamento já filtra isso) — usado só pra checar se alguma linha
+// já está com RETORNO/CORTESIA selecionado, mesmo com valor ainda vazio.
+function formasPagamentoEscolhidas(prefixo){
+  const container = document.getElementById(prefixo+'pagamentos-linhas');
+  if(!container) return [];
+  return Array.from(container.querySelectorAll('.input-pagamento-forma')).map(sel=>sel.value).filter(Boolean);
+}
+
+
 function atualizarTotalPagamento(prefixo){
   const total = lerLinhasPagamento(prefixo).reduce((s,l)=>s+l.valor,0);
   const el = document.getElementById(prefixo+'pagamento-total');
@@ -483,7 +503,10 @@ function atualizarTotalPagamento(prefixo){
    verdade (o "*" no rótulo, sozinho, era só visual e não impedia salvar em branco). */
 function camposObrigatoriosFaltando(prefixo){
   const elProcedimento = document.getElementById(prefixo+'procedimento');
-  const dispensarCobranca = ehProcedimentoRetorno(elProcedimento ? elProcedimento.value : '');
+  const elConvenio = document.getElementById(prefixo+'convenio');
+  const dispensarCobranca = ehValorSemCobranca(elProcedimento ? elProcedimento.value : '') ||
+    ehValorSemCobranca(elConvenio ? elConvenio.value : '') ||
+    formasPagamentoEscolhidas(prefixo).some(ehValorSemCobranca);
 
 
   const faltando = definicaoCampos()
