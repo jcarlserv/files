@@ -175,6 +175,13 @@ async function atualizarApresentacao(mes, ano){
   // Desenha os gráficos DEPOIS do innerHTML acima ter sido aplicado —
   // funciona em slides escondidas também (SVG com viewBox fixo).
   apresentacaoDesenharGraficos(dados);
+
+  // Árvore expansível do plano de contas (slide "Principais Contas") —
+  // mesma função da aba Financeiro, só que sem os botões de editar
+  // (podeEditar:false — a Apresentação é só consulta).
+  if(dados.temFinanceiro && document.getElementById('apr-arvore-plano-contas')){
+    montarArvoreContas('apr-arvore-plano-contas', {comValores:true, podeEditar:false});
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -276,6 +283,20 @@ function apresentacaoConstruirSlides(d){
       }).join('') : '<tr><td class="vazio">Nenhum lançamento nesse mês.</td></tr>'}
       </tbody>
     </table></div>`);
+
+  // ---------- 4c. UM SLIDE POR PROCEDIMENTO (comparativo histórico, igual ao padrão do Ultrassom) ----------
+  procedimentosGeral.forEach((proc, idx)=>{
+    const info = porProcedimentoGeral[proc];
+    add('', `
+      <h2>${proc} — Comparativo Histórico</h2>
+      <p class="apresentacao-legenda">Volume mensal — ${d.ano} × ${d.anoAnterior}</p>
+      <div class="grade-kpi" style="margin-bottom:14px;">
+        <div class="kpi"><div class="rotulo">Qtd. no mês</div><div class="valor">${info.quantidade}</div></div>
+        <div class="kpi"><div class="rotulo">Valor no mês</div><div class="valor teal">${formatarMoeda(info.valor)}</div></div>
+        <div class="kpi"><div class="rotulo">Ticket médio</div><div class="valor">${formatarMoeda(info.valor/info.quantidade)}</div></div>
+      </div>
+      <div id="apr-grafico-proc-${idx}" class="mini-grafico" style="min-height:260px;"></div>`);
+  });
 
   // ---------- 5. DIVISOR TÉRREO ----------
   add('apresentacao-divisor', `
@@ -465,25 +486,10 @@ function apresentacaoConstruirSlides(d){
         </tbody>
       </table></div>`);
 
-    // Detalhamento por conta principal (nível 2) — Receita Bruta, Deduções,
-    // Custo do Serviço e cada grupo de Despesa, com o valor agregado das
-    // subcontas de cada uma.
-    const gruposPrincipais = [];
-    ['3.1','3.2','4'].forEach(cod=>{
-      const conta = financeiroContasCache.find(c=>c.codigo===cod);
-      if(conta) gruposPrincipais.push(conta);
-    });
-    gruposPrincipais.push(...financeiroFilhosDe('5', financeiroContasCache));
     add('', `
       <h2>Plano de Contas — Principais Contas</h2>
-      <p class="apresentacao-legenda">${d.mes} de ${d.ano} — cada linha soma todas as subcontas dela</p>
-      <div class="tabela-scroll"><table>
-        <thead><tr><th>Código</th><th>Conta</th><th>Valor</th></tr></thead>
-        <tbody>${gruposPrincipais.map(c=>{
-          const v = Math.abs(financeiroValorDaConta(c.codigo, financeiroContasCache, financeiroValoresCache));
-          return `<tr><td class="mono">${c.codigo}</td><td>${c.nome}</td><td class="mono">${formatarMoeda(v)}</td></tr>`;
-        }).join('')}</tbody>
-      </table></div>`);
+      <p class="apresentacao-legenda">${d.mes} de ${d.ano} — clique na seta pra abrir as subcontas</p>
+      <div id="apr-arvore-plano-contas"><p class="vazio">Carregando...</p></div>`);
 
     add('', `
       <h2>Estrutura de Custos</h2>
@@ -583,6 +589,29 @@ function apresentacaoDesenharGraficos(d){
     {nome:String(d.ano), dados: mesesAte.map(m=>porMesUsgAno[m].quantidade), cor:'#146B5D'},
     {nome:String(d.anoAnterior), dados: mesesAte.map(m=>porMesUsgAnoAnt[m].quantidade), cor:'#9FD6C8', tracejado:true}
   ]);
+
+  // 4c. Um gráfico por procedimento (comparativo histórico, clínica inteira)
+  // — recalcula a MESMA lista/ordem usada em apresentacaoConstruirSlides
+  // (por valor do mês, decrescente) pra os índices dos containers baterem.
+  const porProcedimentoGeralGraf = {};
+  d.registrosMes.forEach(r=>{
+    const proc = r.procedimento || '(não informado)';
+    if(!porProcedimentoGeralGraf[proc]) porProcedimentoGeralGraf[proc] = 0;
+    porProcedimentoGeralGraf[proc] += Number(r.valor)||0;
+  });
+  const procedimentosGeralGraf = Object.keys(porProcedimentoGeralGraf).sort((a,b)=>porProcedimentoGeralGraf[b]-porProcedimentoGeralGraf[a]);
+  procedimentosGeralGraf.forEach((proc, idx)=>{
+    const containerId = 'apr-grafico-proc-'+idx;
+    if(!document.getElementById(containerId)) return;
+    const registrosProcAno = registrosAnoAteData.filter(r=>String(r.procedimento||'(não informado)')===proc);
+    const registrosProcAnoAnt = d.registrosAnoAnt.filter(r=>mesesAte.includes(r.mes) && String(r.procedimento||'(não informado)')===proc);
+    const porMesProcAno = apresentacaoAgruparPorMes(registrosProcAno);
+    const porMesProcAnoAnt = apresentacaoAgruparPorMes(registrosProcAnoAnt);
+    miniGraficoLinhas(containerId, mesesAte, [
+      {nome:String(d.ano), dados: mesesAte.map(m=>porMesProcAno[m].quantidade), cor:'#146B5D'},
+      {nome:String(d.anoAnterior), dados: mesesAte.map(m=>porMesProcAnoAnt[m].quantidade), cor:'#9FD6C8', tracejado:true}
+    ]);
+  });
 
   // 17. Estrutura de custos — grupos de nível 2 dentro de "5. Despesas",
   // mais Custo do Serviço ("4") — cada barra em % sobre a receita bruta.

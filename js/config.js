@@ -474,6 +474,18 @@
             Coparticipados, pizza Particular × Convênios, e barras do
             faturamento dia a dia — todos a partir dos mesmos dados já
             buscados pros KPIs (sem chamada nova ao banco).
+   v6.13.0 — Apresentação: um slide por procedimento (não mais só uma
+            tabela resumo) — cada um com o mesmo formato do "Coparticipados
+            — Ultrassom (Comparativo Histórico)" que já existia: KPIs do
+            mês (qtd./valor/ticket médio) + gráfico de linha comparando
+            o ano atual × o ano anterior, mês a mês. Entram todos os
+            procedimentos com lançamento no mês, clínica inteira (Térreo +
+            Coparticipados juntos).
+            Slide "Plano de Contas — Principais Contas" deixou de ser uma
+            tabela estática — agora é a mesma árvore expansível da aba
+            Financeiro (clica na seta, abre as subcontas; "Expandir tudo"/
+            "Recolher tudo" também disponível ali), só sem os botões de
+            editar (a Apresentação é só consulta).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
