@@ -216,6 +216,8 @@ function financeiroPrepararSelects(){
   document.getElementById('botao-baixar-modelo-financeiro').addEventListener('click', financeiroBaixarModeloCsv);
   document.getElementById('input-importar-financeiro').addEventListener('change', financeiroImportarCsv);
   document.getElementById('botao-adicionar-fluxo').addEventListener('click', financeiroAdicionarLancamentoFluxo);
+  document.getElementById('botao-exportar-dre').addEventListener('click', financeiroExportarDreCsv);
+  document.getElementById('botao-exportar-plano-contas').addEventListener('click', financeiroExportarPlanoContasCsv);
 
   financeiroSelectsProntos = true;
 }
@@ -357,6 +359,17 @@ async function financeiroSalvarValores(){
    virar "conta fantasma" por erro de digitação; pra criar conta nova, usa
    o botão "+ subconta" na própria árvore).
 --------------------------------------------------------------------- */
+// Helper compartilhado — baixa qualquer conteúdo de texto como arquivo,
+// usado pelas 3 exportações (modelo em branco, DRE, plano de contas cheio).
+function financeiroBaixarCsv(conteudo, nomeArquivo){
+  const blob = new Blob(['\uFEFF' + conteudo], {type:'text/csv;charset=utf-8;'}); // BOM pra abrir certinho no Excel
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nomeArquivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function financeiroBaixarModeloCsv(){
   const mes = document.getElementById('financeiro-mes').value;
   const ano = document.getElementById('financeiro-ano').value;
@@ -366,13 +379,51 @@ function financeiroBaixarModeloCsv(){
     const valorAtual = financeiroValoresCache[c.codigo] || '';
     linhas.push(`${c.codigo};"${c.nome}";${mes};${ano};${valorAtual}`);
   });
-  const conteudo = '\uFEFF' + linhas.join('\r\n'); // BOM pra abrir certinho no Excel
-  const blob = new Blob([conteudo], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `plano-de-contas-modelo-${mes}-${ano}.csv`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  financeiroBaixarCsv(linhas.join('\r\n'), `plano-de-contas-modelo-${mes}-${ano}.csv`);
+}
+
+// Exporta o DRE do mês selecionado, já calculado (9 etapas) — dados reais,
+// não um modelo em branco.
+function financeiroExportarDreCsv(){
+  const mes = document.getElementById('financeiro-mes').value;
+  const ano = document.getElementById('financeiro-ano').value;
+  const dre = financeiroCalcularDre();
+  const linhas = ['etapa;valor'];
+  [
+    ['Receita bruta de serviços', dre.receitaBruta],
+    ['(-) Deduções da receita bruta', dre.deducoes],
+    ['(=) Receita líquida', dre.receitaLiquida],
+    ['(-) Custo do serviço prestado', dre.custoServico],
+    ['(=) Lucro bruto', dre.lucroBruto],
+    ['(-) Despesas operacionais', dre.despesasOperacionais],
+    ['(=) Resultado operacional (EBITDA)', dre.resultadoOperacional],
+    ['(+/-) Resultado financeiro', dre.resultadoFinanceiro],
+    ['(-) Prolabore e retiradas', dre.prolabore],
+    ['(=) Lucro líquido', dre.lucroLiquido],
+    ['Margem líquida (%)', dre.margemLiquidaPct===null?'':dre.margemLiquidaPct.toFixed(2)]
+  ].forEach(([etapa,valor])=> linhas.push(`"${etapa}";${valor}`));
+  financeiroBaixarCsv(linhas.join('\r\n'), `dre-${mes}-${ano}.csv`);
+}
+
+// Exporta o plano de contas INTEIRO (folhas e contas-somatório), com o
+// valor real de cada uma no mês selecionado — diferente do "modelo", que só
+// tem folha e vem em branco pra preencher.
+function financeiroExportarPlanoContasCsv(){
+  const mes = document.getElementById('financeiro-mes').value;
+  const ano = document.getElementById('financeiro-ano').value;
+  const linhas = ['codigo;nome;nivel;natureza;folha;valor'];
+  const ordenar = lista => lista.slice().sort((a,b)=>(a.ordem-b.ordem)||a.codigo.localeCompare(b.codigo));
+  function escrever(codigo, profundidade){
+    const conta = financeiroContasCache.find(c=>c.codigo===codigo);
+    if(!conta) return;
+    const ehFolha = financeiroEhFolha(codigo, financeiroContasCache);
+    const valor = financeiroValorDaConta(codigo, financeiroContasCache, financeiroValoresCache);
+    const nomeComRecuo = '  '.repeat(profundidade) + conta.nome;
+    linhas.push(`${conta.codigo};"${nomeComRecuo}";${profundidade+1};${conta.natureza};${ehFolha?'sim':'não'};${valor}`);
+    ordenar(financeiroFilhosDe(codigo, financeiroContasCache)).forEach(f=>escrever(f.codigo, profundidade+1));
+  }
+  ordenar(financeiroRaizes(financeiroContasCache)).forEach(r=>escrever(r.codigo, 0));
+  financeiroBaixarCsv(linhas.join('\r\n'), `plano-de-contas-completo-${mes}-${ano}.csv`);
 }
 
 function financeiroParsearLinhaCsv(linha, delimitador){

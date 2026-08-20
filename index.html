@@ -58,6 +58,33 @@
 
 
   <main>
+    <!-- ---------- INÍCIO (sem filtro — hoje e mês atual, sempre) ---------- -->
+    <section class="painel" id="painel-inicio">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Início</h2>
+          <p>Hoje e o mês atual, sem precisar escolher nada.</p>
+        </div>
+      </div>
+
+      <h3 style="margin:0 0 12px;color:var(--ink-600);font-size:15px;">Hoje</h3>
+      <div class="grade-kpi">
+        <div class="kpi"><div class="rotulo">Atendimentos hoje</div><div class="valor" id="inicio-kpi-atendimentos-hoje">—</div></div>
+        <div class="kpi"><div class="rotulo">Faturamento hoje</div><div class="valor teal" id="inicio-kpi-valor-hoje">—</div></div>
+        <div class="kpi"><div class="rotulo">Hoje — Térreo</div><div class="valor" id="inicio-kpi-terreo-hoje">—</div></div>
+        <div class="kpi"><div class="rotulo">Hoje — Coparticipados</div><div class="valor" id="inicio-kpi-copart-hoje">—</div></div>
+      </div>
+
+      <h3 style="margin:28px 0 12px;color:var(--ink-600);font-size:15px;">Mês atual</h3>
+      <div class="grade-kpi">
+        <div class="kpi"><div class="rotulo">Atendimentos no mês</div><div class="valor" id="inicio-kpi-atendimentos-mes">—</div></div>
+        <div class="kpi"><div class="rotulo">Faturamento no mês</div><div class="valor teal" id="inicio-kpi-valor-mes">—</div></div>
+        <div class="kpi"><div class="rotulo">Mês — Térreo</div><div class="valor" id="inicio-kpi-terreo-mes">—</div></div>
+        <div class="kpi"><div class="rotulo">Mês — Coparticipados</div><div class="valor" id="inicio-kpi-copart-mes">—</div></div>
+      </div>
+    </section>
+
+
     <!-- ---------- LANÇAMENTO ---------- -->
     <section class="painel" id="painel-lancamento">
       <div class="cabecalho-painel">
@@ -557,7 +584,10 @@
           <div class="kpi"><div class="rotulo">Margem líquida</div><div class="valor" id="financeiro-kpi-margem-pct">—</div></div>
         </div>
         <div class="cartao">
-          <h3>Demonstrativo de Resultados</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="margin:0;">Demonstrativo de Resultados</h3>
+            <button class="botao sutil pequeno" id="botao-exportar-dre">Exportar DRE (CSV)</button>
+          </div>
           <div class="tabela-scroll"><table id="tabela-dre-financeiro"></table></div>
         </div>
       </div>
@@ -569,6 +599,7 @@
             <h3 style="margin:0;">Plano de contas</h3>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <button class="botao sutil pequeno" id="botao-baixar-modelo-financeiro">Baixar planilha-modelo</button>
+              <button class="botao sutil pequeno" id="botao-exportar-plano-contas">Exportar plano de contas (CSV)</button>
               <label class="botao sutil pequeno" style="cursor:pointer;">
                 Importar planilha (CSV)
                 <input type="file" id="input-importar-financeiro" accept=".csv,text/csv" style="display:none;">
@@ -776,7 +807,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.10.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.11.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -856,6 +887,7 @@
 <script src="js/dados-demo.js"></script>
 <script src="js/api.js"></script>
 <script src="js/graficos.js"></script>
+<script src="js/inicio.js"></script>
 <script src="js/app-init.js"></script>
 <script src="js/lancamento.js"></script>
 <script src="js/verificar.js"></script>

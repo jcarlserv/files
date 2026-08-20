@@ -205,6 +205,7 @@ function squadRenderizarTudo(){
 
   let html = tituloHtml;
   html += blocosAndar.join('');
+  html += `<div id="squad-financeiro-conteudo" style="margin-top:36px;"></div>`;
 
 
   container.innerHTML = html;
@@ -215,6 +216,12 @@ function squadRenderizarTudo(){
   andaresPresentes.forEach(andar=>{
     squadDesenharGraficosAndar(andar, mes, ano, anoAnterior, registrosAno, registrosAnoAnterior, profFiltro);
   });
+
+
+  // Squad Financeiro — resumo do DRE do mesmo mês/ano, no final da tela.
+  // Assíncrono à parte (não trava o resto do render, que já é tudo síncrono
+  // a partir dos dados já carregados em squadCache).
+  squadRenderizarFinanceiro(mes, ano);
 }
 
 
@@ -447,3 +454,58 @@ function squadDesenharGraficosAndar(andar, mes, ano, anoAnterior, registrosAno, 
 }
 
 
+/* ---------------------------------------------------------------------
+   SQUAD FINANCEIRO — resumo do DRE do plano de contas (aba Financeiro),
+   pro mesmo mês/ano já selecionado aqui na RMR. Reaproveita as funções de
+   financeiro.js — não duplica a lógica de soma/natureza.
+--------------------------------------------------------------------- */
+async function squadRenderizarFinanceiro(mes, ano){
+  const container = document.getElementById('squad-financeiro-conteudo');
+  if(!container) return; // usuário já trocou de tela antes disso terminar
+  container.innerHTML = '<p class="vazio">Carregando financeiro...</p>';
+
+  await financeiroCarregarContas();
+  await financeiroCarregarValores(mes, ano);
+
+  const temFinanceiro = Object.keys(financeiroValoresCache).some(cod=>Number(financeiroValoresCache[cod])>0);
+  if(!temFinanceiro){
+    container.innerHTML = `
+      <div style="margin:8px 0 22px;">
+        <div style="font-family:'Fraunces',serif;font-weight:700;font-size:26px;color:var(--plum-900);">Squad Financeiro</div>
+        <div style="height:3px;background:var(--plum-900);border-radius:2px;margin-top:8px;"></div>
+      </div>
+      <p class="vazio">Nenhum valor lançado no plano de contas para ${mes} de ${ano} ainda. Cadastre na aba Financeiro para este resumo aparecer.</p>`;
+    return;
+  }
+
+  const dre = financeiroCalcularDre();
+  container.innerHTML = `
+    <div style="margin:8px 0 22px;">
+      <div style="font-family:'Fraunces',serif;font-weight:700;font-size:26px;color:var(--plum-900);">Squad Financeiro</div>
+      <div style="height:3px;background:var(--plum-900);border-radius:2px;margin-top:8px;"></div>
+    </div>
+    <div class="grade-kpi">
+      <div class="kpi"><div class="rotulo">Receita líquida</div><div class="valor teal">${formatarMoeda(dre.receitaLiquida)}</div></div>
+      <div class="kpi"><div class="rotulo">Lucro bruto</div><div class="valor">${formatarMoeda(dre.lucroBruto)}</div></div>
+      <div class="kpi"><div class="rotulo">Resultado operacional (EBITDA)</div><div class="valor">${formatarMoeda(dre.resultadoOperacional)}</div></div>
+      <div class="kpi"><div class="rotulo">Lucro líquido</div><div class="valor" style="color:${dre.lucroLiquido<0?'var(--danger)':'inherit'};">${formatarMoeda(dre.lucroLiquido)}</div></div>
+      <div class="kpi"><div class="rotulo">Margem líquida</div><div class="valor">${dre.margemLiquidaPct===null?'—':dre.margemLiquidaPct.toFixed(1)+'%'}</div></div>
+    </div>
+    <div class="cartao" style="margin-top:18px;">
+      <h3>Estrutura de Custos</h3>
+      <p style="margin:-6px 0 14px;color:var(--ink-400);font-size:12.5px;">% sobre a receita bruta</p>
+      <div id="squad-grafico-estrutura-custos" class="mini-grafico" style="min-height:260px;"></div>
+    </div>`;
+
+  const receitaBruta = financeiroValorDaConta('3.1', financeiroContasCache, financeiroValoresCache) || 1;
+  const grupos = financeiroFilhosDe('5', financeiroContasCache).slice();
+  const contaCsp = financeiroContasCache.find(c=>c.codigo==='4');
+  if(contaCsp) grupos.unshift(contaCsp);
+  const itens = grupos.map(g=>[
+    g.nome.length>16 ? g.nome.slice(0,15)+'…' : g.nome,
+    Math.abs(financeiroValorDaConta(g.codigo, financeiroContasCache, financeiroValoresCache))
+  ]).filter(i=>i[1]>0);
+  if(itens.length){
+    miniGraficoBarras('squad-grafico-estrutura-custos', itens.map(i=>i[0]), itens.map(i=>Math.round((i[1]/receitaBruta)*1000)/10), '#9C6E22');
+  }
+}

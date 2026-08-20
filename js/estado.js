@@ -32,6 +32,7 @@ let repasseCoparticipadosCache = {}; // chave "Mês-Ano" -> {taxa, rateio_clinic
    individualmente na tabela `permissoes` do Supabase (usuario, chave, valor).
 --------------------------------------------------------------------- */
 const DEFINICAO_PERMISSOES = [
+  {tela:'Início',          chave:'ver_inicio',              rotulo:'Ver'},
   {tela:'Lançamento',     chave:'ver_lancamento',          rotulo:'Ver'},
   {tela:'Verificar',      chave:'ver_verificar',           rotulo:'Ver'},
   {tela:'Verificar',      chave:'ver_financeiro_verificar',rotulo:'Ver financeiro'},

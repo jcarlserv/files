@@ -315,6 +315,27 @@ function apresentacaoConstruirSlides(d){
       </div>
     </div>`);
 
+  // ---------- 8b. TÉRREO — Procedimentos realizados ----------
+  const porProcedimentoTerreo = {};
+  registrosTerreo.forEach(r=>{
+    const proc = r.procedimento || '(não informado)';
+    if(!porProcedimentoTerreo[proc]) porProcedimentoTerreo[proc] = {quantidade:0, valor:0};
+    porProcedimentoTerreo[proc].quantidade++;
+    porProcedimentoTerreo[proc].valor += Number(r.valor)||0;
+  });
+  const procedimentosTerreo = Object.keys(porProcedimentoTerreo).sort((a,b)=>porProcedimentoTerreo[b].valor-porProcedimentoTerreo[a].valor);
+  add('', `
+    <h2>Térreo — Procedimentos Realizados</h2>
+    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • só procedimentos com lançamento no mês</p>
+    <div class="tabela-scroll"><table>
+      <thead><tr><th>Procedimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
+      <tbody>${procedimentosTerreo.length?procedimentosTerreo.map(p=>{
+        const info = porProcedimentoTerreo[p];
+        return `<tr><td>${p}</td><td>${info.quantidade}</td><td class="mono">${formatarMoeda(info.valor)}</td><td class="mono">${formatarMoeda(info.valor/info.quantidade)}</td></tr>`;
+      }).join('') : '<tr><td class="vazio">Nenhum lançamento no Térreo nesse mês.</td></tr>'}
+      </tbody>
+    </table></div>`);
+
   // ---------- 9. TÉRREO — Ticket médio comparativo ----------
   add('', `
     <h2>Térreo — Ticket Médio</h2>

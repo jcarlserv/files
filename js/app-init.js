@@ -91,6 +91,7 @@ function mostrarErroInicializacao(mensagem){
 function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
   const TODAS_ABAS = [
+    {id:'inicio', rotulo:'Início', chave:'ver_inicio'},
     {id:'lancamento', rotulo:'Lançamento', chave:'ver_lancamento'},
     {id:'verificacao', rotulo:'Verificação', chave:['ver_verificar','ver_critica']},
     {id:'dashboard', rotulo:'Dashboard', chave:['ver_rmr','ver_rmr_squad','ver_metas']},
@@ -195,6 +196,7 @@ async function trocarAba(idAba){
 
 
 async function atualizarPainelAtivo(){
+  if(estado.abaAtiva==='inicio') await atualizarInicio();
   if(estado.abaAtiva==='lancamento') await atualizarMeusLancamentos();
   if(estado.abaAtiva==='verificacao') await atualizarSubAbaAtiva(estado.subAbaVerificacao);
   if(estado.abaAtiva==='configuracoes') await atualizarConfiguracoes();

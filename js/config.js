@@ -426,6 +426,28 @@
             Sub-aba "Plano de Contas" — é a árvore de sempre (adicionar
             subconta, editar valor, CSV modelo/importar), só que agora
             isolada das outras duas.
+   v6.11.0 — Fecha a lista pendente:
+            Nova aba "Início" (permissão `ver_inicio`) — primeira aba do
+            sistema, sem filtro nenhum: atendimentos e faturamento de HOJE
+            (com Térreo/Coparticipados separado) e do MÊS ATUAL, calculados
+            na hora que a aba abre (js/inicio.js, arquivo próprio).
+            Financeiro: dois botões novos — "Exportar DRE (CSV)" na
+            sub-aba DRE, e "Exportar plano de contas (CSV)" na sub-aba
+            Plano de Contas — diferente do "Baixar planilha-modelo" (que
+            vem em branco pra preencher), esses dois já saem com os
+            valores reais do mês, incluindo as contas-somatório (não só as
+            folhas).
+            RMR: nova seção "Squad Financeiro" no final da tela (depois
+            dos blocos de Térreo/Coparticipados) — resumo do DRE do mesmo
+            mês/ano já selecionado na RMR, com os KPIs e o gráfico de
+            Estrutura de Custos, reaproveitando as funções da aba
+            Financeiro. Fica em branco com aviso se não tiver nada
+            lançado no plano de contas pra aquele mês.
+            Apresentação: nova slide "Térreo — Procedimentos Realizados"
+            (mesmo formato da que já existia pros Coparticipados), entre
+            Volume Operacional e Ticket Médio.
+            Checkbox de Cortesia no Lançamento: CANCELADA (pedido do
+            usuário), não foi implementada.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
