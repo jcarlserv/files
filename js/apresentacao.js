@@ -273,10 +273,10 @@ function apresentacaoConstruirSlides(d){
   });
   const procedimentosGeral = Object.keys(porProcedimentoGeral).sort((a,b)=>porProcedimentoGeral[b].valor-porProcedimentoGeral[a].valor);
   add('', `
-    <h2>Todos os Procedimentos</h2>
-    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • Térreo + Coparticipados juntos, todo procedimento com lançamento no mês</p>
+    <h2>Todos os Atendimentos</h2>
+    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • Térreo + Coparticipados juntos, todo atendimento com lançamento no mês</p>
     <div class="tabela-scroll"><table>
-      <thead><tr><th>Procedimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
+      <thead><tr><th>Atendimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
       <tbody>${procedimentosGeral.length?procedimentosGeral.map(p=>{
         const info = porProcedimentoGeral[p];
         return `<tr><td>${p}</td><td>${info.quantidade}</td><td class="mono">${formatarMoeda(info.valor)}</td><td class="mono">${formatarMoeda(info.valor/info.quantidade)}</td></tr>`;
@@ -301,7 +301,7 @@ function apresentacaoConstruirSlides(d){
   // ---------- 5. DIVISOR TÉRREO ----------
   add('apresentacao-divisor', `
     <h1 style="font-family:'Fraunces',serif;font-size:32px;margin:0 0 8px;">SETOR TÉRREO</h1>
-    <p class="apresentacao-legenda" style="font-size:14px;">Consultas, exames, cirurgias e procedimentos</p>`);
+    <p class="apresentacao-legenda" style="font-size:14px;">Consultas, exames, cirurgias e atendimentos</p>`);
 
   const registrosTerreo = apresentacaoFiltrarAndar(d.registrosMes, 'TÉRREO');
   const registrosCoparticipados = apresentacaoFiltrarAndar(d.registrosMes, 'COPARTICIPADOS');
@@ -367,10 +367,10 @@ function apresentacaoConstruirSlides(d){
   });
   const procedimentosTerreo = Object.keys(porProcedimentoTerreo).sort((a,b)=>porProcedimentoTerreo[b].valor-porProcedimentoTerreo[a].valor);
   add('', `
-    <h2>Térreo — Procedimentos Realizados</h2>
-    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • só procedimentos com lançamento no mês</p>
+    <h2>Térreo — Atendimentos Realizados</h2>
+    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • só atendimentos com lançamento no mês</p>
     <div class="tabela-scroll"><table>
-      <thead><tr><th>Procedimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
+      <thead><tr><th>Atendimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
       <tbody>${procedimentosTerreo.length?procedimentosTerreo.map(p=>{
         const info = porProcedimentoTerreo[p];
         return `<tr><td>${p}</td><td>${info.quantidade}</td><td class="mono">${formatarMoeda(info.valor)}</td><td class="mono">${formatarMoeda(info.valor/info.quantidade)}</td></tr>`;
@@ -441,10 +441,10 @@ function apresentacaoConstruirSlides(d){
   });
   const procedimentosCopart = Object.keys(porProcedimentoCopart).sort((a,b)=>porProcedimentoCopart[b].valor-porProcedimentoCopart[a].valor);
   add('', `
-    <h2>Coparticipados — Procedimentos Realizados</h2>
-    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • só procedimentos com lançamento no mês</p>
+    <h2>Coparticipados — Atendimentos Realizados</h2>
+    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • só atendimentos com lançamento no mês</p>
     <div class="tabela-scroll"><table>
-      <thead><tr><th>Procedimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
+      <thead><tr><th>Atendimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
       <tbody>${procedimentosCopart.length?procedimentosCopart.map(p=>{
         const info = porProcedimentoCopart[p];
         return `<tr><td>${p}</td><td>${info.quantidade}</td><td class="mono">${formatarMoeda(info.valor)}</td><td class="mono">${formatarMoeda(info.valor/info.quantidade)}</td></tr>`;

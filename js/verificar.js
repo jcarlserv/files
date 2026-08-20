@@ -259,7 +259,7 @@ async function atualizarEditar(){
     tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento neste período.</td></tr>';
   } else {
     tabela.innerHTML = `
-      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Procedimento</th><th>Exame</th><th>Convênio</th><th>Carteirinha</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th>${podeEditar?'<th></th>':''}</tr></thead>
+      <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Atendimento</th><th>Exame</th><th>Convênio</th><th>Carteirinha</th><th>Forma pgto.</th><th>Valor</th><th>Atendente</th>${podeEditar?'<th></th>':''}</tr></thead>
       <tbody>${registros.map((r,i)=>`
         <tr>
           <td>${formatarDataExibicao(r.data)}</td>

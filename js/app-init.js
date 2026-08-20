@@ -212,7 +212,7 @@ const DIMENSOES_ANALISE = [
   {chave:'prof', rotulo:'Profissional'},
   {chave:'andar', rotulo:'Andar'},
   {chave:'convenio', rotulo:'Convênio'},
-  {chave:'procedimento', rotulo:'Procedimento'},
+  {chave:'procedimento', rotulo:'Atendimento'},
   {chave:'atendente', rotulo:'Atendente'},
   {chave:'turno', rotulo:'Turno'},
   {chave:'forma_pagamento', rotulo:'Forma de pagamento'},
@@ -227,7 +227,7 @@ const CAMPOS_CRITICOS = [
   {chave:'data', rotulo:'Data'},
   {chave:'turno', rotulo:'Turno'},
   {chave:'paciente', rotulo:'Paciente'},
-  {chave:'procedimento', rotulo:'Procedimento'},
+  {chave:'procedimento', rotulo:'Atendimento'},
   {chave:'convenio', rotulo:'Convênio'},
   {chave:'valor', rotulo:'Valor'},
   {chave:'forma_pagamento', rotulo:'Forma de pagamento'},
@@ -394,7 +394,7 @@ function definicaoCampos(){
     {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos, obrigatorio:true},
     {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'text', obrigatorio:true},
     {chave:'protocolo', rotulo:'Protocolo de realização', tipo:'text'},
-    {chave:'procedimento', rotulo:'Procedimento', tipo:'select', opcoes:L.procedimentos, obrigatorio:true},
+    {chave:'procedimento', rotulo:'Atendimento', tipo:'select', opcoes:L.procedimentos, obrigatorio:true},
     {chave:'exames', rotulo:'Exame', tipo:'select', opcoes:L.exames},
     {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos},
     {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios, obrigatorio:true},
@@ -477,7 +477,12 @@ function lerLinhasPagamento(prefixo){
       forma: linha.querySelector('.input-pagamento-forma').value,
       valor: Number(linha.querySelector('.input-pagamento-valor').value)||0
     }))
-    .filter(l=>l.forma && l.valor>0);
+    // Uma linha só conta se tiver forma escolhida E (valor>0 OU a forma for
+    // Retorno/Cortesia, que por definição não cobra nada) — sem o segundo
+    // caso, escolher "Retorno" como forma de pagamento e deixar o valor em
+    // branco fazia a linha inteira ser descartada, e o registro salvava com
+    // forma_pagamento vazio em vez de "Retorno".
+    .filter(l=>l.forma && (l.valor>0 || ehValorSemCobranca(l.forma)));
 }
 
 

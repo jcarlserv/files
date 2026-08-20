@@ -498,6 +498,17 @@
             (não vira mais pendência). Caso normal (nenhum dos três com
             esses valores) continua exigindo forma de pagamento com
             valor, como sempre foi.
+   v6.13.2 — Correção de bug (relatado pelo usuário — na edição/modal,
+            marcando tudo como Retorno inclusive a forma de pagamento):
+            a v6.13.1 corrigiu a VALIDAÇÃO (deixava salvar), mas o registro
+            salvava com forma_pagamento VAZIO mesmo assim — porque
+            `lerLinhasPagamento` descartava qualquer linha de pagamento com
+            valor 0, mesmo se a forma escolhida fosse Retorno/Cortesia (que
+            por definição não tem valor a cobrar). Agora a linha só é
+            descartada se o valor for 0 E a forma NÃO for Retorno/Cortesia
+            — nesses dois casos, a forma escolhida é preservada e salva
+            certinho, com valor 0. Caso normal (forma real sem valor
+            preenchido) continua sendo descartado, como sempre foi.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

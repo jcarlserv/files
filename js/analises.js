@@ -483,7 +483,7 @@ function rmrRenderProcedimentosBiopsias(doMesAtual){
   const tProc = document.getElementById('rmr-tabela-procedimentos');
   const chavesProc = Object.keys(porProcedimento).sort((a,b)=>porProcedimento[b]-porProcedimento[a]);
   tProc.innerHTML = chavesProc.length===0 ? '<tr><td class="vazio">Sem dados.</td></tr>' : `
-    <thead><tr><th>Procedimento</th><th>Quantidade</th></tr></thead>
+    <thead><tr><th>Atendimento</th><th>Quantidade</th></tr></thead>
     <tbody>${chavesProc.map(p=>`<tr><td>${p}</td><td>${porProcedimento[p]}</td></tr>`).join('')}</tbody>`;
   if(chavesProc.length===0) graficoVazio('grafico-procedimentos');
   else miniGraficoBarras('grafico-procedimentos', chavesProc, chavesProc.map(p=>porProcedimento[p]), '#8A3D79');
@@ -511,7 +511,7 @@ function rmrDesenharTabelaDetalhe(registros){
   const tabela = document.getElementById('rmr-tabela-detalhe-nominal');
   if(registros.length===0){ tabela.innerHTML='<tr><td class="vazio">Nenhum atendimento no período.</td></tr>'; return; }
   tabela.innerHTML = `
-    <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Convênio/Forma</th><th>Procedimento</th><th>Exame</th><th>Atendente</th><th>Valor</th></tr></thead>
+    <thead><tr><th>Data</th><th>Profissional</th><th>Andar</th><th>Paciente</th><th>Convênio/Forma</th><th>Atendimento</th><th>Exame</th><th>Atendente</th><th>Valor</th></tr></thead>
     <tbody>${registros.map(r=>`
       <tr><td>${formatarDataExibicao(r.data)}</td><td>${r.prof}</td><td>${r.andar||'—'}</td><td>${r.paciente||''}</td>
       <td>${r.convenio || r.forma_pagamento || '—'}</td><td>${r.procedimento||''}</td><td>${r.exames||'—'}</td><td>${r.atendente||''}</td>
@@ -868,8 +868,8 @@ ${relatorioTabelaHtml('Por convênio', ['Convênio','Qtd.','Valor'], linhasConve
 ${relatorioTabelaHtml('Ranking', ['Profissional','Atendimentos','Valor realizado','Ticket médio'], linhasProf)}
 ${relatorioTabelaHtml('Eficiência de turnos', ['Profissional','Turnos disp.','Turnos usados','Ociosos','% eficiência'], linhasEficiencia)}
 
-<h2>Procedimentos e exames</h2>
-${relatorioTabelaHtml('Por procedimento', ['Procedimento','Qtd.','Valor'], linhasProcedimento)}
+<h2>Atendimentos e exames</h2>
+${relatorioTabelaHtml('Por atendimento', ['Atendimento','Qtd.','Valor'], linhasProcedimento)}
 ${relatorioTabelaHtml('Por exame', ['Exame','Qtd.'], linhasExame)}
 ${relatorioTabelaHtml('Biópsias por frascos', ['Frascos','Qtd.'], linhasBiopsia)}
 

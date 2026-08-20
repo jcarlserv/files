@@ -19,7 +19,7 @@ const DEFINICAO_LISTAS_CONFIG = [
   {chave:'profissionais', rotulo:'Profissionais'},
   {chave:'andares', rotulo:'Andares'},
   {chave:'convenios', rotulo:'Convênios'},
-  {chave:'procedimentos', rotulo:'Procedimentos'},
+  {chave:'procedimentos', rotulo:'Atendimentos'},
   {chave:'atendentes', rotulo:'Atendentes'},
   {chave:'turnos', rotulo:'Turnos'},
   {chave:'formas_pagamento', rotulo:'Formas de pagamento'},

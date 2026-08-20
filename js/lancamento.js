@@ -160,7 +160,7 @@ async function atualizarMeusLancamentos(){
   const tabela = document.getElementById('tabela-meus-lancamentos');
   if(registros.length===0){ tabela.innerHTML = '<tr><td class="vazio">Nenhum lançamento ainda.</td></tr>'; return; }
   tabela.innerHTML = `
-    <thead><tr><th>Data</th><th>Paciente</th><th>Procedimento</th><th>Exame</th><th>Convênio</th><th>Valor</th></tr></thead>
+    <thead><tr><th>Data</th><th>Paciente</th><th>Atendimento</th><th>Exame</th><th>Convênio</th><th>Valor</th></tr></thead>
     <tbody>${registros.map(r=>`
       <tr>
         <td>${formatarDataExibicao(r.data)}</td>

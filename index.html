@@ -179,7 +179,7 @@
               <select id="filtro-exame-gerencial"><option value="">Todos</option></select>
             </div>
             <div class="campo">
-              <label>Procedimento</label>
+              <label>Atendimento</label>
               <select id="filtro-procedimento-gerencial"><option value="">Todos</option></select>
             </div>
             <div class="campo">
@@ -363,10 +363,10 @@
       </div>
 
 
-      <div class="squad-titulo"><span>Procedimentos e biópsias</span><div class="linha"></div></div>
+      <div class="squad-titulo"><span>Atendimentos e biópsias</span><div class="linha"></div></div>
       <div class="grade-2">
         <div class="cartao">
-          <h3>Por tipo de procedimento</h3>
+          <h3>Por tipo de atendimento</h3>
           <div class="tabela-scroll"><table id="rmr-tabela-procedimentos"></table></div>
           <div id="grafico-procedimentos" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
         </div>
@@ -455,7 +455,7 @@
             </div>
           </div>
         </div>
-        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">Cruze qualquer duas listas (ex.: Convênio × Procedimento, Atendente × Forma de pagamento, Profissional × Exame) para enxergar padrões qualitativos por trás dos números.</p>
+        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">Cruze qualquer duas listas (ex.: Convênio × Atendimento, Atendente × Forma de pagamento, Profissional × Exame) para enxergar padrões qualitativos por trás dos números.</p>
         <div class="tabela-scroll"><table id="tabela-correlacao"></table></div>
       </div>
 
@@ -662,7 +662,7 @@
       <div class="cartao" style="max-width:620px;">
         <h3>Listas do sistema</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-          Essas são as opções que aparecem nos menus de Profissional, Convênio, Procedimento etc.
+          Essas são as opções que aparecem nos menus de Profissional, Convênio, Atendimento etc.
           Adicionar ou remover aqui atualiza a planilha (aba Listas) direto — sem precisar abrir o Google Sheets.
         </p>
         <div class="campo">
@@ -709,11 +709,11 @@
 
 
       <div class="cartao" id="cartao-profissionais-procedimentos" style="max-width:100%;">
-        <h3>Profissionais por procedimento</h3>
+        <h3>Profissionais por atendimento</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-          Mesma ideia do andar: marque quais procedimentos cada profissional pode realizar. Trava o
-          campo <b>Procedimento</b> na tela de Lançamento e no modal de edição, e bloqueia o
-          lançamento se o profissional não tiver nenhum procedimento marcado.
+          Mesma ideia do andar: marque quais atendimentos cada profissional pode realizar. Trava o
+          campo <b>Atendimento</b> na tela de Lançamento e no modal de edição, e bloqueia o
+          lançamento se o profissional não tiver nenhum atendimento marcado.
         </p>
         <div class="tabela-scroll">
           <table id="tabela-profissionais-procedimentos"></table>
@@ -724,7 +724,7 @@
       <div class="cartao" id="cartao-profissionais-exames" style="max-width:100%;">
         <h3>Profissionais por exame</h3>
         <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-          Mesma ideia do andar e do procedimento: marque quais exames cada profissional pode
+          Mesma ideia do andar e do atendimento: marque quais exames cada profissional pode
           realizar. Trava o campo <b>Exame</b> na tela de Lançamento e no modal de edição —
           diferente dos outros, esse campo não é obrigatório, então não bloqueia o lançamento se
           ficar vazio.
@@ -861,7 +861,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.13.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.13.2</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
