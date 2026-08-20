@@ -521,6 +521,12 @@ async function supabaseApi(acao, dados) {
       return error ? {ok:false, erro:error.message} : {ok:true};
     }
 
+    case 'atualizarNaturezaConta': {
+      const { error } = await supabaseClient.from('plano_contas')
+        .update({ natureza: dados.natureza==='entrada'?'entrada':'saida' }).eq('codigo', dados.codigo);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
     case 'excluirContaPlano': {
       // Só permite excluir quem não tem filhos nem valores lançados — a
       // checagem de "não tem filhos" já é feita no front antes de chamar
@@ -708,6 +714,11 @@ function mockApi(acao, dados) {
     case 'renomearContaPlano': {
       const conta = demo.planoContas.find(c=>c.codigo===dados.codigo);
       if(conta) conta.nome = dados.nome;
+      return {ok:true};
+    }
+    case 'atualizarNaturezaConta': {
+      const conta = demo.planoContas.find(c=>c.codigo===dados.codigo);
+      if(conta) conta.natureza = dados.natureza==='entrada'?'entrada':'saida';
       return {ok:true};
     }
     case 'excluirContaPlano': {

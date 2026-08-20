@@ -165,6 +165,23 @@
   @keyframes surgir{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 
 
+  /* Sub-abas — mesma ideia das abas principais (só a .ativa aparece), usadas
+     quando uma aba do topo (Verificação, Dashboard) reúne mais de uma tela
+     antiga por dentro. */
+  .sub-painel{display:none;}
+  .sub-painel.ativa{display:block;animation:surgir .25s ease;}
+  .sub-nav{display:flex;gap:8px;margin-bottom:22px;border-bottom:1.5px solid var(--line);padding-bottom:0;}
+  .sub-aba{
+    background:none;border:none;cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--ink-400);
+    padding:10px 4px;margin-right:18px;border-bottom:2.5px solid transparent;
+    transition:color .15s, border-color .15s;
+  }
+  .sub-aba:hover{color:var(--plum-700);}
+  .sub-aba.ativa{color:var(--plum-900);border-bottom-color:var(--plum-700);}
+  @media print{ .sub-nav{display:none !important;} .sub-painel{display:none;} .sub-painel.ativa{display:block;} }
+
+
   .cabecalho-painel{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
   .cabecalho-painel h2{margin:0;font-size:24px;color:var(--plum-900);font-weight:600;}
   .cabecalho-painel p{margin:4px 0 0;color:var(--ink-400);font-size:13.5px;}

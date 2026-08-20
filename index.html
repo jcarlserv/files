@@ -91,7 +91,13 @@
 
 
     <!-- ---------- GERENCIAL ---------- -->
-    <section class="painel" id="painel-editar">
+    <!-- ---------- VERIFICAÇÃO (Verificar + Crítica, em sub-abas) ---------- -->
+    <section class="painel" id="painel-verificacao">
+      <div class="sub-nav" id="subnav-verificacao">
+        <button type="button" class="sub-aba" data-subaba="editar">Verificar</button>
+        <button type="button" class="sub-aba" data-subaba="critica">Crítica</button>
+      </div>
+    <div class="sub-painel" id="painel-editar">
       <!-- Card 1: Filtros -->
       <div class="cartao">
         <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;">
@@ -192,11 +198,10 @@
           <table id="tabela-gerencial"></table>
         </div>
       </div>
-    </section>
+    </div>
 
 
-    <!-- ---------- CRÍTICA ---------- -->
-    <section class="painel" id="painel-critica">
+    <div class="sub-painel" id="painel-critica">
       <div class="cartao">
         <div class="cabecalho-painel" style="margin-bottom:0;">
           <div>
@@ -247,49 +252,18 @@
           <table id="tabela-critica"></table>
         </div>
       </div>
+    </div>
     </section>
 
 
-    <!-- ---------- METAS ---------- -->
-    <section class="painel" id="painel-metas">
-      <div class="cabecalho-painel">
-        <div>
-          <h2>Metas</h2>
-          <p>Metas por profissional e anotações para a próxima reunião.</p>
-        </div>
-        <div class="filtros">
-          <div class="campo">
-            <label>Mês</label>
-            <select id="filtro-mes-metas"></select>
-          </div>
-          <div class="campo">
-            <label>Ano</label>
-            <select id="filtro-ano-metas"></select>
-          </div>
-          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
-        </div>
+    <!-- ---------- DASHBOARD (Análises + RMR + Metas, em sub-abas) ---------- -->
+    <section class="painel" id="painel-dashboard">
+      <div class="sub-nav" id="subnav-dashboard">
+        <button type="button" class="sub-aba" data-subaba="rmr">Análises</button>
+        <button type="button" class="sub-aba" data-subaba="rmr-squad">RMR</button>
+        <button type="button" class="sub-aba" data-subaba="metas">Metas</button>
       </div>
-
-
-      <div class="cartao">
-        <h3>Metas do período (por profissional)</h3>
-        <div class="tabela-scroll">
-          <table id="tabela-metas"></table>
-        </div>
-      </div>
-
-
-      <div class="cartao">
-        <h3>Sugestões de melhoria para o próximo período</h3>
-        <textarea id="texto-nota" style="width:100%;" placeholder="Anote aqui os pontos discutidos na reunião mensal..."></textarea>
-        <div class="rodape-nota"><button class="botao secundario pequeno" id="botao-salvar-nota">Salvar anotação</button></div>
-      </div>
-    </section>
-
-
-    <!-- ---------- ANÁLISES (fusão de Dashboard + Análises Cruzadas) ---------- -->
-    <!-- ---------- RMR (fusão de RMR + Análises) ---------- -->
-    <section class="painel" id="painel-rmr">
+    <div class="sub-painel" id="painel-rmr">
       <div class="cabecalho-painel">
         <div>
           <h2>Análises</h2>
@@ -299,7 +273,6 @@
           <div class="campo"><label>Mês</label><select id="rmr-mes"></select></div>
           <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
           <div class="campo"><label>Andar</label><select id="rmr-andar"><option value="">Todos</option></select></div>
-          <button class="botao secundario pequeno" id="rmr-botao-apresentar" title="Reunião mensal de resultados do Mês/Ano já selecionados acima">Apresentação</button>
           <button class="botao sutil pequeno botao-exportar-pdf" id="rmr-botao-imprimir">Exportar PDF</button>
           <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-mes" title="Todos os profissionais e andares do mês selecionado, sem os filtros da tela">Exportar dados (mês)</button>
           <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-ano" title="Todos os profissionais e andares do ano selecionado, sem os filtros da tela">Exportar dados (ano)</button>
@@ -453,11 +426,10 @@
         <div class="campo" style="max-width:280px;margin-bottom:12px;"><input type="text" id="rmr-busca-detalhe" placeholder="Buscar paciente, convênio, profissional..." style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);"></div>
         <div class="tabela-scroll"><table id="rmr-tabela-detalhe-nominal"></table></div>
       </div>
-    </section>
+    </div>
 
 
-    <!-- ---------- RMR (novo — drill-down por andar/médico) ---------- -->
-    <section class="painel" id="painel-rmr-squad">
+    <div class="sub-painel" id="painel-rmr-squad">
       <div class="cabecalho-painel">
         <div>
           <h2>RMR</h2>
@@ -466,16 +438,53 @@
         <div class="filtros">
           <div class="campo"><label>Mês</label><select id="squad-mes"></select></div>
           <div class="campo"><label>Ano</label><select id="squad-ano"></select></div>
-          <div class="campo"><label>Andar</label><select id="squad-andar"><option value="">Selecione...</option></select></div>
-          <div class="campo"><label>Profissional</label><select id="squad-prof" disabled><option value="">Escolha um andar primeiro</option></select></div>
+          <div class="campo"><label>Andar</label><select id="squad-andar"><option value="">Todos</option></select></div>
+          <div class="campo"><label>Profissional</label><select id="squad-prof" disabled><option value="">Todos</option></select></div>
+          <button class="botao secundario pequeno" id="rmr-botao-apresentar" title="Reunião mensal de resultados do Mês/Ano já selecionados acima">Apresentação</button>
           <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
         </div>
       </div>
       <div id="squad-conteudo"><p class="vazio">Carregando...</p></div>
+    </div>
+
+
+    <div class="sub-painel" id="painel-metas">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Metas</h2>
+          <p>Metas por profissional e anotações para a próxima reunião.</p>
+        </div>
+        <div class="filtros">
+          <div class="campo">
+            <label>Mês</label>
+            <select id="filtro-mes-metas"></select>
+          </div>
+          <div class="campo">
+            <label>Ano</label>
+            <select id="filtro-ano-metas"></select>
+          </div>
+          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
+        </div>
+      </div>
+
+
+      <div class="cartao">
+        <h3>Metas do período (por profissional)</h3>
+        <div class="tabela-scroll">
+          <table id="tabela-metas"></table>
+        </div>
+      </div>
+
+
+      <div class="cartao">
+        <h3>Sugestões de melhoria para o próximo período</h3>
+        <textarea id="texto-nota" style="width:100%;" placeholder="Anote aqui os pontos discutidos na reunião mensal..."></textarea>
+        <div class="rodape-nota"><button class="botao secundario pequeno" id="botao-salvar-nota">Salvar anotação</button></div>
+      </div>
+    </div>
     </section>
 
 
-    <!-- ---------- FINANCEIRO (plano de contas / DRE) ---------- -->
     <section class="painel" id="painel-financeiro">
       <div class="cabecalho-painel">
         <div>
@@ -497,8 +506,10 @@
 
       <div class="grade-kpi">
         <div class="kpi"><div class="rotulo">Receita líquida</div><div class="valor teal" id="financeiro-kpi-receita">—</div></div>
-        <div class="kpi"><div class="rotulo">Margem de contribuição</div><div class="valor" id="financeiro-kpi-margem">—</div></div>
-        <div class="kpi"><div class="rotulo">Resultado da operação</div><div class="valor" id="financeiro-kpi-resultado">—</div></div>
+        <div class="kpi"><div class="rotulo">Lucro bruto</div><div class="valor" id="financeiro-kpi-margem">—</div></div>
+        <div class="kpi"><div class="rotulo">Resultado operacional (EBITDA)</div><div class="valor" id="financeiro-kpi-ebitda">—</div></div>
+        <div class="kpi"><div class="rotulo">Lucro líquido</div><div class="valor" id="financeiro-kpi-resultado">—</div></div>
+        <div class="kpi"><div class="rotulo">Margem líquida</div><div class="valor" id="financeiro-kpi-margem-pct">—</div></div>
       </div>
 
       <div class="cartao">
@@ -706,7 +717,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.7.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.9.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>

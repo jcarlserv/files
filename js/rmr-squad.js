@@ -66,11 +66,11 @@ function squadPrepararSelects(){
 
   // Andar e Profissional não precisam buscar de novo — os dados do ano já
   // estão no squadCache, então só reprocessam (squadRenderizarTudo) na hora.
-  // Nada aparece enquanto nenhum andar for escolhido (evita a tela gigante
-  // com os dois andares empilhados de uma vez), e o Profissional só lista
-  // quem realmente atua no andar escolhido.
+  // "Todos" (sem escolher andar) mostra Térreo e Coparticipados juntos —
+  // necessário pra Apresentação, que soma os dois. O Profissional só lista
+  // quem realmente atua no(s) andar(es) visível(is) no momento.
   const selAndar = document.getElementById('squad-andar');
-  selAndar.innerHTML = '<option value="">Selecione...</option>' +
+  selAndar.innerHTML = '<option value="">Todos</option>' +
     (estado.listas.andares||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
   selAndar.addEventListener('change', ()=>{
     squadAtualizarFiltroProfissional();
@@ -80,8 +80,10 @@ function squadPrepararSelects(){
 
   const selProf = document.getElementById('squad-prof');
   selProf.addEventListener('change', squadRenderizarTudo);
-  squadAtualizarFiltroProfissional(); // estado inicial: desabilitado, sem andar escolhido ainda
+  squadAtualizarFiltroProfissional();
 
+  document.getElementById('rmr-botao-apresentar').style.display = temPermissao('ver_apresentacao') ? 'inline-flex' : 'none';
+  apresentacaoPrepararSelects();
 
   squadSelectsProntos = true;
 }
@@ -92,29 +94,21 @@ function squadPrepararSelects(){
 // popular o select quanto internamente.
 function squadProfissionaisDoAndar(andar){
   if(!squadCache.registrosAno) return [];
-  const alvo = andar.trim().toUpperCase();
+  const alvo = (andar||'').trim().toUpperCase();
   return Array.from(new Set(
     squadCache.registrosAno
-      .filter(r => String(r.andar||'').trim().toUpperCase()===alvo)
+      .filter(r => !alvo || String(r.andar||'').trim().toUpperCase()===alvo)
       .map(r => r.prof)
   )).filter(Boolean).sort();
 }
 
 
-// Reconstrói o select de Profissional de acordo com o andar escolhido —
-// desabilitado e vazio se nenhum andar foi escolhido ainda.
+// Reconstrói o select de Profissional de acordo com o andar escolhido — sem
+// andar escolhido, lista todo mundo (Térreo + Coparticipados juntos).
 function squadAtualizarFiltroProfissional(){
   const selProf = document.getElementById('squad-prof');
   const andar = document.getElementById('squad-andar').value;
   const valorAnterior = selProf.value;
-
-
-  if(!andar){
-    selProf.innerHTML = '<option value="">Escolha um andar primeiro</option>';
-    selProf.disabled = true;
-    return;
-  }
-
 
   const profissionais = squadProfissionaisDoAndar(andar);
   selProf.disabled = false;
@@ -179,21 +173,17 @@ function squadRenderizarTudo(){
   </div>`;
 
 
-  // Nada é mostrado até escolher um andar — evita empilhar Térreo e
-  // Coparticipados de uma vez só (era isso que deixava a tela gigante).
-  if(!andarFiltro){
-    container.innerHTML = tituloHtml + '<p class="vazio">Selecione um andar no filtro acima para ver os dados.</p>';
-    return;
-  }
-
-
   // Ordem dos andares: usa a ordem já configurada em Configurações > Listas
   // (estado.listas.andares), filtrando só os que realmente têm lançamento
   // no ano — assim não aparece um andar vazio, e a ordem fica previsível.
-  // Com o gate acima, andaresPresentes sempre vira 1 item só (o escolhido).
+  // Sem "Andar" escolhido (Todos), mostra os dois juntos — a Apresentação
+  // (aberta a partir desta aba) precisa dos dados combinados dos dois.
   let andaresPresentes = (estado.listas.andares||[]).filter(a =>
     registrosAno.some(r => String(r.andar||'').trim().toUpperCase() === a.trim().toUpperCase())
-  ).filter(a => a.trim().toUpperCase()===andarFiltro.trim().toUpperCase());
+  );
+  if(andarFiltro){
+    andaresPresentes = andaresPresentes.filter(a => a.trim().toUpperCase()===andarFiltro.trim().toUpperCase());
+  }
 
 
   if(andaresPresentes.length===0){

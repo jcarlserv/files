@@ -355,6 +355,47 @@
             parte — roda uma vez no SQL Editor pra popular a estrutura
             real da clínica (a tabela plano_contas nasce vazia; só o modo
             demonstração já vem com contas de exemplo).
+   v6.8.0 — Correção de bug (relatado pelo usuário): ao criar uma subconta
+            em qualquer ramo que não fosse Receita (ex.: dentro de Ativo),
+            o sistema cravava "saída" sem perguntar — agora pergunta
+            sempre, pra qualquer conta nova. A etiqueta entrada/saída de
+            cada conta-folha também virou um botão — clique nela pra
+            trocar, sem precisar excluir e recriar a conta (corrige contas
+            já criadas erradas antes desse fix).
+            DRE: cálculo trocado pro modelo de 9 etapas (Receita Bruta →
+            Deduções → Receita Líquida → Custo do Serviço → Lucro Bruto →
+            Despesas Operacionais [5.1 a 5.4] → Resultado Operacional/
+            EBITDA → Resultado Financeiro [5.5] → Prolabore [5.6] → Lucro
+            Líquido), com Margem Líquida (%) — mesmo resultado final de
+            antes (conferido: bate com o -R$ 28.607,14 de Junho), só que
+            agora mostrando as etapas intermediárias. Reaproveitado tanto
+            no resumo da aba Financeiro quanto no slide de DRE da
+            Apresentação (nova função `financeiroCalcularDre()`).
+            Botão "Apresentação" mudou de lugar de novo: estava na aba
+            Análises, agora fica na aba RMR (a de andar/médico) — porque
+            é ali que os dados de Térreo e Coparticipados já ficam juntos.
+            Usa squad-mes/squad-ano (RMR) em vez de rmr-mes/rmr-ano
+            (Análises).
+            Aba RMR: não exige mais escolher um Andar pra mostrar algo —
+            sem filtro, mostra Térreo e Coparticipados juntos (precisava
+            disso pra Apresentação conseguir os dois juntos). Escolher um
+            andar específico continua funcionando igual, só filtra.
+   v6.9.0 — Reorganização de abas: "Verificação" (Verificar + Crítica) e
+            "Dashboard" (Análises + RMR + Metas, nessa ordem) viraram abas
+            únicas no topo, cada uma com sub-abas por dentro — mesmo
+            mecanismo de mostrar/esconder das abas principais, só que
+            escopado a um grupo (nova classe .sub-painel/.sub-aba, ver
+            estilos.css). A aba aparece se o usuário tiver permissão pra
+            QUALQUER uma das telas de dentro dela; dentro, só as sub-abas
+            permitidas aparecem. Trocar de aba principal e voltar mantém a
+            sub-aba que você tinha escolhido (não reseta pra primeira toda
+            vez). Nenhuma tela mudou por dentro — só a organização da
+            navegação.
+            Apresentação: nova slide "Coparticipados — Procedimentos
+            Realizados", entre Ocupação de Turnos e Ultrassom Histórico —
+            lista só os procedimentos que tiveram lançamento naquele mês
+            (não lista o cadastro inteiro), com quantidade, valor e ticket
+            médio, ordenado por valor.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

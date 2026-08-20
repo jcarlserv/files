@@ -92,15 +92,16 @@ function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
   const TODAS_ABAS = [
     {id:'lancamento', rotulo:'Lançamento', chave:'ver_lancamento'},
-    {id:'editar', rotulo:'Verificar', chave:'ver_verificar'},
-    {id:'critica', rotulo:'Crítica', chave:'ver_critica'},
-    {id:'metas', rotulo:'Metas', chave:'ver_metas'},
-    {id:'rmr', rotulo:'Análises', chave:'ver_rmr'},
-    {id:'rmr-squad', rotulo:'RMR', chave:'ver_rmr_squad'},
+    {id:'verificacao', rotulo:'Verificação', chave:['ver_verificar','ver_critica']},
+    {id:'dashboard', rotulo:'Dashboard', chave:['ver_rmr','ver_rmr_squad','ver_metas']},
     {id:'financeiro', rotulo:'Financeiro', chave:'ver_financeiro'},
     {id:'configuracoes', rotulo:'Configurações', chave:'ver_configuracoes'}
   ];
-  const abasDisponiveis = TODAS_ABAS.filter(a => temPermissao(a.chave));
+  // `chave` pode ser uma chave só, ou uma lista — nesse caso a aba aparece se
+  // o usuário tiver QUALQUER UMA delas (é o caso das abas que reúnem mais de
+  // uma tela antiga em sub-abas: Verificação e Dashboard).
+  const temAlgumaPermissao = chave => Array.isArray(chave) ? chave.some(c=>temPermissao(c)) : temPermissao(chave);
+  const abasDisponiveis = TODAS_ABAS.filter(a => temAlgumaPermissao(a.chave));
   nav.innerHTML = '';
   abasDisponiveis.forEach((a,i)=>{
     const botao = document.createElement('button');
@@ -113,6 +114,69 @@ function montarNavegacao(){
   estado.abaAtiva = abasDisponiveis.length ? abasDisponiveis[0].id : 'lancamento';
   const painelAtivo = document.getElementById('painel-'+estado.abaAtiva);
   if(painelAtivo) painelAtivo.classList.add('ativo');
+  if(estado.abaAtiva==='verificacao') montarSubNavVerificacao();
+  if(estado.abaAtiva==='dashboard') montarSubNavDashboard();
+}
+
+/* ---------------------------------------------------------------------
+   SUB-ABAS — usadas dentro de "Verificação" (Verificar/Crítica) e
+   "Dashboard" (Análises/RMR/Metas), que reúnem telas que antes eram abas
+   separadas no topo. Mesmo mecanismo de show/hide das abas principais,
+   só que escopado a um grupo (só uma .sub-painel de cada grupo por vez).
+--------------------------------------------------------------------- */
+function montarSubNav(containerId, subAbas, grupo){
+  const container = document.getElementById(containerId);
+  const disponiveis = subAbas.filter(s => temPermissao(s.chave));
+  container.innerHTML = '';
+  disponiveis.forEach((s,i)=>{
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'sub-aba' + (i===0 ? ' ativa' : '');
+    botao.textContent = s.rotulo;
+    botao.dataset.subaba = s.id;
+    botao.addEventListener('click', ()=>trocarSubAba(grupo, s.id, subAbas));
+    container.appendChild(botao);
+  });
+  if(disponiveis.length){
+    estado[grupo] = disponiveis[0].id;
+    document.getElementById('painel-'+disponiveis[0].id).classList.add('ativa');
+  }
+}
+
+async function trocarSubAba(grupo, subId, subAbas){
+  estado[grupo] = subId;
+  const idsDoGrupo = subAbas.map(s=>s.id);
+  idsDoGrupo.forEach(id=>{
+    const el = document.getElementById('painel-'+id);
+    if(el) el.classList.toggle('ativa', id===subId);
+  });
+  const containerId = grupo==='subAbaVerificacao' ? 'subnav-verificacao' : 'subnav-dashboard';
+  document.querySelectorAll(`#${containerId} .sub-aba`).forEach(b=>{
+    b.classList.toggle('ativa', b.dataset.subaba===subId);
+  });
+  await atualizarSubAbaAtiva(subId);
+}
+
+const SUB_ABAS_VERIFICACAO = [
+  {id:'editar', rotulo:'Verificar', chave:'ver_verificar'},
+  {id:'critica', rotulo:'Crítica', chave:'ver_critica'}
+];
+const SUB_ABAS_DASHBOARD = [
+  {id:'rmr', rotulo:'Análises', chave:'ver_rmr'},
+  {id:'rmr-squad', rotulo:'RMR', chave:'ver_rmr_squad'},
+  {id:'metas', rotulo:'Metas', chave:'ver_metas'}
+];
+function montarSubNavVerificacao(){ montarSubNav('subnav-verificacao', SUB_ABAS_VERIFICACAO, 'subAbaVerificacao'); }
+function montarSubNavDashboard(){ montarSubNav('subnav-dashboard', SUB_ABAS_DASHBOARD, 'subAbaDashboard'); }
+
+// Chama a função de atualização de dados de quem já existia pra cada sub-aba
+// — mesmo nome de função de sempre, só que agora despachado por aqui.
+async function atualizarSubAbaAtiva(subId){
+  if(subId==='editar') await atualizarEditar();
+  if(subId==='critica') await atualizarCritica();
+  if(subId==='rmr') await atualizarRMR();
+  if(subId==='rmr-squad') await atualizarRmrSquad();
+  if(subId==='metas') await atualizarMetas();
 }
 
 
@@ -121,18 +185,20 @@ async function trocarAba(idAba){
   document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa', b.dataset.aba===idAba));
   document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativo'));
   document.getElementById('painel-'+idAba).classList.add('ativo');
+  // Só monta a sub-nav a primeira vez que a aba é aberta — depois disso, a
+  // sub-aba escolhida fica como estava (o painel dela nunca perde a classe
+  // .ativa só por trocar de aba principal e voltar).
+  if(idAba==='verificacao' && !estado.subAbaVerificacao) montarSubNavVerificacao();
+  if(idAba==='dashboard' && !estado.subAbaDashboard) montarSubNavDashboard();
   await atualizarPainelAtivo();
 }
 
 
 async function atualizarPainelAtivo(){
   if(estado.abaAtiva==='lancamento') await atualizarMeusLancamentos();
-  if(estado.abaAtiva==='editar') await atualizarEditar();
-  if(estado.abaAtiva==='critica') await atualizarCritica();
-  if(estado.abaAtiva==='metas') await atualizarMetas();
+  if(estado.abaAtiva==='verificacao') await atualizarSubAbaAtiva(estado.subAbaVerificacao);
   if(estado.abaAtiva==='configuracoes') await atualizarConfiguracoes();
-  if(estado.abaAtiva==='rmr') await atualizarRMR();
-  if(estado.abaAtiva==='rmr-squad') await atualizarRmrSquad();
+  if(estado.abaAtiva==='dashboard') await atualizarSubAbaAtiva(estado.subAbaDashboard);
   if(estado.abaAtiva==='financeiro') await atualizarFinanceiro();
 }
 

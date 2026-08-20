@@ -102,7 +102,7 @@ function montarArvoreContas(containerId, opcoes){
       html += `<span style="width:18px;flex-shrink:0;"></span>`;
     }
     html += `<span class="mono" style="font-size:11px;color:var(--ink-400);min-width:110px;flex-shrink:0;">${conta.codigo}</span>`;
-    html += `<span style="flex:1;font-weight:${filhos.length>0?'700':'400'};color:${filhos.length>0?'var(--plum-900)':'var(--ink-900)'};">${conta.nome}${!ehFolha?'':(conta.natureza==='saida'?' <span class="tag" style="background:var(--danger-100);color:var(--danger);margin-left:6px;">saída</span>':' <span class="tag" style="margin-left:6px;">entrada</span>')}</span>`;
+    html += `<span style="flex:1;font-weight:${filhos.length>0?'700':'400'};color:${filhos.length>0?'var(--plum-900)':'var(--ink-900)'};">${conta.nome}${!ehFolha||!podeEditar?'':`<button type="button" class="financeiro-toggle-natureza tag" data-codigo="${conta.codigo}" data-natureza="${conta.natureza}" title="Clique pra trocar entrada/saída" style="border:none;cursor:pointer;margin-left:6px;${conta.natureza==='saida'?'background:var(--danger-100);color:var(--danger);':'background:var(--teal-100);color:var(--teal-700);'}">${conta.natureza==='saida'?'saída':'entrada'}</button>`}</span>`;
     if(comValores){
       if(ehFolha && podeEditar){
         html += `<input type="number" step="0.01" class="financeiro-input-valor" data-codigo="${conta.codigo}" value="${financeiroValoresCache[conta.codigo]||''}" placeholder="0,00" style="width:130px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--line);text-align:right;">`;
@@ -142,6 +142,19 @@ function montarArvoreContas(containerId, opcoes){
     btn.addEventListener('click', ()=>financeiroAbrirFormularioNovaConta(btn.dataset.codigo, containerId, opcoes));
   });
 
+  container.querySelectorAll('.financeiro-toggle-natureza').forEach(btn=>{
+    btn.addEventListener('click', async (ev)=>{
+      ev.stopPropagation();
+      const codigo = btn.dataset.codigo;
+      const novaNatureza = btn.dataset.natureza==='saida' ? 'entrada' : 'saida';
+      const resp = await api('atualizarNaturezaConta', {codigo, natureza: novaNatureza});
+      if(!resp.ok){ alert(resp.erro||'Não foi possível atualizar.'); return; }
+      await financeiroCarregarContas();
+      montarArvoreContas(containerId, opcoes);
+      if(typeof financeiroAtualizarResumo === 'function' && document.getElementById('financeiro-kpi-resultado')) financeiroAtualizarResumo();
+    });
+  });
+
   container.querySelectorAll('.financeiro-excluir').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const codigo = btn.dataset.codigo;
@@ -171,11 +184,10 @@ function montarArvoreContas(containerId, opcoes){
 function financeiroAbrirFormularioNovaConta(paiCodigo, containerId, opcoes){
   const nome = prompt('Nome da nova subconta:');
   if(!nome || !nome.trim()) return;
-  let natureza = 'saida';
-  const ehReceita = paiCodigo.split('.')[0]==='3';
-  if(ehReceita){
-    natureza = confirm('Essa conta SOMA no resultado (ex.: uma receita)? Cancelar = SUBTRAI (ex.: uma dedução/imposto).') ? 'entrada' : 'saida';
-  }
+  const natureza = confirm(
+    'Essa conta AUMENTA o valor da conta-mãe (ex.: uma receita, um saldo de banco, um item de patrimônio)?\n\n' +
+    'Cancelar = essa conta DIMINUI o valor da conta-mãe (ex.: uma dedução, um custo, uma despesa).'
+  ) ? 'entrada' : 'saida';
   const codigo = financeiroProximoCodigo(paiCodigo, financeiroContasCache);
   api('criarContaPlano', {codigo, nome: nome.trim(), conta_pai_codigo: paiCodigo, natureza, ordem: 0}).then(async resp=>{
     if(!resp.ok){ alert(resp.erro || 'Não foi possível criar a conta.'); return; }
@@ -223,23 +235,41 @@ async function atualizarFinanceiro(){
   financeiroAtualizarResumo();
 }
 
+// DRE em 9 etapas (ver Documento 5 do usuário) — mesma matemática final de
+// antes (conferido: bate com o Resultado real já validado), só que agora
+// mostra as etapas intermediárias (Lucro Bruto, EBITDA, Resultado
+// Financeiro, Prolabore em separado) em vez de um bloco só de "despesas".
+function financeiroCalcularDre(){
+  const v = cod => financeiroValorDaConta(cod, financeiroContasCache, financeiroValoresCache);
+  const receitaBruta = v('3.1');
+  const deducoes = Math.abs(v('3.2'));
+  const receitaLiquida = receitaBruta - deducoes;
+  const custoServico = Math.abs(v('4'));
+  const lucroBruto = receitaLiquida - custoServico;
+  // Despesas operacionais = só os grupos 5.1 a 5.4 (pessoal, compras/manutenção,
+  // operacionais, cartões) — 5.5 (financeiras) e 5.6 (prolabore) ficam de fora
+  // daqui e entram depois, em etapas próprias.
+  const despesasOperacionais = ['5.1','5.2','5.3','5.4']
+    .reduce((s,cod)=> s + Math.abs(v(cod)), 0);
+  const resultadoOperacional = lucroBruto - despesasOperacionais; // EBITDA
+  const resultadoFinanceiro = v('5.5'); // já vem com sinal (negativo se só tem despesa financeira)
+  const prolabore = Math.abs(v('5.6'));
+  const lucroLiquido = resultadoOperacional + resultadoFinanceiro - prolabore;
+  const margemLiquidaPct = receitaBruta ? (lucroLiquido/receitaBruta)*100 : null;
+  return { receitaBruta, deducoes, receitaLiquida, custoServico, lucroBruto,
+    despesasOperacionais, resultadoOperacional, resultadoFinanceiro, prolabore,
+    lucroLiquido, margemLiquidaPct };
+}
+
 function financeiroAtualizarResumo(){
-  let receita=0, deducoes=0, csp=0, despesas=0;
-  financeiroContasCache.filter(c=>financeiroEhFolha(c.codigo, financeiroContasCache)).forEach(c=>{
-    const v = Number(financeiroValoresCache[c.codigo])||0;
-    const raiz = c.codigo.split('.')[0];
-    if(raiz==='3') { if(c.natureza==='saida') deducoes += v; else receita += v; }
-    else if(raiz==='4') csp += v;
-    else if(raiz==='5') despesas += v;
-  });
-  const receitaLiquida = receita - deducoes;
-  const margem = receitaLiquida - csp;
-  const resultado = margem - despesas;
-  document.getElementById('financeiro-kpi-receita').textContent = formatarMoeda(receita);
-  document.getElementById('financeiro-kpi-margem').textContent = formatarMoeda(margem);
+  const dre = financeiroCalcularDre();
+  document.getElementById('financeiro-kpi-receita').textContent = formatarMoeda(dre.receitaLiquida);
+  document.getElementById('financeiro-kpi-margem').textContent = formatarMoeda(dre.lucroBruto);
+  document.getElementById('financeiro-kpi-ebitda').textContent = formatarMoeda(dre.resultadoOperacional);
   const elResultado = document.getElementById('financeiro-kpi-resultado');
-  elResultado.textContent = formatarMoeda(resultado);
-  elResultado.style.color = resultado<0 ? 'var(--danger)' : '';
+  elResultado.textContent = formatarMoeda(dre.lucroLiquido);
+  elResultado.style.color = dre.lucroLiquido<0 ? 'var(--danger)' : '';
+  document.getElementById('financeiro-kpi-margem-pct').textContent = dre.margemLiquidaPct===null ? '—' : `${dre.margemLiquidaPct.toFixed(1)}%`;
 }
 
 async function financeiroSalvarValores(){

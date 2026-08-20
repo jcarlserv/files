@@ -56,8 +56,8 @@ function apresentacaoPrepararSelects(){
 // aba Análises — é por isso que esse botão só existe dentro dela.
 async function abrirApresentacao(){
   apresentacaoPrepararSelects();
-  const mes = document.getElementById('rmr-mes').value;
-  const ano = document.getElementById('rmr-ano').value;
+  const mes = document.getElementById('squad-mes').value;
+  const ano = document.getElementById('squad-ano').value;
   document.getElementById('sobreposicao-apresentacao').classList.add('aberta');
   await atualizarApresentacao(mes, ano);
 }
@@ -365,6 +365,30 @@ function apresentacaoConstruirSlides(d){
       </tbody>
     </table></div>`);
 
+  // ---------- 13b. COPARTICIPADOS — Procedimentos realizados ----------
+  // Só entra procedimento que teve pelo menos 1 lançamento nos
+  // Coparticipados nesse mês — não lista tudo que existe no cadastro,
+  // só o que realmente teve dado.
+  const porProcedimentoCopart = {};
+  registrosCoparticipados.forEach(r=>{
+    const proc = r.procedimento || '(não informado)';
+    if(!porProcedimentoCopart[proc]) porProcedimentoCopart[proc] = {quantidade:0, valor:0};
+    porProcedimentoCopart[proc].quantidade++;
+    porProcedimentoCopart[proc].valor += Number(r.valor)||0;
+  });
+  const procedimentosCopart = Object.keys(porProcedimentoCopart).sort((a,b)=>porProcedimentoCopart[b].valor-porProcedimentoCopart[a].valor);
+  add('', `
+    <h2>Coparticipados — Procedimentos Realizados</h2>
+    <p class="apresentacao-legenda">${d.mes} de ${d.ano} • só procedimentos com lançamento no mês</p>
+    <div class="tabela-scroll"><table>
+      <thead><tr><th>Procedimento</th><th>Qtd.</th><th>Valor</th><th>Ticket médio</th></tr></thead>
+      <tbody>${procedimentosCopart.length?procedimentosCopart.map(p=>{
+        const info = porProcedimentoCopart[p];
+        return `<tr><td>${p}</td><td>${info.quantidade}</td><td class="mono">${formatarMoeda(info.valor)}</td><td class="mono">${formatarMoeda(info.valor/info.quantidade)}</td></tr>`;
+      }).join('') : '<tr><td class="vazio">Nenhum lançamento nos Coparticipados nesse mês.</td></tr>'}
+      </tbody>
+    </table></div>`);
+
   // ---------- 14. COPARTICIPADOS — Ultrassom histórico ----------
   add('', `
     <h2>Coparticipados — Ultrassom (Comparativo Histórico)</h2>
@@ -378,26 +402,24 @@ function apresentacaoConstruirSlides(d){
 
   // ---------- 16/17/18. FINANCEIRO — Plano de Contas ----------
   if(d.temFinanceiro){
-    const receitaBruta = financeiroValorDaConta('3.1', financeiroContasCache, financeiroValoresCache);
-    const deducoes = Math.abs(financeiroValorDaConta('3.2', financeiroContasCache, financeiroValoresCache));
-    const custoServico = Math.abs(financeiroValorDaConta('4', financeiroContasCache, financeiroValoresCache));
-    const despesasTotal = Math.abs(financeiroValorDaConta('5', financeiroContasCache, financeiroValoresCache));
-    const receitaLiquida = receitaBruta - deducoes;
-    const margem = receitaLiquida - custoServico;
-    const resultado = margem - despesasTotal;
+    const dre = financeiroCalcularDre();
 
     add('', `
       <h2>DRE — Demonstrativo de Resultados</h2>
       <p class="apresentacao-legenda">${d.mes} de ${d.ano} — plano de contas</p>
       <div class="tabela-scroll"><table>
         <tbody>
-          <tr class="linha-total"><td>Receita bruta de serviços</td><td class="mono">${formatarMoeda(receitaBruta)}</td></tr>
-          <tr><td>(-) Deduções da receita bruta</td><td class="mono">${formatarMoeda(deducoes)}</td></tr>
-          <tr class="linha-total"><td>(=) Receita líquida</td><td class="mono">${formatarMoeda(receitaLiquida)}</td></tr>
-          <tr><td>(-) Custo do serviço prestado</td><td class="mono">${formatarMoeda(custoServico)}</td></tr>
-          <tr class="linha-total"><td>(=) Margem de contribuição</td><td class="mono">${formatarMoeda(margem)}</td></tr>
-          <tr><td>(-) Despesas operacionais e financeiras</td><td class="mono">${formatarMoeda(despesasTotal)}</td></tr>
-          <tr class="linha-total"><td>(=) Resultado da operação</td><td class="mono" style="color:${resultado<0?'var(--danger)':'inherit'};">${formatarMoeda(resultado)}</td></tr>
+          <tr class="linha-total"><td>Receita bruta de serviços</td><td class="mono">${formatarMoeda(dre.receitaBruta)}</td></tr>
+          <tr><td>(-) Deduções da receita bruta</td><td class="mono">${formatarMoeda(dre.deducoes)}</td></tr>
+          <tr class="linha-total"><td>(=) Receita líquida</td><td class="mono">${formatarMoeda(dre.receitaLiquida)}</td></tr>
+          <tr><td>(-) Custo do serviço prestado</td><td class="mono">${formatarMoeda(dre.custoServico)}</td></tr>
+          <tr class="linha-total"><td>(=) Lucro bruto</td><td class="mono">${formatarMoeda(dre.lucroBruto)}</td></tr>
+          <tr><td>(-) Despesas operacionais (pessoal, compras, operacionais, cartões)</td><td class="mono">${formatarMoeda(dre.despesasOperacionais)}</td></tr>
+          <tr class="linha-total"><td>(=) Resultado operacional (EBITDA)</td><td class="mono">${formatarMoeda(dre.resultadoOperacional)}</td></tr>
+          <tr><td>(+/-) Resultado financeiro</td><td class="mono">${formatarMoeda(dre.resultadoFinanceiro)}</td></tr>
+          <tr><td>(-) Prolabore e retiradas</td><td class="mono">${formatarMoeda(dre.prolabore)}</td></tr>
+          <tr class="linha-total"><td>(=) Lucro líquido</td><td class="mono" style="color:${dre.lucroLiquido<0?'var(--danger)':'inherit'};">${formatarMoeda(dre.lucroLiquido)}</td></tr>
+          <tr><td>Margem líquida</td><td class="mono">${dre.margemLiquidaPct===null?'—':dre.margemLiquidaPct.toFixed(1)+'%'}</td></tr>
         </tbody>
       </table></div>`);
 
