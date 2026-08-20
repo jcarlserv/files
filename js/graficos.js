@@ -8,6 +8,10 @@
 ===================================================================== */
 
 const formatarMoeda = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+// 2 casas decimais sempre, vírgula (padrão BR) — ex.: 1,02% em vez de
+// arredondar pra "1%" (que escondia valores pequenos como 0% quando na
+// verdade era algo como 0,02%).
+const formatarPercentual = v => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%';
 const arredondar1 = v => Math.round((Number(v)||0)*10)/10;
 
 
@@ -30,8 +34,8 @@ function gerarPaletaGraficos(hexBase, n=8){
   const lumUsada = Math.max(0.28, Math.min(l, 0.55));
   const cores = [];
   for(let i=0;i<n;i++){
-    const matiz = (h*360 + i*137.5) % 360; // 137.5° ≈ ângulo áureo
-    const {r:rr,g:gg,b:bb} = hslParaRgb(matiz/360, satUsada, lumUsada);
+    const matiz = (h + i*137.5) % 360; // 137.5° ≈ ângulo áureo — h já vem em graus (0-360) de rgbParaHsl
+    const {r:rr,g:gg,b:bb} = hslParaRgb(matiz, satUsada, lumUsada);
     cores.push(rgbParaHex(rr,gg,bb));
   }
   return cores;
@@ -163,12 +167,12 @@ function miniGraficoRosca(idContainer, labels, valores, cores=PALETA_GRAFICOS){
     const x1i = cx + rInterno*Math.cos(rad(anguloFim)), y1i = cy + rInterno*Math.sin(rad(anguloFim));
     const x2i = cx + rInterno*Math.cos(rad(anguloAtual)), y2i = cy + rInterno*Math.sin(rad(anguloAtual));
     const cor = cores[i%cores.length];
-    fatias += `<path d="M ${x1e.toFixed(2)} ${y1e.toFixed(2)} A ${rExterno} ${rExterno} 0 ${grandeArco} 1 ${x2e.toFixed(2)} ${y2e.toFixed(2)} L ${x1i.toFixed(2)} ${y1i.toFixed(2)} A ${rInterno} ${rInterno} 0 ${grandeArco} 0 ${x2i.toFixed(2)} ${y2i.toFixed(2)} Z" fill="${cor}"><title>${lab}: ${valor} (${Math.round(valor/total*100)}%)</title></path>`;
+    fatias += `<path d="M ${x1e.toFixed(2)} ${y1e.toFixed(2)} A ${rExterno} ${rExterno} 0 ${grandeArco} 1 ${x2e.toFixed(2)} ${y2e.toFixed(2)} L ${x1i.toFixed(2)} ${y1i.toFixed(2)} A ${rInterno} ${rInterno} 0 ${grandeArco} 0 ${x2i.toFixed(2)} ${y2i.toFixed(2)} Z" fill="${cor}"><title>${lab}: ${formatarMoeda(valor)} (${formatarPercentual(valor/total*100)})</title></path>`;
     anguloAtual = anguloFim;
   });
 
 
-  const legenda = labels.map((lab,i)=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${cores[i%cores.length]};"></span>${truncarRotulo(lab,18)} — ${valores[i]||0} (${Math.round((valores[i]||0)/total*100)}%)</div>`).join('');
+  const legenda = labels.map((lab,i)=>`<div class="mini-legenda-item"><span class="mini-legenda-ponto" style="background:${cores[i%cores.length]};"></span>${truncarRotulo(lab,18)} — ${formatarMoeda(valores[i]||0)} (${formatarPercentual((valores[i]||0)/total*100)})</div>`).join('');
   container.innerHTML = `<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" style="max-width:240px;margin:0 auto;display:block;">${fatias}</svg><div class="mini-legenda">${legenda}</div>`;
 }
 

@@ -516,6 +516,22 @@
             tabela mensal do médico. Retorno já caía dentro de
             "Procedimentos" antes; esse indicador é um recorte específico
             de dentro desse grupo, só pra Retorno com convênio particular.
+   v6.13.4 — Correção de bug (relatado pelo usuário: mudou a cor dos
+            gráficos pra azul e saiu vermelho): `gerarPaletaGraficos`
+            (v6.12.0) tinha DOIS erros de conversão de matiz encadeados —
+            multiplicava por 360 um valor que `rgbParaHsl` já devolve em
+            graus, e dividia por 360 um valor que `hslParaRgb` já espera em
+            graus (e divide sozinha por dentro). Junto, isso zerava
+            matematicamente a cor escolhida sempre, não importa qual fosse
+            — por isso sempre saía vermelho. Corrigido; testado com azul de
+            verdade, confere.
+            Legenda das roscas (Convênio, Andar, etc — miniGraficoRosca):
+            valores agora em R$ formatado (antes mostrava o float cru, tipo
+            "360552.39999999997"), e porcentual com 2 casas decimais fixas,
+            vírgula (ex.: "1,02%") em vez de arredondar pro inteiro mais
+            próximo — isso também resolve fatias pequenas que apareciam
+            como "(0%)" e escondiam o valor real (ex.: Correios virava
+            "0,02%" em vez de sumir como "0%").
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
