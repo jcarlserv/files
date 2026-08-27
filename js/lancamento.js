@@ -120,6 +120,7 @@ function montarFormularioLancamento(){
   // fixo) e de novo toda vez que o Profissional mudar.
   aplicarTravasCondicionadasDoFormulario('campo_');
   ligarAutocompletePaciente('campo_');
+  ligarBotaoNovoPacienteRapido('campo_');
   const selProfLancamento = document.getElementById('campo_prof');
   if(selProfLancamento){
     selProfLancamento.addEventListener('change', ()=>aplicarTravasCondicionadasDoFormulario('campo_'));

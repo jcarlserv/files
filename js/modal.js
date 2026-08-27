@@ -25,6 +25,7 @@ function abrirModal(registro, camposPendentes, contexto){
       registro? registro[c.chave] : '', 'modal_', pendentes.includes(c.chave)))
     .join('') + htmlSecaoFormaPagamento('modal_', destacarPagamento);
   ligarAutocompletePaciente('modal_');
+  ligarBotaoNovoPacienteRapido('modal_');
 
 
   // Pré-preenche a seção de pagamento: se o registro tem formas_pagamento

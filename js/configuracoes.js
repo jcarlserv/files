@@ -1064,8 +1064,24 @@ async function carregarCadastroProfissionais(podeEditar){
    "Editar" abre um modal (igual ao de editar atendimento) com Nome/WhatsApp/
    Endereço. "+ Novo paciente" abre o mesmo modal, vazio.
 ===================================================================== */
+// Formata "dd/mm/aaaa (idade anos)" a partir de uma data ISO (yyyy-mm-dd)
+// — usado só pra exibir na tabela de busca, não mexe no que é salvo.
+function formatarNascimentoComIdade(dataIso){
+  if(!dataIso) return '—';
+  const [ano, mes, dia] = dataIso.split('-').map(Number);
+  if(!ano || !mes || !dia) return '—';
+  const nascimento = new Date(ano, mes-1, dia);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - ano;
+  const aindaNaoFezAniversario = (hoje.getMonth()+1 < mes) || (hoje.getMonth()+1===mes && hoje.getDate() < dia);
+  if(aindaNaoFezAniversario) idade--;
+  const dataFormatada = `${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+  return `${dataFormatada} (${idade} anos)`;
+}
+
 let cadastroPacientesPronto = false;
 let pacienteEmEdicaoId = null; // null = criando um novo; senão, id de quem está sendo editado
+let pacienteModalAlvoPreenchimento = null; // id do campo (ex.: 'campo_paciente') pra preencher depois de salvar, quando aberto pelo botão "+ Novo" do Lançamento
 let cadastroPacientesCacheBusca = []; // últimos resultados da busca, pra achar o registro completo ao clicar Editar
 
 function prepararCadastroPacientes(podeEditar){
@@ -1090,6 +1106,18 @@ function prepararCadastroPacientes(podeEditar){
   });
 
   document.getElementById('botao-novo-paciente-cadastro').addEventListener('click', ()=>abrirModalPaciente(null));
+}
+
+// Liga os botões do MODAL de paciente em si (Cancelar, clicar fora,
+// Salvar) — separado de prepararCadastroPacientes de propósito, porque
+// esse modal também é aberto pelo botão "+ Novo" direto do Lançamento/
+// Modal de edição, sem a pessoa nunca ter passado pela aba "Cadastro de
+// Clientes". Chamado uma vez só, no boot da aplicação (ver app-init.js),
+// pra já estar pronto não importa por onde o modal seja aberto primeiro.
+let modalPacienteGlobalPronto = false;
+function prepararModalPacienteGlobal(){
+  if(modalPacienteGlobalPronto) return;
+  modalPacienteGlobalPronto = true;
 
   document.getElementById('botao-cancelar-modal-paciente').addEventListener('click', fecharModalPaciente);
   document.getElementById('sobreposicao-modal-paciente').addEventListener('click', (ev)=>{
@@ -1106,21 +1134,37 @@ function prepararCadastroPacientes(podeEditar){
       nome, whatsapp: document.getElementById('modal-paciente-whatsapp').value,
       endereco: document.getElementById('modal-paciente-endereco').value,
       convenio: document.getElementById('modal-paciente-convenio').value,
-      carteirinha: document.getElementById('modal-paciente-carteirinha').value
+      carteirinha: document.getElementById('modal-paciente-carteirinha').value,
+      data_nascimento: document.getElementById('modal-paciente-data-nascimento').value
     };
     const resp = pacienteEmEdicaoId
       ? await api('atualizarPaciente', Object.assign({id: pacienteEmEdicaoId}, dadosPaciente))
       : await api('criarPaciente', dadosPaciente);
     botao.disabled = false; botao.textContent = rotuloOriginal;
     if(!resp.ok){ alert(resp.erro || 'Não foi possível salvar.'); return; }
+
+    // Aberto pelo botão "+ Novo" do Lançamento/Modal? Preenche o campo de
+    // origem com quem acabou de ser cadastrado, pra continuar o
+    // atendimento sem precisar buscar de novo.
+    if(pacienteModalAlvoPreenchimento){
+      const pacienteResultado = resp.paciente || {id: pacienteEmEdicaoId, nome};
+      const elCampo = document.getElementById(pacienteModalAlvoPreenchimento);
+      const elCampoId = document.getElementById(pacienteModalAlvoPreenchimento+'_id');
+      if(elCampo) elCampo.value = pacienteResultado.nome;
+      if(elCampoId) elCampoId.value = pacienteResultado.id;
+    }
+
     fecharModalPaciente();
-    document.getElementById('busca-cadastro-pacientes').value = nome;
-    buscarEExibirPacientes(nome);
+    // Só atualiza a busca da aba Cadastro de Clientes se ela já foi usada
+    // alguma vez (senão os elementos existem mas não faz sentido mexer).
+    const buscaEl = document.getElementById('busca-cadastro-pacientes');
+    if(buscaEl){ buscaEl.value = nome; buscarEExibirPacientes(nome); }
   });
 }
 
-function abrirModalPaciente(paciente){
+function abrirModalPaciente(paciente, alvoCampoId){
   pacienteEmEdicaoId = paciente ? paciente.id : null;
+  pacienteModalAlvoPreenchimento = alvoCampoId || null; // pra onde volta preenchido depois de salvar (ver botão "+ Novo" do Lançamento)
   document.getElementById('titulo-modal-paciente').textContent = paciente ? 'Editar paciente' : 'Novo paciente';
   document.getElementById('modal-paciente-nome').value = paciente ? paciente.nome : '';
   document.getElementById('modal-paciente-whatsapp').value = paciente ? (paciente.whatsapp||'') : '';
@@ -1129,11 +1173,13 @@ function abrirModalPaciente(paciente){
   selConvenio.innerHTML = '<option value="">—</option>' + (estado.listas.convenios||[]).map(c=>`<option>${c}</option>`).join('');
   selConvenio.value = paciente ? (paciente.convenio||'') : '';
   document.getElementById('modal-paciente-carteirinha').value = paciente ? (paciente.carteirinha||'') : '';
+  document.getElementById('modal-paciente-data-nascimento').value = paciente ? (paciente.data_nascimento||'') : '';
   document.getElementById('sobreposicao-modal-paciente').classList.add('aberta');
 }
 function fecharModalPaciente(){
   document.getElementById('sobreposicao-modal-paciente').classList.remove('aberta');
   pacienteEmEdicaoId = null;
+  pacienteModalAlvoPreenchimento = null;
 }
 
 async function buscarEExibirPacientes(termo){
@@ -1150,10 +1196,11 @@ async function buscarEExibirPacientes(termo){
   cadastroPacientesCacheBusca = pacientes; // pra abrirModalPaciente achar o registro completo ao clicar Editar
   aviso.textContent = pacientes.length===30 ? 'Mostrando os 30 primeiros — refine a busca pra achar um específico.' : `${pacientes.length} encontrado${pacientes.length===1?'':'s'}.`;
   tabela.innerHTML = pacientes.length===0 ? '<tr><td class="vazio">Nenhum paciente encontrado com esse nome.</td></tr>' : `
-    <thead><tr><th>Nome</th><th>WhatsApp</th><th>Endereço</th><th>Convênio</th><th>Carteirinha</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>Nascimento</th><th>WhatsApp</th><th>Endereço</th><th>Convênio</th><th>Carteirinha</th><th></th></tr></thead>
     <tbody>${pacientes.map(p=>`
       <tr data-id="${p.id}">
         <td>${p.nome}</td>
+        <td>${formatarNascimentoComIdade(p.data_nascimento)}</td>
         <td>${p.whatsapp||'—'}</td>
         <td>${p.endereco||'—'}</td>
         <td>${p.convenio||'—'}</td>
@@ -1222,6 +1269,31 @@ function prepararVinculoConvenio(podeEditar){
         });
       });
     }, 300);
+
+    // Sugestão da Unimed — só quando o modo de busca é por Nome (não faz
+    // sentido cruzar carteirinha digitada contra nome de beneficiário).
+    // Puramente informativo: mostra quem mais tem nome parecido lá na
+    // Unimed, pra conferência visual — não seleciona nada sozinho.
+    const modoAtual = document.querySelector('input[name="vinculo-modo-busca"]:checked').value;
+    const caixaSugestoes = document.getElementById('vinculo-sugestoes-unimed');
+    if(modoAtual !== 'nome' || termo.length < 2){
+      caixaSugestoes.style.display = 'none';
+    } else {
+      setTimeout(async ()=>{
+        const respSug = await api('buscarBeneficiariosUnimedPorNome', {termo});
+        const lista = document.getElementById('vinculo-sugestoes-lista');
+        if(!respSug.ok || !respSug.beneficiarios || respSug.beneficiarios.length===0){
+          caixaSugestoes.style.display = 'none';
+          return;
+        }
+        lista.innerHTML = respSug.beneficiarios.map(b=>
+          `<div style="font-size:13px;color:var(--ink-600);padding:3px 0;">
+            ${b.nome_beneficiario} <span class="mono" style="color:var(--ink-400);font-size:11.5px;">(${b.cartao_beneficiario})</span>
+          </div>`
+        ).join('');
+        caixaSugestoes.style.display = 'block';
+      }, 300);
+    }
   });
 
   document.querySelectorAll('input[name="vinculo-modo-busca"]').forEach(radio=>{
@@ -1229,6 +1301,7 @@ function prepararVinculoConvenio(podeEditar){
       document.getElementById('vinculo-busca-paciente').value = '';
       vinculoPacienteEscolhido = null;
       atualizarBotaoConfirmarVinculo();
+      document.getElementById('vinculo-sugestoes-unimed').style.display = 'none';
     });
   });
 
@@ -1284,5 +1357,6 @@ async function carregarProximoBeneficiario(){
   document.getElementById('vinculo-busca-paciente').value = '';
   document.getElementById('vinculo-resultados').style.display = 'none';
   document.getElementById('vinculo-selecionado').style.display = 'none';
+  document.getElementById('vinculo-sugestoes-unimed').style.display = 'none';
   atualizarBotaoConfirmarVinculo();
 }

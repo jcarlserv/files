@@ -178,6 +178,13 @@
                 <div id="vinculo-cartao-beneficiario" class="mono" style="font-size:13px;color:var(--ink-600);margin-top:2px;"></div>
               </div>
 
+              <div id="vinculo-sugestoes-unimed" style="display:none;margin-bottom:16px;background:var(--gold-100);border-radius:10px;padding:12px 14px;">
+                <div style="font-size:11px;font-weight:700;color:var(--gold-600);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;">
+                  Outros beneficiários da Unimed com nome parecido (só pra conferência — nada aqui é selecionado sozinho)
+                </div>
+                <div id="vinculo-sugestoes-lista"></div>
+              </div>
+
               <div class="campo" style="margin-bottom:10px;">
                 <label>Buscar paciente por</label>
                 <div style="display:flex;gap:14px;font-size:13.5px;">
@@ -1106,7 +1113,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.23.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.25.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1140,6 +1147,7 @@
         <div class="campo"><label>Endereço</label><input type="text" id="modal-paciente-endereco"></div>
         <div class="campo"><label>Convênio</label><select id="modal-paciente-convenio"><option value="">—</option></select></div>
         <div class="campo"><label>Carteirinha</label><input type="text" id="modal-paciente-carteirinha"></div>
+        <div class="campo"><label>Data de nascimento</label><input type="date" id="modal-paciente-data-nascimento"></div>
       </div>
       <div class="modal-acoes">
         <button type="button" class="botao sutil" id="botao-cancelar-modal-paciente">Cancelar</button>

@@ -75,6 +75,7 @@ async function iniciarApp(){
     montarNavegacao();
     preencherSelectsPeriodo();
     montarFormularioLancamento();
+    prepararModalPacienteGlobal();
     await atualizarPainelAtivo();
   }catch(e){
     mostrarErroInicializacao('Algo deu errado ao montar as telas (' + (e.message||e) + '). Tente sair e entrar de novo; se persistir, avise o suporte.');
@@ -604,13 +605,19 @@ function renderizarCampo(campo, valorAtual='', prefixo='campo_', destacar=false)
     // Busca em tempo real no cadastro (hoje só usado pra Paciente) — o
     // nome digitado fica no input visível, o id do cadastro (se veio de
     // uma seleção) fica num input escondido. Ver ligarAutocompletePaciente.
-    // Só aceita quem já está cadastrado — não cria paciente novo daqui
+    // Só aceita quem já está cadastrado — não cria paciente novo digitando
     // (ver camposObrigatoriosFaltando, que bloqueia salvar sem seleção).
-    controle = `<div style="position:relative;">
-      <input type="text" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" autocomplete="off" ${campo.travado?'disabled':''}>
-      <input type="hidden" id="${id}_id" value="${campo.idAtual||''}">
-      <div id="${id}-resultados" class="autocomplete-resultados" style="display:none;position:absolute;z-index:30;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:9px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;margin-top:4px;"></div>
-      ${campo.travado?'':'<div style="font-size:11px;color:var(--ink-400);margin-top:4px;">Escolha um paciente já cadastrado na lista — não digite um nome novo aqui.</div>'}
+    // Pra paciente que chega na hora sem cadastro ainda, o botão "+ Novo"
+    // abre o mesmo modal de Cadastro de Pacientes sem sair da tela — ao
+    // salvar, volta e já preenche esse campo com quem acabou de cadastrar.
+    controle = `<div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="position:relative;flex:1;">
+        <input type="text" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" autocomplete="off" ${campo.travado?'disabled':''}>
+        <input type="hidden" id="${id}_id" value="${campo.idAtual||''}">
+        <div id="${id}-resultados" class="autocomplete-resultados" style="display:none;position:absolute;z-index:30;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:9px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;margin-top:4px;"></div>
+        ${campo.travado?'':'<div style="font-size:11px;color:var(--ink-400);margin-top:4px;">Digite pra buscar quem já está cadastrado, ou clique em "+ Novo" ao lado.</div>'}
+      </div>
+      ${campo.travado?'':`<button type="button" class="botao sutil pequeno botao-novo-paciente-rapido" data-alvo="${id}" style="white-space:nowrap;">+ Novo</button>`}
     </div>`;
   } else {
     controle = `<input type="${campo.tipo}" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" ${campo.travado?'disabled':''} ${campo.tipo==='number'?'step="0.01"':''}/>`;
@@ -656,6 +663,17 @@ function ligarAutocompletePaciente(prefixo){
     }, 300);
   });
   input.addEventListener('blur', ()=> setTimeout(()=>{ resultados.style.display = 'none'; }, 150));
+}
+
+
+// Liga o botão "+ Novo" que aparece do lado do campo Paciente — abre o
+// mesmo modal de Cadastro de Pacientes (em configuracoes.js), sem sair da
+// tela de Lançamento/Modal. Ao salvar, o modal já preenche esse campo
+// específico com quem acabou de ser cadastrado (ver abrirModalPaciente).
+function ligarBotaoNovoPacienteRapido(prefixo){
+  const idCampo = prefixo+'paciente';
+  const botao = document.querySelector(`.botao-novo-paciente-rapido[data-alvo="${idCampo}"]`);
+  if(botao) botao.addEventListener('click', ()=> abrirModalPaciente(null, idCampo));
 }
 
 

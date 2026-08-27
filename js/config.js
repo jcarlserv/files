@@ -861,6 +861,44 @@
             Cadastro de Clientes → "+ Novo paciente").
             Testado: nome digitado sem selecionar bloqueia salvar E não
             cria paciente nenhum; selecionar de verdade libera normal.
+   v6.23.2 — Ajuste no fluxo real (a pedido do usuário — paciente chega
+            pro atendimento, atendente cadastra na hora com a carteirinha
+            e segue direto): botão "+ Novo" do lado do campo Paciente, no
+            Lançamento e no Modal de edição — abre o mesmo modal de
+            Cadastro de Pacientes (Nome/WhatsApp/Endereço/Convênio/
+            Carteirinha) sem sair da tela. Ao salvar, o campo Paciente já
+            fica preenchido com quem acabou de ser cadastrado, pronto pra
+            continuar o atendimento.
+            Corrigido no processo: o modal só tinha os botões (Cancelar,
+            Salvar) funcionando depois que alguém visitava a aba "Cadastro
+            de Clientes" pelo menos uma vez — agora é ligado direto no
+            boot da aplicação (prepararModalPacienteGlobal, chamado uma
+            vez só, independente de qual aba a pessoa abre primeiro).
+            Testado: modal funciona mesmo sem nunca ter visitado Cadastro
+            de Clientes, salva de verdade com carteirinha, preenche o
+            campo do Lançamento sozinho, e libera o salvamento do
+            atendimento na sequência.
+   v6.24.0 — Cadastro de Paciente: campo novo Data de nascimento, no modal
+            (criar/editar) e na tabela de busca — mostra "dd/mm/aaaa (N
+            anos)", idade calculada na hora, não salva nada além da data.
+            Requer SQL no Supabase:
+            alter table pacientes add column if not exists data_nascimento date;
+            Testado: cálculo de idade correto, salva, reabre pra editar já
+            preenchido, aparece certinho na tabela de busca.
+   v6.25.0 — "Vincular Convênio (Unimed)": duas melhorias a pedido do
+            usuário.
+            (1) Ao digitar o NOME no campo de busca de paciente, uma caixa
+            nova mostra outros beneficiários da Unimed com nome parecido
+            (busca em faturamento_notas) — só informativo, pra conferência
+            visual, nada é selecionado sozinho. Só aparece no modo Nome
+            (não faz sentido cruzar carteirinha digitada com nome de
+            beneficiário). Endpoint novo: buscarBeneficiariosUnimedPorNome.
+            (2) Confirmar vínculo agora também preenche o Convênio do
+            paciente como "Unimed" (mesma regra da carteirinha: só se
+            estiver vazio, nunca sobrescreve o que já foi cadastrado).
+            Testado: sugestão aparece só no modo nome, some no modo
+            carteirinha, convênio preenche quando vazio e nunca sobrescreve
+            um convênio que já existia.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
