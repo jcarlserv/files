@@ -948,6 +948,22 @@
             dois; atendente legado (editar_configuracoes) continua vendo
             os dois via fallback; liberar só Pacientes não libera
             Profissionais de graça, e vice-versa.
+   v6.28.0 — Lançamento reorganizado, a pedido do usuário: os campos agora
+            seguem 2 blocos, nessa ordem — 1) Paciente: Paciente (com
+            botão "+ Novo"), Carteirinha, CPF, Data de nascimento,
+            Telefone/WhatsApp; 2) Profissional e atendimento: Profissional,
+            Andar, Data, Turno, Protocolo, Atendimento, Exame, Biópsia,
+            Convênio, Atendente. Mesma ordem no Modal de edição (Verificar/
+            Crítica), já que os dois reaproveitam definicaoCampos().
+            CPF/Nascimento/Telefone são só de exibição (tipo novo
+            'info-paciente') — não existem em producao, vêm do cadastro do
+            paciente selecionado, só pra conferência. Não entram no
+            registro salvo (lerValoresCampos ignora campos com
+            apenasExibicao:true) e nunca são obrigatórios.
+            Testado: ordem exata dos campos, valores iniciais corretos,
+            seleção de paciente preenche os 3 campos de exibição + Convênio/
+            Carteirinha, campos de exibição ficam fora do registro salvo, e
+            limpar a seleção volta tudo pro estado inicial.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

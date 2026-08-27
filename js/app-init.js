@@ -432,24 +432,33 @@ function campoTravadoPorConfig(chave){
 function definicaoCampos(){
   const L = estado.listas;
   return [
+    // ===== BLOCO 1 — Paciente (identificação e conferência primeiro) =====
+    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'autocomplete', obrigatorio:true, travado: campoTravadoPorConfig('paciente')},
+    {chave:'carteirinha', rotulo:'Carteirinha', tipo:'text', travado: campoTravadoPorConfig('carteirinha')},
+    {chave:'cpf_referencia', rotulo:'CPF', tipo:'info-paciente', apenasExibicao:true},
+    {chave:'nascimento_referencia', rotulo:'Data de nascimento', tipo:'info-paciente', apenasExibicao:true},
+    {chave:'telefone_referencia', rotulo:'Telefone/WhatsApp', tipo:'info-paciente', apenasExibicao:true},
+    // ===== BLOCO 2 — Profissional, Atendimento e demais informações =====
     {chave:'prof', rotulo:'Profissional', tipo:'select', opcoes:L.profissionais, obrigatorio:true,
       travado: estado.papel==='profissional' || campoTravadoPorConfig('prof')},
     {chave:'andar', rotulo:'Andar', tipo:'select', opcoes:L.andares, obrigatorio:true, travado: campoTravadoPorConfig('andar')},
     {chave:'data', rotulo:'Data', tipo:'date', obrigatorio:true, travado: campoTravadoPorConfig('data')},
     {chave:'turno', rotulo:'Turno', tipo:'select', opcoes:L.turnos, obrigatorio:true, travado: campoTravadoPorConfig('turno')},
-    {chave:'paciente', rotulo:'Paciente (nome completo)', tipo:'autocomplete', obrigatorio:true, travado: campoTravadoPorConfig('paciente')},
     {chave:'protocolo', rotulo:'Protocolo de realização', tipo:'text', travado: campoTravadoPorConfig('protocolo')},
     {chave:'procedimento', rotulo:'Atendimento', tipo:'select', opcoes:L.procedimentos, obrigatorio:true, travado: campoTravadoPorConfig('procedimento')},
     {chave:'exames', rotulo:'Exame', tipo:'select', opcoes:L.exames, travado: campoTravadoPorConfig('exames')},
     {chave:'biopsias', rotulo:'Biópsia (frascos)', tipo:'select', opcoes:L.biopsias_frascos, travado: campoTravadoPorConfig('biopsias')},
     {chave:'convenio', rotulo:'Convênio', tipo:'select', opcoes:L.convenios, obrigatorio:true, travado: campoTravadoPorConfig('convenio')},
-    {chave:'carteirinha', rotulo:'Carteirinha', tipo:'text', travado: campoTravadoPorConfig('carteirinha')},
     {chave:'atendente', rotulo:'Atendente', tipo:'select', opcoes:L.atendentes, obrigatorio:true, travado: campoTravadoPorConfig('atendente')}
     // "valor" e "forma_pagamento" saíram daqui — agora são calculados a partir
     // da seção de "Forma de pagamento" (que suporta pagamento dividido em mais
     // de uma forma). Ver htmlSecaoFormaPagamento / lerLinhasPagamento abaixo.
     // Essas duas também são travadas por config, mas em outro lugar — ver
     // htmlSecaoFormaPagamento e a trava de "valor"/"forma_pagamento" nela.
+    // "cpf_referencia"/"nascimento_referencia"/"telefone_referencia" são só
+    // exibição (apenasExibicao:true) — não são colunas de producao, vêm do
+    // cadastro do paciente selecionado, pra conferência. Ver
+    // preencherCamposDerivadosPaciente, que popula esses 3 campos.
   ];
 }
 
@@ -616,10 +625,15 @@ function renderizarCampo(campo, valorAtual='', prefixo='campo_', destacar=false)
         <input type="hidden" id="${id}_id" value="${campo.idAtual||''}">
         <div id="${id}-resultados" class="autocomplete-resultados" style="display:none;position:absolute;z-index:30;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:9px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;margin-top:4px;"></div>
         ${campo.travado?'':'<div style="font-size:11px;color:var(--ink-400);margin-top:4px;">Digite pra buscar quem já está cadastrado, ou clique em "+ Novo" ao lado.</div>'}
-        <div id="${id}-info" class="mono" style="display:none;font-size:12px;color:var(--ink-600);margin-top:6px;background:var(--rose-100);padding:6px 10px;border-radius:6px;"></div>
       </div>
       ${campo.travado?'':`<button type="button" class="botao sutil pequeno botao-novo-paciente-rapido" data-alvo="${id}" style="white-space:nowrap;">+ Novo</button>`}
     </div>`;
+  } else if(campo.tipo==='info-paciente'){
+    // Campo só de exibição (CPF, Data de nascimento, Telefone/WhatsApp) —
+    // não existe na tabela producao, vem do cadastro do paciente
+    // selecionado, só pra conferência na hora do atendimento. Preenchido
+    // por preencherCamposDerivadosPaciente, nunca digitado pela pessoa.
+    controle = `<input type="text" id="${id}" value="—" disabled style="background:var(--rose-100);color:var(--ink-600);font-weight:500;">`;
   } else {
     controle = `<input type="${campo.tipo}" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" ${campo.travado?'disabled':''} ${campo.tipo==='number'?'step="0.01"':''}/>`;
   }
@@ -642,26 +656,22 @@ function preencherCamposDerivadosPaciente(prefixo, paciente, opcoes){
   const sobrescrever = !opcoes || opcoes.sobrescreverConvenioCarteirinha !== false;
   const elConvenio = document.getElementById(prefixo+'convenio');
   const elCarteirinha = document.getElementById(prefixo+'carteirinha');
-  const elInfo = document.getElementById(prefixo+'paciente-info');
+  const elCpf = document.getElementById(prefixo+'cpf_referencia');
+  const elNascimento = document.getElementById(prefixo+'nascimento_referencia');
+  const elTelefone = document.getElementById(prefixo+'telefone_referencia');
   if(!paciente){
-    if(elInfo){ elInfo.style.display = 'none'; elInfo.textContent = ''; }
+    if(elCpf) elCpf.value = '—';
+    if(elNascimento) elNascimento.value = '—';
+    if(elTelefone) elTelefone.value = '—';
     return;
   }
   if(sobrescrever){
     if(elConvenio && paciente.convenio) elConvenio.value = paciente.convenio;
     if(elCarteirinha && paciente.carteirinha) elCarteirinha.value = paciente.carteirinha;
   }
-  if(elInfo){
-    const partes = [];
-    if(paciente.data_nascimento) partes.push(`Nascimento: ${formatarNascimentoComIdade(paciente.data_nascimento)}`);
-    if(paciente.cpf) partes.push(`CPF: ${paciente.cpf}`);
-    if(partes.length){
-      elInfo.textContent = partes.join('  •  ');
-      elInfo.style.display = 'block';
-    } else {
-      elInfo.style.display = 'none';
-    }
-  }
+  if(elCpf) elCpf.value = paciente.cpf || '—';
+  if(elNascimento) elNascimento.value = paciente.data_nascimento ? formatarNascimentoComIdade(paciente.data_nascimento) : '—';
+  if(elTelefone) elTelefone.value = paciente.whatsapp || '—';
 }
 
 function ligarAutocompletePaciente(prefixo){
@@ -741,7 +751,7 @@ async function resolverVinculosPacienteProfissional(registro){
 
 function lerValoresCampos(prefixo='campo_'){
   const registro = {};
-  definicaoCampos().forEach(c=>{
+  definicaoCampos().filter(c=>!c.apenasExibicao).forEach(c=>{
     const el = document.getElementById(prefixo+c.chave);
     registro[c.chave] = el ? el.value : '';
   });
