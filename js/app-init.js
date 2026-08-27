@@ -568,6 +568,13 @@ function camposObrigatoriosFaltando(prefixo){
   const faltando = definicaoCampos()
     .filter(c => c.obrigatorio)
     .filter(c => {
+      // Paciente (autocompletar) — não basta ter texto digitado, precisa
+      // ter vindo de uma seleção de verdade na lista (ver pedido do
+      // usuário: nada de criar paciente novo só digitando o nome aqui).
+      if(c.tipo === 'autocomplete'){
+        const elId = document.getElementById(prefixo+c.chave+'_id');
+        return !elId || !elId.value;
+      }
       const el = document.getElementById(prefixo+c.chave);
       return !el || String(el.value||'').trim()==='';
     })
@@ -597,10 +604,13 @@ function renderizarCampo(campo, valorAtual='', prefixo='campo_', destacar=false)
     // Busca em tempo real no cadastro (hoje só usado pra Paciente) — o
     // nome digitado fica no input visível, o id do cadastro (se veio de
     // uma seleção) fica num input escondido. Ver ligarAutocompletePaciente.
+    // Só aceita quem já está cadastrado — não cria paciente novo daqui
+    // (ver camposObrigatoriosFaltando, que bloqueia salvar sem seleção).
     controle = `<div style="position:relative;">
       <input type="text" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" autocomplete="off" ${campo.travado?'disabled':''}>
       <input type="hidden" id="${id}_id" value="${campo.idAtual||''}">
       <div id="${id}-resultados" class="autocomplete-resultados" style="display:none;position:absolute;z-index:30;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:9px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;margin-top:4px;"></div>
+      ${campo.travado?'':'<div style="font-size:11px;color:var(--ink-400);margin-top:4px;">Escolha um paciente já cadastrado na lista — não digite um nome novo aqui.</div>'}
     </div>`;
   } else {
     controle = `<input type="${campo.tipo}" id="${id}" value="${valorAtual!==undefined?valorAtual:''}" ${campo.travado?'disabled':''} ${campo.tipo==='number'?'step="0.01"':''}/>`;
@@ -661,10 +671,12 @@ function ligarAutocompletePaciente(prefixo){
 //   nenhum na hora, já que a lista de profissionais vem de um select
 //   fechado, não de texto livre.
 async function resolverVinculosPacienteProfissional(registro){
-  if(!registro.paciente_id && registro.paciente && registro.paciente.trim()){
-    const resp = await api('criarPaciente', {nome: registro.paciente.trim()});
-    if(resp.ok && resp.paciente) registro.paciente_id = resp.paciente.id;
-  }
+  // Paciente NÃO cria mais sozinho aqui — a validação em
+  // camposObrigatoriosFaltando já bloqueia o salvamento antes de chegar
+  // até aqui se não veio de uma seleção real da lista (pedido do
+  // usuário: nada de paciente novo só de digitar o nome no Lançamento).
+  // Cadastro de paciente novo passou a ser só pela tela própria
+  // (Lançamento → Cadastro de Clientes → "+ Novo paciente").
   const prof = (estado.profissionaisCadastro||[]).find(p => p.nome.trim().toLowerCase() === String(registro.prof||'').trim().toLowerCase());
   registro.profissional_id = prof ? prof.id : null;
   return registro;

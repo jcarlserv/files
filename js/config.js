@@ -847,6 +847,20 @@
             confirmar preenche carteirinha sem sobrescrever, fila encolhe
             a cada confirmação/pulo, nenhum paciente existente é alterado
             sem passar por essa revisão.
+   v6.23.1 — Lançamento (e Modal de edição), a pedido do usuário: o campo
+            Paciente deixou de aceitar nome digitado sem selecionar da
+            lista. Antes, digitar um nome novo e salvar CRIAVA o paciente
+            na hora, automático — isso saiu. Agora, se o texto não veio de
+            uma seleção real no autocompletar (verificado pelo id escondido
+            junto do campo), o salvamento é bloqueado com "Paciente (nome
+            completo)" na lista de pendências, igual a qualquer outro
+            campo obrigatório vazio. Dica visível abaixo do campo:
+            "Escolha um paciente já cadastrado na lista — não digite um
+            nome novo aqui." Cadastrar paciente novo continua possível,
+            só que exclusivamente pela tela própria (Lançamento →
+            Cadastro de Clientes → "+ Novo paciente").
+            Testado: nome digitado sem selecionar bloqueia salvar E não
+            cria paciente nenhum; selecionar de verdade libera normal.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
