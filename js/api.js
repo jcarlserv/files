@@ -463,12 +463,62 @@ async function supabaseApi(acao, dados) {
 
     case 'buscarPacientes': {
       const termo = String(dados.termo||'').trim();
+      const campo = dados.campo === 'carteirinha' ? 'carteirinha' : 'nome'; // padrão: nome
       let query = supabaseClient.from('pacientes').select('*').order('nome').limit(30);
-      if(termo) query = query.ilike('nome', `%${termo}%`);
+      if(termo) query = query.ilike(campo, `%${termo}%`);
       const { data, error } = await query;
       if(error) return {ok:false, erro:error.message};
       return {ok:true, pacientes: data||[]};
     }
+
+    // ---------- VÍNCULO PACIENTE × CONVÊNIO (Unimed) ----------
+    // Fila de revisão manual — nada aqui é automático. "Próximo pendente"
+    // pega o primeiro beneficiário do faturamento que ainda não foi
+    // confirmado NEM pulado (paciente_convenio_vinculo é o registro de
+    // "já revisado", nos dois casos).
+    case 'obterProximoBeneficiarioPendente': {
+      const [todosResp, revisadosResp] = await Promise.all([
+        supabaseClient.from('faturamento_notas').select('cartao_beneficiario, nome_beneficiario').not('cartao_beneficiario', 'is', null),
+        supabaseClient.from('paciente_convenio_vinculo').select('cartao_beneficiario')
+      ]);
+      if(todosResp.error) return {ok:false, erro:todosResp.error.message};
+      if(revisadosResp.error) return {ok:false, erro:revisadosResp.error.message};
+      const jaRevisados = new Set((revisadosResp.data||[]).map(r=>r.cartao_beneficiario));
+      const vistos = new Set();
+      const pendentes = [];
+      (todosResp.data||[]).forEach(r=>{
+        const cartao = String(r.cartao_beneficiario||'').trim();
+        if(!cartao || vistos.has(cartao) || jaRevisados.has(cartao)) return;
+        vistos.add(cartao);
+        pendentes.push({cartao_beneficiario: cartao, nome_beneficiario: r.nome_beneficiario});
+      });
+      return {ok:true, beneficiario: pendentes[0]||null, restantes: pendentes.length};
+    }
+
+    case 'confirmarVinculoPaciente': {
+      const { error: errVinculo } = await supabaseClient.from('paciente_convenio_vinculo').insert({
+        cartao_beneficiario: dados.cartao_beneficiario, nome_beneficiario: dados.nome_beneficiario||null,
+        paciente_id: dados.paciente_id, status: 'vinculado'
+      });
+      if(errVinculo) return {ok:false, erro:errVinculo.message};
+      // Só preenche carteirinha do paciente se ainda estiver vazia — nunca
+      // sobrescreve o que já foi cadastrado (manual ou de uma vinculação
+      // anterior).
+      const { data: paciente } = await supabaseClient.from('pacientes').select('carteirinha').eq('id', dados.paciente_id).maybeSingle();
+      if(paciente && (!paciente.carteirinha || !String(paciente.carteirinha).trim())){
+        await supabaseClient.from('pacientes').update({carteirinha: dados.cartao_beneficiario}).eq('id', dados.paciente_id);
+      }
+      return {ok:true};
+    }
+
+    case 'pularBeneficiarioVinculo': {
+      const { error } = await supabaseClient.from('paciente_convenio_vinculo').insert({
+        cartao_beneficiario: dados.cartao_beneficiario, nome_beneficiario: dados.nome_beneficiario||null,
+        paciente_id: null, status: 'pulado'
+      });
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+
 
     case 'obterPaciente': {
       const { data, error } = await supabaseClient.from('pacientes').select('*').eq('id', dados.id).maybeSingle();
@@ -837,12 +887,38 @@ function mockApi(acao, dados) {
     // ---------- PACIENTES (demo) ----------
     case 'buscarPacientes': {
       const termo = String(dados.termo||'').trim().toLowerCase();
+      const campo = dados.campo === 'carteirinha' ? 'carteirinha' : 'nome';
       const encontrados = demo.pacientes
-        .filter(p => !termo || p.nome.toLowerCase().includes(termo))
+        .filter(p => !termo || String(p[campo]||'').toLowerCase().includes(termo))
         .sort((a,b)=>a.nome.localeCompare(b.nome))
         .slice(0,30);
       return {ok:true, pacientes: encontrados};
     }
+
+    // ---------- VÍNCULO PACIENTE × CONVÊNIO (demo) ----------
+    case 'obterProximoBeneficiarioPendente': {
+      const jaRevisados = new Set(demo.pacienteConvenioVinculo.map(v=>v.cartao_beneficiario));
+      const vistos = new Set();
+      const pendentes = [];
+      demo.faturamentoNotas.forEach(n=>{
+        const cartao = String(n.cartao_beneficiario||'').trim();
+        if(!cartao || vistos.has(cartao) || jaRevisados.has(cartao)) return;
+        vistos.add(cartao);
+        pendentes.push({cartao_beneficiario: cartao, nome_beneficiario: n.nome_beneficiario});
+      });
+      return {ok:true, beneficiario: pendentes[0]||null, restantes: pendentes.length};
+    }
+    case 'confirmarVinculoPaciente': {
+      demo.pacienteConvenioVinculo.push({cartao_beneficiario: dados.cartao_beneficiario, nome_beneficiario: dados.nome_beneficiario||null, paciente_id: dados.paciente_id, status:'vinculado'});
+      const p = demo.pacientes.find(x=>x.id===dados.paciente_id);
+      if(p && !p.carteirinha) p.carteirinha = dados.cartao_beneficiario;
+      return {ok:true};
+    }
+    case 'pularBeneficiarioVinculo': {
+      demo.pacienteConvenioVinculo.push({cartao_beneficiario: dados.cartao_beneficiario, nome_beneficiario: dados.nome_beneficiario||null, paciente_id: null, status:'pulado'});
+      return {ok:true};
+    }
+
     case 'obterPaciente': {
       const p = demo.pacientes.find(x=>x.id===dados.id);
       return {ok:true, paciente: p||null};

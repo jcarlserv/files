@@ -1069,6 +1069,7 @@ let pacienteEmEdicaoId = null; // null = criando um novo; senão, id de quem est
 let cadastroPacientesCacheBusca = []; // últimos resultados da busca, pra achar o registro completo ao clicar Editar
 
 function prepararCadastroPacientes(podeEditar){
+  prepararVinculoConvenio(podeEditar);
   document.getElementById('aviso-cadastro-pacientes').textContent =
     'Digite pelo menos 2 letras do nome pra buscar (mostra até 30 resultados por vez).';
   document.getElementById('tabela-cadastro-pacientes').innerHTML = '';
@@ -1167,4 +1168,121 @@ async function buscarEExibirPacientes(termo){
       if(paciente) abrirModalPaciente(paciente);
     });
   });
+}
+
+
+/* =====================================================================
+   VINCULAR CONVÊNIO (Unimed) — revisão manual, um beneficiário por vez.
+   Nada é gravado sem clicar em "Confirmar vínculo". "Pular" também grava
+   (com status='pulado'), pra não repetir o mesmo beneficiário de novo —
+   a fila sempre encolhe, nunca fica presa no mesmo item.
+===================================================================== */
+let vinculoConvenioPronto = false;
+let vinculoBeneficiarioAtual = null;
+let vinculoPacienteEscolhido = null;
+
+function prepararVinculoConvenio(podeEditar){
+  const cartaoCard = document.getElementById('cartao-vincular-convenio');
+  cartaoCard.style.display = podeEditar ? '' : 'none';
+  if(!podeEditar) return;
+
+  carregarProximoBeneficiario();
+
+  if(vinculoConvenioPronto) return;
+  vinculoConvenioPronto = true;
+
+  let timeoutBuscaVinculo = null;
+  document.getElementById('vinculo-busca-paciente').addEventListener('input', (ev)=>{
+    vinculoPacienteEscolhido = null;
+    atualizarBotaoConfirmarVinculo();
+    document.getElementById('vinculo-selecionado').style.display = 'none';
+    clearTimeout(timeoutBuscaVinculo);
+    const termo = ev.target.value.trim();
+    const resultados = document.getElementById('vinculo-resultados');
+    if(termo.length < 2){ resultados.style.display = 'none'; return; }
+    timeoutBuscaVinculo = setTimeout(async ()=>{
+      const modo = document.querySelector('input[name="vinculo-modo-busca"]:checked').value;
+      const resp = await api('buscarPacientes', {termo, campo: modo});
+      if(!resp.ok || !resp.pacientes || resp.pacientes.length===0){ resultados.style.display = 'none'; return; }
+      resultados.innerHTML = resp.pacientes.map(p=>
+        `<div class="autocomplete-item" data-id="${p.id}" data-nome="${p.nome.replace(/"/g,'&quot;')}" style="padding:9px 12px;cursor:pointer;font-size:13.5px;border-bottom:1px solid var(--line);">
+          ${p.nome}${p.carteirinha?` <span class="mono" style="color:var(--ink-400);font-size:12px;">(${p.carteirinha})</span>`:''}
+        </div>`
+      ).join('');
+      resultados.style.display = 'block';
+      resultados.querySelectorAll('.autocomplete-item').forEach(item=>{
+        item.addEventListener('mousedown', (ev2)=>{
+          ev2.preventDefault();
+          vinculoPacienteEscolhido = {id:item.dataset.id, nome:item.dataset.nome};
+          document.getElementById('vinculo-busca-paciente').value = item.dataset.nome;
+          document.getElementById('vinculo-selecionado').style.display = 'block';
+          document.getElementById('vinculo-selecionado').textContent = `Selecionado: ${item.dataset.nome}`;
+          resultados.style.display = 'none';
+          atualizarBotaoConfirmarVinculo();
+        });
+      });
+    }, 300);
+  });
+
+  document.querySelectorAll('input[name="vinculo-modo-busca"]').forEach(radio=>{
+    radio.addEventListener('change', ()=>{
+      document.getElementById('vinculo-busca-paciente').value = '';
+      vinculoPacienteEscolhido = null;
+      atualizarBotaoConfirmarVinculo();
+    });
+  });
+
+  document.getElementById('botao-confirmar-vinculo').addEventListener('click', async ()=>{
+    if(!vinculoBeneficiarioAtual || !vinculoPacienteEscolhido) return;
+    const botao = document.getElementById('botao-confirmar-vinculo');
+    botao.disabled = true; botao.textContent = 'Salvando...';
+    const resp = await api('confirmarVinculoPaciente', {
+      cartao_beneficiario: vinculoBeneficiarioAtual.cartao_beneficiario,
+      nome_beneficiario: vinculoBeneficiarioAtual.nome_beneficiario,
+      paciente_id: vinculoPacienteEscolhido.id
+    });
+    botao.disabled = false; botao.textContent = 'Confirmar vínculo';
+    if(!resp.ok){ alert(resp.erro || 'Não foi possível vincular.'); return; }
+    await carregarProximoBeneficiario();
+  });
+
+  document.getElementById('botao-pular-vinculo').addEventListener('click', async ()=>{
+    if(!vinculoBeneficiarioAtual) return;
+    await api('pularBeneficiarioVinculo', {
+      cartao_beneficiario: vinculoBeneficiarioAtual.cartao_beneficiario,
+      nome_beneficiario: vinculoBeneficiarioAtual.nome_beneficiario
+    });
+    await carregarProximoBeneficiario();
+  });
+}
+
+function atualizarBotaoConfirmarVinculo(){
+  document.getElementById('botao-confirmar-vinculo').disabled = !vinculoPacienteEscolhido;
+}
+
+async function carregarProximoBeneficiario(){
+  const resp = await api('obterProximoBeneficiarioPendente', {});
+  const conteudo = document.getElementById('vinculo-conteudo');
+  const semPendentes = document.getElementById('vinculo-sem-pendentes');
+  if(!resp.ok){
+    conteudo.innerHTML = `<p class="vazio">${resp.erro||'Não foi possível carregar.'}</p>`;
+    return;
+  }
+  document.getElementById('vinculo-restantes-contador').textContent = resp.restantes ? `${resp.restantes} restantes.` : '';
+  vinculoBeneficiarioAtual = resp.beneficiario;
+  vinculoPacienteEscolhido = null;
+
+  if(!resp.beneficiario){
+    conteudo.style.display = 'none';
+    semPendentes.style.display = 'block';
+    return;
+  }
+  conteudo.style.display = 'block';
+  semPendentes.style.display = 'none';
+  document.getElementById('vinculo-nome-beneficiario').textContent = resp.beneficiario.nome_beneficiario || '(nome não informado)';
+  document.getElementById('vinculo-cartao-beneficiario').textContent = resp.beneficiario.cartao_beneficiario;
+  document.getElementById('vinculo-busca-paciente').value = '';
+  document.getElementById('vinculo-resultados').style.display = 'none';
+  document.getElementById('vinculo-selecionado').style.display = 'none';
+  atualizarBotaoConfirmarVinculo();
 }

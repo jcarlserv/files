@@ -361,6 +361,12 @@ const demo = {
     {id:'demo-sol-1', material_id:'demo-mat-2', profissional_id:null, procedimento:'CIRURGIA', exame:null, quantidade:10, status:'pendente', observacao:null, solicitado_por:'DR MAURICIO', solicitado_em:new Date().toISOString()}
   ],
   dispensacoes:[],
+  faturamentoNotas:[
+    {cartao_beneficiario:'0123456789012345', nome_beneficiario:'MARIA CLARA SILVA ARAUJO'},
+    {cartao_beneficiario:'0123456789099999', nome_beneficiario:'JOAO PEDRO OLIVEIRA'},
+    {cartao_beneficiario:'0123456789055555', nome_beneficiario:'RAFAEL COSTA LIMA'}
+  ],
+  pacienteConvenioVinculo:[],
   metas:[
     {prof:'ANGELINA', mes:'Maio', ano:2026, turnos_utilizados:2, valor_minimo_turno:294},
     {prof:'LISIENE', mes:'Maio', ano:2026, turnos_utilizados:2, valor_minimo_turno:294},

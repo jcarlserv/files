@@ -813,6 +813,40 @@
             salvo (ex.: a primeira especialidade cadastrada) — só
             acontecia no modo demo, o Supabase de verdade nunca teve esse
             problema.
+   v6.23.0 — "Vincular Convênio (Unimed)" — cartão novo ao lado do
+            Cadastro de Pacientes (mesma tela, layout de 2 colunas),
+            resolvendo a ligação entre os 4.986 pacientes do cadastro e os
+            1.408 beneficiários distintos já importados do faturamento da
+            Unimed (faturamento_notas). Decisão tomada com o usuário
+            depois de descartar qualquer automação em massa — ele tinha
+            receio (com razão) de mesclar dado errado:
+            - REVISÃO MANUAL, um beneficiário por vez — nada é vinculado
+              sem clicar em "Confirmar vínculo". Botão só habilita depois
+              de escolher um paciente na busca.
+            - Busca por NOME ou CARTEIRINHA — a pessoa escolhe qual dos
+              dois usar pra cada beneficiário, o que funciona melhor caso
+              a caso.
+            - "Pular" também grava (não fica reaparecendo) — tanto
+              confirmar quanto pular tiram o beneficiário da fila.
+            - Confirmar só PREENCHE a carteirinha do paciente se ela
+              estiver vazia — nunca sobrescreve o que já foi cadastrado.
+            - Nenhum UPDATE em massa em lugar nenhum — tabela nova
+              `paciente_convenio_vinculo` guarda cada decisão separada do
+              cadastro de pacientes; se precisar desfazer algo, é só
+              apagar a linha do vínculo, o paciente não é tocado.
+            Requer tabela nova no Supabase:
+            create table if not exists paciente_convenio_vinculo (
+              id uuid primary key default gen_random_uuid(),
+              cartao_beneficiario text not null unique,
+              nome_beneficiario text, paciente_id uuid references pacientes(id),
+              status text not null default 'vinculado' check (status in ('vinculado','pulado')),
+              criado_em timestamptz not null default now()
+            );
+            `buscarPacientes` ganhou parâmetro `campo` (nome/carteirinha).
+            Testado ponta a ponta: fila carrega, busca nos dois modos,
+            confirmar preenche carteirinha sem sobrescrever, fila encolhe
+            a cada confirmação/pulo, nenhum paciente existente é alterado
+            sem passar por essa revisão.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
