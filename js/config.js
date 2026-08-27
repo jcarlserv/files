@@ -899,6 +899,29 @@
             Testado: sugestão aparece só no modo nome, some no modo
             carteirinha, convênio preenche quando vazio e nunca sobrescreve
             um convênio que já existia.
+   v6.25.1 — Cadastro de Paciente: campo novo CPF, no modal (criar/editar)
+            e na tabela de busca. Requer SQL no Supabase:
+            alter table pacientes add column if not exists cpf text;
+            Testado: salva, reabre pra editar já preenchido, aparece
+            certinho na tabela de busca.
+   v6.26.0 — Lançamento (e Modal de edição), a pedido do usuário: ao
+            selecionar um paciente já cadastrado, Convênio e Carteirinha
+            do lançamento são preenchidos automaticamente com o que está
+            no cadastro dele (a pessoa pode sobrescrever se esse
+            atendimento específico for diferente do de costume). Logo
+            abaixo do campo Paciente, uma linha de referência mostra Data
+            de Nascimento (com idade) e CPF — só informativo, não é salvo
+            no lançamento, é pra facilitar conferir na hora.
+            No Modal de EDIÇÃO de um lançamento já existente, o
+            comportamento é mais cuidadoso: Convênio/Carteirinha NUNCA são
+            sobrescritos ao abrir (são o valor histórico daquele
+            atendimento específico) — só a linha de Nascimento/CPF aparece,
+            buscada em segundo plano sem travar a abertura do modal.
+            Também funciona quando o paciente é cadastrado na hora pelo
+            botão "+ Novo" — usa os dados que acabaram de ser digitados.
+            Testado: seleção preenche Convênio/Carteirinha/info; edição
+            preserva os valores históricos mas mostra a info mesmo assim;
+            limpar a seleção esconde a linha de novo.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

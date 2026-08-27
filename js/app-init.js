@@ -616,6 +616,7 @@ function renderizarCampo(campo, valorAtual='', prefixo='campo_', destacar=false)
         <input type="hidden" id="${id}_id" value="${campo.idAtual||''}">
         <div id="${id}-resultados" class="autocomplete-resultados" style="display:none;position:absolute;z-index:30;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:9px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;margin-top:4px;"></div>
         ${campo.travado?'':'<div style="font-size:11px;color:var(--ink-400);margin-top:4px;">Digite pra buscar quem já está cadastrado, ou clique em "+ Novo" ao lado.</div>'}
+        <div id="${id}-info" class="mono" style="display:none;font-size:12px;color:var(--ink-600);margin-top:6px;background:var(--rose-100);padding:6px 10px;border-radius:6px;"></div>
       </div>
       ${campo.travado?'':`<button type="button" class="botao sutil pequeno botao-novo-paciente-rapido" data-alvo="${id}" style="white-space:nowrap;">+ Novo</button>`}
     </div>`;
@@ -631,6 +632,38 @@ function renderizarCampo(campo, valorAtual='', prefixo='campo_', destacar=false)
 // resultado preenche o nome E guarda o id; editar o texto depois de
 // selecionado LIMPA o id (evita salvar um paciente errado se a pessoa
 // corrigir o nome na mão).
+// Preenche o que dá pra puxar do cadastro do paciente assim que ele é
+// selecionado: Convênio e Carteirinha (campos de verdade do lançamento,
+// a pessoa pode sobrescrever se esse atendimento específico for
+// diferente) + uma linha de referência com Data de Nascimento e CPF (só
+// informativo, não é salvo no lançamento — o dado mora no cadastro do
+// paciente, aqui é só pra facilitar conferir na hora).
+function preencherCamposDerivadosPaciente(prefixo, paciente, opcoes){
+  const sobrescrever = !opcoes || opcoes.sobrescreverConvenioCarteirinha !== false;
+  const elConvenio = document.getElementById(prefixo+'convenio');
+  const elCarteirinha = document.getElementById(prefixo+'carteirinha');
+  const elInfo = document.getElementById(prefixo+'paciente-info');
+  if(!paciente){
+    if(elInfo){ elInfo.style.display = 'none'; elInfo.textContent = ''; }
+    return;
+  }
+  if(sobrescrever){
+    if(elConvenio && paciente.convenio) elConvenio.value = paciente.convenio;
+    if(elCarteirinha && paciente.carteirinha) elCarteirinha.value = paciente.carteirinha;
+  }
+  if(elInfo){
+    const partes = [];
+    if(paciente.data_nascimento) partes.push(`Nascimento: ${formatarNascimentoComIdade(paciente.data_nascimento)}`);
+    if(paciente.cpf) partes.push(`CPF: ${paciente.cpf}`);
+    if(partes.length){
+      elInfo.textContent = partes.join('  •  ');
+      elInfo.style.display = 'block';
+    } else {
+      elInfo.style.display = 'none';
+    }
+  }
+}
+
 function ligarAutocompletePaciente(prefixo){
   const input = document.getElementById(prefixo+'paciente');
   const inputId = document.getElementById(prefixo+'paciente_id');
@@ -638,14 +671,18 @@ function ligarAutocompletePaciente(prefixo){
   if(!input || input.disabled) return;
 
   let timeoutBusca = null;
+  let cachePacientesBusca = {}; // id -> objeto completo, pra achar depois de clicar
   input.addEventListener('input', ()=>{
     inputId.value = ''; // qualquer edição manual invalida a seleção anterior
+    preencherCamposDerivadosPaciente(prefixo, null);
     clearTimeout(timeoutBusca);
     const termo = input.value.trim();
     if(termo.length < 2){ resultados.style.display = 'none'; return; }
     timeoutBusca = setTimeout(async ()=>{
       const resp = await api('buscarPacientes', {termo});
       if(!resp.ok || !resp.pacientes || resp.pacientes.length===0){ resultados.style.display = 'none'; return; }
+      cachePacientesBusca = {};
+      resp.pacientes.forEach(p=>{ cachePacientesBusca[p.id] = p; });
       resultados.innerHTML = resp.pacientes.map(p=>
         `<div class="autocomplete-item" data-id="${p.id}" data-nome="${p.nome.replace(/"/g,'&quot;')}" style="padding:9px 12px;cursor:pointer;font-size:13.5px;border-bottom:1px solid var(--line);">${p.nome}</div>`
       ).join('');
@@ -656,6 +693,7 @@ function ligarAutocompletePaciente(prefixo){
           input.value = item.dataset.nome;
           inputId.value = item.dataset.id;
           resultados.style.display = 'none';
+          preencherCamposDerivadosPaciente(prefixo, cachePacientesBusca[item.dataset.id]);
         });
         item.addEventListener('mouseenter', ()=>{ item.style.background='var(--rose-100)'; });
         item.addEventListener('mouseleave', ()=>{ item.style.background=''; });

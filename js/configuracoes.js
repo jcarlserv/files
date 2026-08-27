@@ -1135,7 +1135,8 @@ function prepararModalPacienteGlobal(){
       endereco: document.getElementById('modal-paciente-endereco').value,
       convenio: document.getElementById('modal-paciente-convenio').value,
       carteirinha: document.getElementById('modal-paciente-carteirinha').value,
-      data_nascimento: document.getElementById('modal-paciente-data-nascimento').value
+      data_nascimento: document.getElementById('modal-paciente-data-nascimento').value,
+      cpf: document.getElementById('modal-paciente-cpf').value
     };
     const resp = pacienteEmEdicaoId
       ? await api('atualizarPaciente', Object.assign({id: pacienteEmEdicaoId}, dadosPaciente))
@@ -1145,13 +1146,16 @@ function prepararModalPacienteGlobal(){
 
     // Aberto pelo botão "+ Novo" do Lançamento/Modal? Preenche o campo de
     // origem com quem acabou de ser cadastrado, pra continuar o
-    // atendimento sem precisar buscar de novo.
+    // atendimento sem precisar buscar de novo — inclusive Convênio/
+    // Carteirinha/Nascimento/CPF, já que é um cadastro fresquinho.
     if(pacienteModalAlvoPreenchimento){
-      const pacienteResultado = resp.paciente || {id: pacienteEmEdicaoId, nome};
+      const pacienteResultado = resp.paciente || Object.assign({id: pacienteEmEdicaoId, nome}, dadosPaciente);
       const elCampo = document.getElementById(pacienteModalAlvoPreenchimento);
       const elCampoId = document.getElementById(pacienteModalAlvoPreenchimento+'_id');
       if(elCampo) elCampo.value = pacienteResultado.nome;
       if(elCampoId) elCampoId.value = pacienteResultado.id;
+      const prefixoAlvo = pacienteModalAlvoPreenchimento.replace(/paciente$/, '');
+      preencherCamposDerivadosPaciente(prefixoAlvo, pacienteResultado);
     }
 
     fecharModalPaciente();
@@ -1174,6 +1178,7 @@ function abrirModalPaciente(paciente, alvoCampoId){
   selConvenio.value = paciente ? (paciente.convenio||'') : '';
   document.getElementById('modal-paciente-carteirinha').value = paciente ? (paciente.carteirinha||'') : '';
   document.getElementById('modal-paciente-data-nascimento').value = paciente ? (paciente.data_nascimento||'') : '';
+  document.getElementById('modal-paciente-cpf').value = paciente ? (paciente.cpf||'') : '';
   document.getElementById('sobreposicao-modal-paciente').classList.add('aberta');
 }
 function fecharModalPaciente(){
@@ -1196,10 +1201,11 @@ async function buscarEExibirPacientes(termo){
   cadastroPacientesCacheBusca = pacientes; // pra abrirModalPaciente achar o registro completo ao clicar Editar
   aviso.textContent = pacientes.length===30 ? 'Mostrando os 30 primeiros — refine a busca pra achar um específico.' : `${pacientes.length} encontrado${pacientes.length===1?'':'s'}.`;
   tabela.innerHTML = pacientes.length===0 ? '<tr><td class="vazio">Nenhum paciente encontrado com esse nome.</td></tr>' : `
-    <thead><tr><th>Nome</th><th>Nascimento</th><th>WhatsApp</th><th>Endereço</th><th>Convênio</th><th>Carteirinha</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>CPF</th><th>Nascimento</th><th>WhatsApp</th><th>Endereço</th><th>Convênio</th><th>Carteirinha</th><th></th></tr></thead>
     <tbody>${pacientes.map(p=>`
       <tr data-id="${p.id}">
         <td>${p.nome}</td>
+        <td class="mono">${p.cpf||'—'}</td>
         <td>${formatarNascimentoComIdade(p.data_nascimento)}</td>
         <td>${p.whatsapp||'—'}</td>
         <td>${p.endereco||'—'}</td>

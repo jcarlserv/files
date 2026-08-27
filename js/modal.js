@@ -26,6 +26,15 @@ function abrirModal(registro, camposPendentes, contexto){
     .join('') + htmlSecaoFormaPagamento('modal_', destacarPagamento);
   ligarAutocompletePaciente('modal_');
   ligarBotaoNovoPacienteRapido('modal_');
+  // Mostra Nascimento/CPF de referência ao abrir um lançamento já
+  // existente — busca em segundo plano, não trava a abertura do modal.
+  // NÃO mexe em Convênio/Carteirinha aqui (esses já vieram do próprio
+  // registro, são o valor histórico daquele atendimento específico).
+  if(registro && registro.paciente_id){
+    api('obterPaciente', {id: registro.paciente_id}).then(resp=>{
+      if(resp.ok && resp.paciente) preencherCamposDerivadosPaciente('modal_', resp.paciente, {sobrescreverConvenioCarteirinha:false});
+    });
+  }
 
 
   // Pré-preenche a seção de pagamento: se o registro tem formas_pagamento
