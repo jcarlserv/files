@@ -162,11 +162,12 @@ document.getElementById('form-lancamento').addEventListener('submit', async (ev)
 // mexer.
 function prepararSubNavLancamento(){
   const podeVerForm = temPermissao('ver_lancamento');
-  const podeVerCadastros = temPermissaoParametro('ver_parametros_cadastros', 'ver_configuracoes');
+  const podeVerPacientes = podeVerCadastroPacientes();
+  const podeVerProfissionais = temPermissaoParametro('ver_parametros_cadastros', 'ver_configuracoes');
   const visibilidade = {
     'lancamento-form': podeVerForm,
-    'lancamento-pacientes': podeVerCadastros,
-    'lancamento-profissionais': podeVerCadastros
+    'lancamento-pacientes': podeVerPacientes,
+    'lancamento-profissionais': podeVerProfissionais
   };
   const rotulos = {'lancamento-form':'Lançamentos','lancamento-pacientes':'Cadastro de Clientes','lancamento-profissionais':'Cadastro de Profissionais'};
   const disponiveis = Object.keys(visibilidade).filter(id=>visibilidade[id]);
@@ -191,10 +192,9 @@ function trocarSubAbaLancamento(subId){
 }
 
 async function atualizarSubAbaLancamentoAtiva(){
-  const podeEditarCadastros = temPermissaoParametro('editar_parametros_cadastros', 'editar_configuracoes');
   if(estado.subAbaLancamento==='lancamento-form') await atualizarMeusLancamentos();
-  if(estado.subAbaLancamento==='lancamento-pacientes') prepararCadastroPacientes(podeEditarCadastros);
-  if(estado.subAbaLancamento==='lancamento-profissionais') await carregarCadastroProfissionais(podeEditarCadastros);
+  if(estado.subAbaLancamento==='lancamento-pacientes') prepararCadastroPacientes(podeEditarCadastroPacientes());
+  if(estado.subAbaLancamento==='lancamento-profissionais') await carregarCadastroProfissionais(temPermissaoParametro('editar_parametros_cadastros', 'editar_configuracoes'));
 }
 
 async function atualizarAbaLancamento(){

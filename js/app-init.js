@@ -103,7 +103,7 @@ function montarNavegacao(){
   const nav = document.getElementById('nav-abas');
   const TODAS_ABAS = [
     {id:'inicio', rotulo:'Início', chave:'ver_inicio'},
-    {id:'lancamento', rotulo:'Lançamento', chave:['ver_lancamento','ver_parametros_cadastros']},
+    {id:'lancamento', rotulo:'Lançamento', chave:['ver_lancamento','ver_parametros_cadastros','ver_parametros_pacientes']},
     {id:'verificacao', rotulo:'Verificação', chave:['ver_verificar','ver_critica']},
     {id:'dashboard', rotulo:'Dashboard', chave:['ver_rmr','ver_rmr_squad','ver_metas']},
     {id:'financeiro', rotulo:'Financeiro', chave:'ver_financeiro'},

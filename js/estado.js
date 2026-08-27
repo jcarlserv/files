@@ -50,6 +50,8 @@ const DEFINICAO_PERMISSOES = [
   {tela:'Configurações',  chave:'editar_configuracoes',    rotulo:'Editar'},
   {tela:'Parâmetros — Cadastros',     chave:'ver_parametros_cadastros',     rotulo:'Ver'},
   {tela:'Parâmetros — Cadastros',     chave:'editar_parametros_cadastros',  rotulo:'Editar'},
+  {tela:'Parâmetros — Pacientes',     chave:'ver_parametros_pacientes',     rotulo:'Ver'},
+  {tela:'Parâmetros — Pacientes',     chave:'editar_parametros_pacientes',  rotulo:'Editar'},
   {tela:'Parâmetros — Financeiro',    chave:'ver_parametros_financeiros',   rotulo:'Ver'},
   {tela:'Parâmetros — Financeiro',    chave:'editar_parametros_financeiros',rotulo:'Editar'},
   {tela:'Parâmetros — Identidade',    chave:'ver_parametros_aparencia',     rotulo:'Ver'},
@@ -108,6 +110,29 @@ function temPermissaoParametro(chaveNova, chaveAntigaFallback){
   const valorNovo = estado.permissoes[chaveNova];
   if(valorNovo !== undefined) return !!valorNovo;
   return !!estado.permissoes[chaveAntigaFallback];
+}
+
+// Cadastro de Pacientes ganhou permissão própria (ver_parametros_pacientes/
+// editar_parametros_pacientes), separada do resto de "Parâmetros —
+// Cadastros" (listas, matrizes, campos travados, CSV). Migração em 3
+// níveis: se ninguém mexeu explicitamente na permissão nova de Pacientes
+// pra um usuário, cai pro que ele já tinha em Cadastros — que por sua vez
+// já tem seu próprio fallback pra editar_configuracoes (temPermissaoParametro
+// comum). Assim, quem já tinha acesso antes continua tendo, sem precisar
+// reconfigurar nada; só quando alguém ligar/desligar a permissão nova de
+// Pacientes especificamente é que ela passa a valer sozinha, pra aquele
+// usuário.
+function podeVerCadastroPacientes(){
+  if(estado.papel === 'gerente') return true;
+  const valorNovo = estado.permissoes['ver_parametros_pacientes'];
+  if(valorNovo !== undefined) return !!valorNovo;
+  return temPermissaoParametro('ver_parametros_cadastros', 'ver_configuracoes');
+}
+function podeEditarCadastroPacientes(){
+  if(estado.papel === 'gerente') return true;
+  const valorNovo = estado.permissoes['editar_parametros_pacientes'];
+  if(valorNovo !== undefined) return !!valorNovo;
+  return temPermissaoParametro('editar_parametros_cadastros', 'editar_configuracoes');
 }
 
 

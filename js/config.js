@@ -931,6 +931,23 @@
             (#sobreposicao-modal-fornecedor, #sobreposicao-modal-material).
             Testado: os dois modais abrem, criam de verdade, reabrem
             preenchidos pra editar, e salvam sem duplicar.
+   v6.27.0 — Cadastro de Pacientes ganhou permissão própria em Direitos e
+            Privilégios: "Parâmetros — Pacientes" (Ver/Editar), separada
+            do resto de "Parâmetros — Cadastros" (que continua cobrindo
+            Listas do sistema, matrizes de vínculo, Campos travados, CSV,
+            e Cadastro de Profissionais — a pedido do usuário, só
+            Pacientes saiu). Agora dá pra liberar/bloquear Pacientes sem
+            afetar Profissionais, e vice-versa.
+            Migração em 3 níveis (podeVerCadastroPacientes/
+            podeEditarCadastroPacientes, em estado.js): se ninguém mexer
+            explicitamente na permissão nova de Pacientes pra um usuário,
+            cai pro que ele já tinha em "Parâmetros — Cadastros" — que por
+            sua vez já cai pro editar_configuracoes legado. Quem já tinha
+            acesso continua tendo, sem reconfigurar nada.
+            Testado: gerente vê tudo; atendente sem nada não vê nenhum dos
+            dois; atendente legado (editar_configuracoes) continua vendo
+            os dois via fallback; liberar só Pacientes não libera
+            Profissionais de graça, e vice-versa.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
