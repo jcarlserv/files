@@ -770,6 +770,9 @@
             Testado ponta a ponta: entrada por NF, solicitação, dispensa
             com baixa FEFO correta, bloqueio de estoque insuficiente, e
             relatório com KPIs/vencimentos — zero erros.
+   v6.20.1 — Ajuste em Estoque, a pedido do usuário: sub-aba "Materiais"
+            virou "Cadastro"; dentro dela, "Fornecedores" agora vem antes
+            de "Catálogo de materiais" (ordem invertida).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

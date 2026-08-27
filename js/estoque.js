@@ -32,7 +32,7 @@ function prepararSubNavEstoque(){
     'estoque-dispensar': podeDispensar,
     'estoque-relatorio': podeEditar || podeDispensar
   };
-  const rotulos = {'estoque-materiais':'Materiais','estoque-entrada':'Entrada (NF)','estoque-solicitar':'Solicitar','estoque-dispensar':'Dispensar','estoque-relatorio':'Relatório'};
+  const rotulos = {'estoque-materiais':'Cadastro','estoque-entrada':'Entrada (NF)','estoque-solicitar':'Solicitar','estoque-dispensar':'Dispensar','estoque-relatorio':'Relatório'};
   const disponiveis = Object.keys(visibilidade).filter(id=>visibilidade[id]);
   const nav = document.getElementById('sub-nav-estoque');
   if(!disponiveis.includes(estado.subAbaEstoque)) estado.subAbaEstoque = disponiveis[0] || null;
