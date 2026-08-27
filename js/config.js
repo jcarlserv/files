@@ -797,6 +797,22 @@
             Testado: abre vazio pra criar, cria de fato, abre preenchido
             pra editar, salva sem duplicar, e Cancelar fecha sem alterar
             nada.
+   v6.22.0 — Cadastro de Paciente: campos novos Convênio (dropdown, mesma
+            lista de sempre) e Carteirinha (texto) no modal e na tabela de
+            busca. Requer SQL no Supabase:
+            alter table pacientes add column if not exists convenio text;
+            alter table pacientes add column if not exists carteirinha text;
+            Cadastro de Profissional: "Especialidade" deixou de ser texto
+            livre e virou dropdown — nova lista gerenciável "Especialidades"
+            em Configurações → Cadastros → Listas do sistema (mesmo padrão
+            das outras 9 listas), já com Psicólogo e Nutricionista de
+            exemplo. Card do Cadastro de Profissionais ganhou uma nota
+            explicando onde adicionar especialidades novas.
+            Corrigido de brinde: `adicionarItemLista` no modo demo/offline
+            recusava item em lista NOVA que ainda não tinha nenhum item
+            salvo (ex.: a primeira especialidade cadastrada) — só
+            acontecia no modo demo, o Supabase de verdade nunca teve esse
+            problema.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

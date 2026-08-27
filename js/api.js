@@ -486,7 +486,7 @@ async function supabaseApi(acao, dados) {
       const existente = await supabaseClient.from('pacientes').select('*').ilike('nome', nome).maybeSingle();
       if(existente.data) return {ok:true, paciente: existente.data};
       const { data, error } = await supabaseClient.from('pacientes')
-        .insert({ nome, whatsapp: dados.whatsapp||null, endereco: dados.endereco||null })
+        .insert({ nome, whatsapp: dados.whatsapp||null, endereco: dados.endereco||null, convenio: dados.convenio||null, carteirinha: dados.carteirinha||null })
         .select().single();
       if(error) return {ok:false, erro:error.message};
       return {ok:true, paciente: data};
@@ -494,7 +494,7 @@ async function supabaseApi(acao, dados) {
 
     case 'atualizarPaciente': {
       const { error } = await supabaseClient.from('pacientes')
-        .update({ nome: dados.nome, whatsapp: dados.whatsapp||null, endereco: dados.endereco||null })
+        .update({ nome: dados.nome, whatsapp: dados.whatsapp||null, endereco: dados.endereco||null, convenio: dados.convenio||null, carteirinha: dados.carteirinha||null })
         .eq('id', dados.id);
       return error ? {ok:false, erro:error.message} : {ok:true};
     }
@@ -852,7 +852,7 @@ function mockApi(acao, dados) {
       if(!nome) return {ok:false, erro:'Nome do paciente é obrigatório.'};
       const existente = demo.pacientes.find(p=>p.nome.toLowerCase()===nome.toLowerCase());
       if(existente) return {ok:true, paciente: existente};
-      const novo = {id: 'demo-pac-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome, whatsapp: dados.whatsapp||null, endereco: dados.endereco||null};
+      const novo = {id: 'demo-pac-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome, whatsapp: dados.whatsapp||null, endereco: dados.endereco||null, convenio: dados.convenio||null, carteirinha: dados.carteirinha||null};
       demo.pacientes.push(novo);
       return {ok:true, paciente: novo};
     }
@@ -860,6 +860,7 @@ function mockApi(acao, dados) {
       const p = demo.pacientes.find(x=>x.id===dados.id);
       if(!p) return {ok:false, erro:'Paciente não encontrado.'};
       p.nome = dados.nome; p.whatsapp = dados.whatsapp||null; p.endereco = dados.endereco||null;
+      p.convenio = dados.convenio||null; p.carteirinha = dados.carteirinha||null;
       return {ok:true};
     }
 
@@ -1165,7 +1166,7 @@ function mockApi(acao, dados) {
       return {ok:true};
     }
     case 'adicionarItemLista': {
-      if(!demo.listas[dados.coluna]) return {ok:false, erro:'Lista desconhecida.'};
+      if(!demo.listas[dados.coluna]) demo.listas[dados.coluna] = []; // lista nova (ex.: especialidades) — cria vazia na hora, igual o Supabase faria
       const jaExiste = demo.listas[dados.coluna].some(v=>String(v).trim().toUpperCase()===String(dados.valor).trim().toUpperCase());
       if(jaExiste) return {ok:false, erro:'Esse item já existe nessa lista.'};
       demo.listas[dados.coluna].push(dados.valor);

@@ -170,6 +170,8 @@
           <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
             Um registro por profissional, gerado a partir dos nomes já usados nos lançamentos — telefone,
             registro profissional e especialidade são complementares, preencha quando tiver a informação.
+            Pra adicionar uma especialidade nova na lista (Psicólogo, Nutricionista, etc.), vá em
+            Configurações → Cadastros → "Listas do sistema" → Especialidades.
           </p>
           <div class="tabela-scroll">
             <table id="tabela-cadastro-profissionais"></table>
@@ -1067,7 +1069,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.21.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.22.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1099,6 +1101,8 @@
         <div class="campo" style="grid-column:1/-1;"><label>Nome completo *</label><input type="text" id="modal-paciente-nome" required></div>
         <div class="campo"><label>WhatsApp</label><input type="text" id="modal-paciente-whatsapp" placeholder="(00) 00000-0000"></div>
         <div class="campo"><label>Endereço</label><input type="text" id="modal-paciente-endereco"></div>
+        <div class="campo"><label>Convênio</label><select id="modal-paciente-convenio"><option value="">—</option></select></div>
+        <div class="campo"><label>Carteirinha</label><input type="text" id="modal-paciente-carteirinha"></div>
       </div>
       <div class="modal-acoes">
         <button type="button" class="botao sutil" id="botao-cancelar-modal-paciente">Cancelar</button>

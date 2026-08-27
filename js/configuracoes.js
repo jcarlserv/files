@@ -24,7 +24,8 @@ const DEFINICAO_LISTAS_CONFIG = [
   {chave:'turnos', rotulo:'Turnos'},
   {chave:'formas_pagamento', rotulo:'Formas de pagamento'},
   {chave:'biopsias_frascos', rotulo:'Biópsia (frascos)'},
-  {chave:'exames', rotulo:'Exames'}
+  {chave:'exames', rotulo:'Exames'},
+  {chave:'especialidades', rotulo:'Especialidades (profissionais)'}
 ];
 let listaConfigSelectPronto = false;
 
@@ -1033,7 +1034,10 @@ async function carregarCadastroProfissionais(podeEditar){
         <td>${p.nome}${p.observacoes?` <span title="${p.observacoes.replace(/"/g,'&quot;')}" style="cursor:help;color:var(--gold-600);">ⓘ</span>`:''}</td>
         <td><input type="text" class="input-prof-telefone" value="${p.telefone||''}" ${desabilitado} style="width:140px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
         <td><input type="text" class="input-prof-registro" value="${p.registro_profissional||''}" ${desabilitado} style="width:130px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td><input type="text" class="input-prof-especialidade" value="${p.especialidade||''}" ${desabilitado} style="width:160px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
+        <td><select class="input-prof-especialidade" ${desabilitado} style="width:170px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;">
+          <option value="">—</option>
+          ${(estado.listas.especialidades||[]).map(e=>`<option ${e===p.especialidade?'selected':''}>${e}</option>`).join('')}
+        </select></td>
         <td>${podeEditar?'<button class="botao secundario pequeno botao-salvar-profissional-cadastro">Salvar</button>':''}</td>
       </tr>`).join('')}</tbody>`;
 
@@ -1062,6 +1066,7 @@ async function carregarCadastroProfissionais(podeEditar){
 ===================================================================== */
 let cadastroPacientesPronto = false;
 let pacienteEmEdicaoId = null; // null = criando um novo; senão, id de quem está sendo editado
+let cadastroPacientesCacheBusca = []; // últimos resultados da busca, pra achar o registro completo ao clicar Editar
 
 function prepararCadastroPacientes(podeEditar){
   document.getElementById('aviso-cadastro-pacientes').textContent =
@@ -1098,7 +1103,9 @@ function prepararCadastroPacientes(podeEditar){
     botao.disabled = true; botao.textContent = 'Salvando...';
     const dadosPaciente = {
       nome, whatsapp: document.getElementById('modal-paciente-whatsapp').value,
-      endereco: document.getElementById('modal-paciente-endereco').value
+      endereco: document.getElementById('modal-paciente-endereco').value,
+      convenio: document.getElementById('modal-paciente-convenio').value,
+      carteirinha: document.getElementById('modal-paciente-carteirinha').value
     };
     const resp = pacienteEmEdicaoId
       ? await api('atualizarPaciente', Object.assign({id: pacienteEmEdicaoId}, dadosPaciente))
@@ -1117,6 +1124,10 @@ function abrirModalPaciente(paciente){
   document.getElementById('modal-paciente-nome').value = paciente ? paciente.nome : '';
   document.getElementById('modal-paciente-whatsapp').value = paciente ? (paciente.whatsapp||'') : '';
   document.getElementById('modal-paciente-endereco').value = paciente ? (paciente.endereco||'') : '';
+  const selConvenio = document.getElementById('modal-paciente-convenio');
+  selConvenio.innerHTML = '<option value="">—</option>' + (estado.listas.convenios||[]).map(c=>`<option>${c}</option>`).join('');
+  selConvenio.value = paciente ? (paciente.convenio||'') : '';
+  document.getElementById('modal-paciente-carteirinha').value = paciente ? (paciente.carteirinha||'') : '';
   document.getElementById('sobreposicao-modal-paciente').classList.add('aberta');
 }
 function fecharModalPaciente(){
@@ -1135,21 +1146,25 @@ async function buscarEExibirPacientes(termo){
   }
   const podeEditar = document.getElementById('botao-novo-paciente-cadastro').style.display !== 'none';
   const pacientes = resp.pacientes || [];
+  cadastroPacientesCacheBusca = pacientes; // pra abrirModalPaciente achar o registro completo ao clicar Editar
   aviso.textContent = pacientes.length===30 ? 'Mostrando os 30 primeiros — refine a busca pra achar um específico.' : `${pacientes.length} encontrado${pacientes.length===1?'':'s'}.`;
   tabela.innerHTML = pacientes.length===0 ? '<tr><td class="vazio">Nenhum paciente encontrado com esse nome.</td></tr>' : `
-    <thead><tr><th>Nome</th><th>WhatsApp</th><th>Endereço</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>WhatsApp</th><th>Endereço</th><th>Convênio</th><th>Carteirinha</th><th></th></tr></thead>
     <tbody>${pacientes.map(p=>`
       <tr data-id="${p.id}">
         <td>${p.nome}</td>
         <td>${p.whatsapp||'—'}</td>
         <td>${p.endereco||'—'}</td>
-        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-paciente-cadastro" data-id="${p.id}" data-nome="${p.nome.replace(/"/g,'&quot;')}" data-whatsapp="${(p.whatsapp||'').replace(/"/g,'&quot;')}" data-endereco="${(p.endereco||'').replace(/"/g,'&quot;')}">Editar</button>`:''}</td>
+        <td>${p.convenio||'—'}</td>
+        <td class="mono">${p.carteirinha||'—'}</td>
+        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-paciente-cadastro" data-id="${p.id}">Editar</button>`:''}</td>
       </tr>`).join('')}</tbody>`;
 
   if(!podeEditar) return;
   tabela.querySelectorAll('.botao-editar-paciente-cadastro').forEach(botao=>{
     botao.addEventListener('click', ()=>{
-      abrirModalPaciente({id: botao.dataset.id, nome: botao.dataset.nome, whatsapp: botao.dataset.whatsapp, endereco: botao.dataset.endereco});
+      const paciente = cadastroPacientesCacheBusca.find(p=>p.id===botao.dataset.id);
+      if(paciente) abrirModalPaciente(paciente);
     });
   });
 }
