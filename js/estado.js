@@ -124,15 +124,18 @@ function temPermissaoParametro(chaveNova, chaveAntigaFallback){
 // usuário.
 function podeVerCadastroPacientes(){
   if(estado.papel === 'gerente') return true;
-  const valorNovo = estado.permissoes['ver_parametros_pacientes'];
-  if(valorNovo !== undefined) return !!valorNovo;
-  return temPermissaoParametro('ver_parametros_cadastros', 'ver_configuracoes');
+  if(!('ver_parametros_pacientes' in estado.permissoes)){
+    return temPermissaoParametro('ver_parametros_cadastros', 'ver_configuracoes');
+  }
+  return !!estado.permissoes['ver_parametros_pacientes'];
 }
+
 function podeEditarCadastroPacientes(){
   if(estado.papel === 'gerente') return true;
-  const valorNovo = estado.permissoes['editar_parametros_pacientes'];
-  if(valorNovo !== undefined) return !!valorNovo;
-  return temPermissaoParametro('editar_parametros_cadastros', 'editar_configuracoes');
+  if(!('editar_parametros_pacientes' in estado.permissoes)){
+    return temPermissaoParametro('editar_parametros_cadastros', 'editar_configuracoes');
+  }
+  return !!estado.permissoes['editar_parametros_pacientes'];
 }
 
 
