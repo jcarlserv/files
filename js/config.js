@@ -922,6 +922,15 @@
             Testado: seleção preenche Convênio/Carteirinha/info; edição
             preserva os valores históricos mas mostra a info mesmo assim;
             limpar a seleção esconde a linha de novo.
+   v6.26.1 — Estoque → Cadastro, a pedido do usuário: Fornecedores e
+            Materiais deixaram de usar edição solta na linha da tabela e
+            prompt() do navegador — agora abrem modal de verdade (mesmo
+            padrão do Cadastro de Pacientes). "+ Novo" abre vazio; "Editar"
+            (novo botão em cada linha) abre preenchido. Tabelas ficaram só
+            de leitura. Modais novos em index.html
+            (#sobreposicao-modal-fornecedor, #sobreposicao-modal-material).
+            Testado: os dois modais abrem, criam de verdade, reabrem
+            preenchidos pra editar, e salvam sem duplicar.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

@@ -64,7 +64,8 @@ async function atualizarSubAbaEstoqueAtiva(){
 
 
 /* ---------------------------------------------------------------------
-   MATERIAIS + FORNECEDORES
+   MATERIAIS + FORNECEDORES — cadastro por modal (igual Cadastro de
+   Pacientes), não mais edição solta na linha da tabela nem prompt().
 --------------------------------------------------------------------- */
 async function carregarMateriaisEstoque(){
   const resp = await api('listarMateriais', {});
@@ -83,47 +84,27 @@ function renderizarCatalogoMateriais(){
     <tbody>${estoqueCacheMateriais.map(m=>`
       <tr data-id="${m.id}">
         <td>${m.nome}</td>
-        <td><input type="text" class="input-mat-categoria" value="${m.categoria||''}" ${podeEditar?'':'disabled'} style="width:120px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td><input type="text" class="input-mat-unidade" value="${m.unidade||'unidade'}" ${podeEditar?'':'disabled'} style="width:90px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td><input type="number" class="input-mat-minimo" value="${m.estoque_minimo||0}" ${podeEditar?'':'disabled'} style="width:80px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td><input type="checkbox" class="input-mat-ativo" ${m.ativo?'checked':''} ${podeEditar?'':'disabled'}></td>
-        <td>${podeEditar?'<button class="botao secundario pequeno botao-salvar-material">Salvar</button>':''}</td>
+        <td>${m.categoria||'—'}</td>
+        <td>${m.unidade||'unidade'}</td>
+        <td class="mono">${m.estoque_minimo||0}</td>
+        <td>${m.ativo?'<span style="color:var(--teal-700);">Sim</span>':'<span style="color:var(--ink-400);">Não</span>'}</td>
+        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-material" data-id="${m.id}">Editar</button>`:''}</td>
       </tr>`).join('')}</tbody>`;
 
   const botaoNovo = document.getElementById('botao-novo-material');
   botaoNovo.style.display = podeEditar ? 'inline-flex' : 'none';
-  if(!podeEditar) return;
-
-  tabela.querySelectorAll('.botao-salvar-material').forEach(botao=>{
-    botao.addEventListener('click', async (ev)=>{
-      const linha = ev.target.closest('tr');
-      await api('atualizarMaterial', {
-        id: linha.dataset.id, nome: linha.querySelector('td').textContent,
-        categoria: linha.querySelector('.input-mat-categoria').value,
-        unidade: linha.querySelector('.input-mat-unidade').value,
-        estoque_minimo: linha.querySelector('.input-mat-minimo').value,
-        ativo: linha.querySelector('.input-mat-ativo').checked
+  if(podeEditar){
+    tabela.querySelectorAll('.botao-editar-material').forEach(botao=>{
+      botao.addEventListener('click', ()=>{
+        const material = estoqueCacheMateriais.find(m=>m.id===botao.dataset.id);
+        if(material) abrirModalMaterial(material);
       });
-      ev.target.textContent = 'Salvo ✓';
-      setTimeout(()=>ev.target.textContent='Salvar', 1800);
     });
-  });
+  }
 
   if(!estoqueSubAbaPronta.materiais){
-    botaoNovo.addEventListener('click', async ()=>{
-      const nome = prompt('Nome do material:');
-      if(!nome || !nome.trim()) return;
-      await api('criarMaterial', {nome: nome.trim()});
-      await carregarMateriaisEstoque();
-      renderizarCatalogoMateriais();
-    });
-    document.getElementById('botao-novo-fornecedor').addEventListener('click', async ()=>{
-      const nome = prompt('Nome do fornecedor:');
-      if(!nome || !nome.trim()) return;
-      await api('criarFornecedor', {nome: nome.trim()});
-      await carregarFornecedoresEstoque();
-      renderizarFornecedores();
-    });
+    botaoNovo.addEventListener('click', ()=>abrirModalMaterial(null));
+    document.getElementById('botao-novo-fornecedor').addEventListener('click', ()=>abrirModalFornecedor(null));
     estoqueSubAbaPronta.materiais = true;
   }
   renderizarFornecedores();
@@ -138,22 +119,117 @@ function renderizarFornecedores(){
     <tbody>${estoqueCacheFornecedores.map(f=>`
       <tr data-id="${f.id}">
         <td>${f.nome}</td>
-        <td><input type="text" class="input-forn-cnpj" value="${f.cnpj||''}" ${podeEditar?'':'disabled'} style="width:150px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td><input type="text" class="input-forn-contato" value="${f.contato||''}" ${podeEditar?'':'disabled'} style="width:150px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td>${podeEditar?'<button class="botao secundario pequeno botao-salvar-fornecedor">Salvar</button>':''}</td>
+        <td class="mono">${f.cnpj||'—'}</td>
+        <td>${f.contato||'—'}</td>
+        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-fornecedor" data-id="${f.id}">Editar</button>`:''}</td>
       </tr>`).join('')}</tbody>`;
   if(!podeEditar) return;
-  tabela.querySelectorAll('.botao-salvar-fornecedor').forEach(botao=>{
-    botao.addEventListener('click', async (ev)=>{
-      const linha = ev.target.closest('tr');
-      await api('atualizarFornecedor', {
-        id: linha.dataset.id, nome: linha.querySelector('td').textContent,
-        cnpj: linha.querySelector('.input-forn-cnpj').value, contato: linha.querySelector('.input-forn-contato').value
-      });
-      ev.target.textContent = 'Salvo ✓';
-      setTimeout(()=>ev.target.textContent='Salvar', 1800);
+  tabela.querySelectorAll('.botao-editar-fornecedor').forEach(botao=>{
+    botao.addEventListener('click', ()=>{
+      const fornecedor = estoqueCacheFornecedores.find(f=>f.id===botao.dataset.id);
+      if(fornecedor) abrirModalFornecedor(fornecedor);
     });
   });
+}
+
+
+/* ---------------------------------------------------------------------
+   MODAL FORNECEDOR — criar/editar
+--------------------------------------------------------------------- */
+let fornecedorEmEdicaoId = null;
+let modalFornecedorPronto = false;
+function prepararModalFornecedor(){
+  if(modalFornecedorPronto) return;
+  modalFornecedorPronto = true;
+  document.getElementById('botao-cancelar-modal-fornecedor').addEventListener('click', fecharModalFornecedor);
+  document.getElementById('sobreposicao-modal-fornecedor').addEventListener('click', (ev)=>{
+    if(ev.target.id==='sobreposicao-modal-fornecedor') fecharModalFornecedor();
+  });
+  document.getElementById('form-modal-fornecedor').addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    const nome = document.getElementById('modal-fornecedor-nome').value.trim();
+    if(!nome){ alert('Preencha o nome do fornecedor.'); return; }
+    const botao = ev.target.querySelector('button[type="submit"]');
+    const rotuloOriginal = botao.textContent;
+    botao.disabled = true; botao.textContent = 'Salvando...';
+    const dadosFornecedor = {
+      nome, cnpj: document.getElementById('modal-fornecedor-cnpj').value,
+      contato: document.getElementById('modal-fornecedor-contato').value
+    };
+    const resp = fornecedorEmEdicaoId
+      ? await api('atualizarFornecedor', Object.assign({id: fornecedorEmEdicaoId}, dadosFornecedor))
+      : await api('criarFornecedor', dadosFornecedor);
+    botao.disabled = false; botao.textContent = rotuloOriginal;
+    if(!resp.ok){ alert(resp.erro || 'Não foi possível salvar.'); return; }
+    fecharModalFornecedor();
+    await carregarFornecedoresEstoque();
+    renderizarFornecedores();
+  });
+}
+function abrirModalFornecedor(fornecedor){
+  prepararModalFornecedor();
+  fornecedorEmEdicaoId = fornecedor ? fornecedor.id : null;
+  document.getElementById('titulo-modal-fornecedor').textContent = fornecedor ? 'Editar fornecedor' : 'Novo fornecedor';
+  document.getElementById('modal-fornecedor-nome').value = fornecedor ? fornecedor.nome : '';
+  document.getElementById('modal-fornecedor-cnpj').value = fornecedor ? (fornecedor.cnpj||'') : '';
+  document.getElementById('modal-fornecedor-contato').value = fornecedor ? (fornecedor.contato||'') : '';
+  document.getElementById('sobreposicao-modal-fornecedor').classList.add('aberta');
+}
+function fecharModalFornecedor(){
+  document.getElementById('sobreposicao-modal-fornecedor').classList.remove('aberta');
+  fornecedorEmEdicaoId = null;
+}
+
+
+/* ---------------------------------------------------------------------
+   MODAL MATERIAL — criar/editar
+--------------------------------------------------------------------- */
+let materialEmEdicaoId = null;
+let modalMaterialPronto = false;
+function prepararModalMaterial(){
+  if(modalMaterialPronto) return;
+  modalMaterialPronto = true;
+  document.getElementById('botao-cancelar-modal-material').addEventListener('click', fecharModalMaterial);
+  document.getElementById('sobreposicao-modal-material').addEventListener('click', (ev)=>{
+    if(ev.target.id==='sobreposicao-modal-material') fecharModalMaterial();
+  });
+  document.getElementById('form-modal-material').addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    const nome = document.getElementById('modal-material-nome').value.trim();
+    if(!nome){ alert('Preencha o nome do material.'); return; }
+    const botao = ev.target.querySelector('button[type="submit"]');
+    const rotuloOriginal = botao.textContent;
+    botao.disabled = true; botao.textContent = 'Salvando...';
+    const dadosMaterial = {
+      nome, categoria: document.getElementById('modal-material-categoria').value,
+      unidade: document.getElementById('modal-material-unidade').value || 'unidade',
+      estoque_minimo: document.getElementById('modal-material-estoque-minimo').value,
+      ativo: document.getElementById('modal-material-ativo').checked
+    };
+    const resp = materialEmEdicaoId
+      ? await api('atualizarMaterial', Object.assign({id: materialEmEdicaoId}, dadosMaterial))
+      : await api('criarMaterial', dadosMaterial);
+    botao.disabled = false; botao.textContent = rotuloOriginal;
+    if(!resp.ok){ alert(resp.erro || 'Não foi possível salvar.'); return; }
+    fecharModalMaterial();
+    await carregarMateriaisEstoque();
+    renderizarCatalogoMateriais();
+  });
+}
+function abrirModalMaterial(material){
+  prepararModalMaterial();
+  materialEmEdicaoId = material ? material.id : null;
+  document.getElementById('titulo-modal-material').textContent = material ? 'Editar material' : 'Novo material';
+  document.getElementById('modal-material-nome').value = material ? material.nome : '';
+  document.getElementById('modal-material-categoria').value = material ? (material.categoria||'') : '';
+  document.getElementById('modal-material-unidade').value = material ? (material.unidade||'unidade') : 'unidade';
+  document.getElementById('modal-material-estoque-minimo').value = material ? (material.estoque_minimo||0) : '';
+  document.getElementById('modal-material-ativo').checked = material ? material.ativo!==false : true;
+  document.getElementById('sobreposicao-modal-material').classList.add('aberta');
+}
+function fecharModalMaterial(){
+  document.getElementById('sobreposicao-modal-material').classList.remove('aberta');
+  materialEmEdicaoId = null;
 }
 
 
