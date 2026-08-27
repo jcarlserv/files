@@ -153,6 +153,55 @@ document.getElementById('form-lancamento').addEventListener('submit', async (ev)
 });
 
 
+// Sub-nav da aba Lançamento (Lançamentos / Cadastro de Clientes / Cadastro
+// de Profissionais) — mesmo padrão das outras abas em grupo. Cadastro de
+// Clientes/Profissionais seguem a MESMA permissão que já usavam quando
+// moravam em Configurações → Cadastros (ver_parametros_cadastros/
+// editar_parametros_cadastros) — só mudou de endereço, não de quem pode
+// mexer.
+function prepararSubNavLancamento(){
+  const podeVerForm = temPermissao('ver_lancamento');
+  const podeVerCadastros = temPermissaoParametro('ver_parametros_cadastros', 'ver_configuracoes');
+  const visibilidade = {
+    'lancamento-form': podeVerForm,
+    'lancamento-pacientes': podeVerCadastros,
+    'lancamento-profissionais': podeVerCadastros
+  };
+  const rotulos = {'lancamento-form':'Lançamentos','lancamento-pacientes':'Cadastro de Clientes','lancamento-profissionais':'Cadastro de Profissionais'};
+  const disponiveis = Object.keys(visibilidade).filter(id=>visibilidade[id]);
+  const nav = document.getElementById('sub-nav-lancamento');
+  if(!disponiveis.includes(estado.subAbaLancamento)) estado.subAbaLancamento = disponiveis[0] || null;
+  nav.innerHTML = disponiveis.map(id=>`<div class="sub-aba${id===estado.subAbaLancamento?' ativa':''}" data-sub="${id}">${rotulos[id]}</div>`).join('');
+  nav.querySelectorAll('.sub-aba').forEach(el=>{
+    el.addEventListener('click', ()=> trocarSubAbaLancamento(el.dataset.sub));
+  });
+  Object.keys(visibilidade).forEach(id=>{
+    document.getElementById(id).classList.toggle('ativa', id===estado.subAbaLancamento);
+  });
+}
+
+function trocarSubAbaLancamento(subId){
+  estado.subAbaLancamento = subId;
+  document.querySelectorAll('#sub-nav-lancamento .sub-aba').forEach(el=>el.classList.toggle('ativa', el.dataset.sub===subId));
+  ['lancamento-form','lancamento-pacientes','lancamento-profissionais'].forEach(id=>{
+    document.getElementById(id).classList.toggle('ativa', id===subId);
+  });
+  atualizarSubAbaLancamentoAtiva();
+}
+
+async function atualizarSubAbaLancamentoAtiva(){
+  const podeEditarCadastros = temPermissaoParametro('editar_parametros_cadastros', 'editar_configuracoes');
+  if(estado.subAbaLancamento==='lancamento-form') await atualizarMeusLancamentos();
+  if(estado.subAbaLancamento==='lancamento-pacientes') prepararCadastroPacientes(podeEditarCadastros);
+  if(estado.subAbaLancamento==='lancamento-profissionais') await carregarCadastroProfissionais(podeEditarCadastros);
+}
+
+async function atualizarAbaLancamento(){
+  prepararSubNavLancamento();
+  await atualizarSubAbaLancamentoAtiva();
+}
+
+
 async function atualizarMeusLancamentos(){
   const filtro = estado.papel==='profissional' ? {prof: estado.nomeProfissional} : {};
   const resp = await api('listarProducao', Object.assign({}, filtro, {limite:15}));

@@ -108,7 +108,7 @@ async function atualizarConfiguracoes(){
   cartaoPermissoes.style.display = estado.papel==='gerente' ? '' : 'none';
   if(estado.papel==='gerente') await carregarPermissoes();
 
-  ['cartao-profissionais-andares','cartao-profissionais-procedimentos','cartao-profissionais-exames','cartao-atendentes-profissionais','cartao-campos-travados','cartao-cadastro-profissionais','cartao-cadastro-pacientes']
+  ['cartao-profissionais-andares','cartao-profissionais-procedimentos','cartao-profissionais-exames','cartao-atendentes-profissionais','cartao-campos-travados']
     .forEach(id => document.getElementById(id).style.display = podeVerCadastros ? '' : 'none');
   if(podeVerCadastros){
     await carregarProfissionaisAndares();
@@ -116,8 +116,6 @@ async function atualizarConfiguracoes(){
     await carregarProfissionaisExames();
     await carregarAtendentesProfissionais();
     renderizarCamposTravados(podeEditarCadastros);
-    await carregarCadastroProfissionais(podeEditarCadastros);
-    prepararCadastroPacientes(podeEditarCadastros);
   }
 
   const cartaoPlanoContas = document.getElementById('cartao-plano-contas-admin');

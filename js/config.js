@@ -773,6 +773,18 @@
    v6.20.1 — Ajuste em Estoque, a pedido do usuário: sub-aba "Materiais"
             virou "Cadastro"; dentro dela, "Fornecedores" agora vem antes
             de "Catálogo de materiais" (ordem invertida).
+   v6.21.0 — Cadastro de Pacientes e Cadastro de Profissionais mudaram de
+            endereço, a pedido do usuário: saíram de Configurações →
+            Cadastros e foram pra dentro da própria aba Lançamento, que
+            agora é um grupo com 3 sub-abas — Lançamentos | Cadastro de
+            Clientes | Cadastro de Profissionais (mesma lógica de
+            sub-navegação já usada em Verificação/Dashboard/Financeiro/
+            Estoque). Permissão continua a mesma de antes
+            (ver_parametros_cadastros/editar_parametros_cadastros) — só
+            mudou de tela, não de quem pode acessar.
+            Testado: as 3 sub-abas aparecem, os dois cadastros carregam
+            certinho no novo endereço, e Configurações continua
+            funcionando normal sem eles.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

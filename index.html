@@ -113,24 +113,67 @@
         </div>
         <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
       </div>
-      <div class="cartao">
-        <h3>Novo registro</h3>
-        <form id="form-lancamento">
-          <div class="grade-form" id="grade-lancamento"></div>
-          <div style="margin-top:20px;display:flex;gap:10px;">
-            <button type="submit" class="botao">Salvar atendimento</button>
-            <span id="confirmacao-lancamento" style="align-self:center;color:var(--teal-700);font-size:13.5px;font-weight:600;"></span>
-          </div>
-        </form>
+
+      <div class="sub-nav" id="sub-nav-lancamento">
+        <div class="sub-aba ativa" data-sub="lancamento-form">Lançamentos</div>
+        <div class="sub-aba" data-sub="lancamento-pacientes">Cadastro de Clientes</div>
+        <div class="sub-aba" data-sub="lancamento-profissionais">Cadastro de Profissionais</div>
       </div>
 
-
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <h3 style="margin:0;">Meus últimos lançamentos</h3>
+      <!-- ===== LANÇAMENTOS ===== -->
+      <div class="sub-painel ativa" id="lancamento-form">
+        <div class="cartao">
+          <h3>Novo registro</h3>
+          <form id="form-lancamento">
+            <div class="grade-form" id="grade-lancamento"></div>
+            <div style="margin-top:20px;display:flex;gap:10px;">
+              <button type="submit" class="botao">Salvar atendimento</button>
+              <span id="confirmacao-lancamento" style="align-self:center;color:var(--teal-700);font-size:13.5px;font-weight:600;"></span>
+            </div>
+          </form>
         </div>
-        <div class="tabela-scroll">
-          <table id="tabela-meus-lancamentos"></table>
+
+
+        <div class="cartao">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="margin:0;">Meus últimos lançamentos</h3>
+          </div>
+          <div class="tabela-scroll">
+            <table id="tabela-meus-lancamentos"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CADASTRO DE CLIENTES (Pacientes) ===== -->
+      <div class="sub-painel" id="lancamento-pacientes">
+        <div class="cartao" id="cartao-cadastro-pacientes" style="max-width:100%;">
+          <h3>Cadastro de Pacientes</h3>
+          <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+            Busque pelo nome pra ver ou completar o cadastro (WhatsApp, endereço). Os pacientes já foram
+            gerados a partir do histórico de lançamentos.
+          </p>
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+            <input type="text" id="busca-cadastro-pacientes" placeholder="Buscar paciente por nome..." style="flex:1;min-width:220px;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;">
+            <button class="botao secundario" id="botao-novo-paciente-cadastro">+ Novo paciente</button>
+          </div>
+          <div class="tabela-scroll">
+            <table id="tabela-cadastro-pacientes"></table>
+          </div>
+          <p id="aviso-cadastro-pacientes" style="margin:12px 0 0;color:var(--ink-400);font-size:12px;"></p>
+        </div>
+      </div>
+
+      <!-- ===== CADASTRO DE PROFISSIONAIS ===== -->
+      <div class="sub-painel" id="lancamento-profissionais">
+        <div class="cartao" id="cartao-cadastro-profissionais" style="max-width:100%;">
+          <h3>Cadastro de Profissionais</h3>
+          <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+            Um registro por profissional, gerado a partir dos nomes já usados nos lançamentos — telefone,
+            registro profissional e especialidade são complementares, preencha quando tiver a informação.
+          </p>
+          <div class="tabela-scroll">
+            <table id="tabela-cadastro-profissionais"></table>
+          </div>
         </div>
       </div>
     </section>
@@ -890,35 +933,6 @@
             </div>
 
 
-            <div class="cartao" id="cartao-cadastro-profissionais" style="max-width:100%;">
-              <h3>Cadastro de Profissionais</h3>
-              <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-                Um registro por profissional, gerado a partir dos nomes já usados nos lançamentos — telefone,
-                registro profissional e especialidade são complementares, preencha quando tiver a informação.
-              </p>
-              <div class="tabela-scroll">
-                <table id="tabela-cadastro-profissionais"></table>
-              </div>
-            </div>
-
-
-            <div class="cartao" id="cartao-cadastro-pacientes" style="max-width:100%;">
-              <h3>Cadastro de Pacientes</h3>
-              <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-                Busque pelo nome pra ver ou completar o cadastro (WhatsApp, endereço). Os pacientes já foram
-                gerados a partir do histórico de lançamentos.
-              </p>
-              <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-                <input type="text" id="busca-cadastro-pacientes" placeholder="Buscar paciente por nome..." style="flex:1;min-width:220px;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;">
-                <button class="botao secundario" id="botao-novo-paciente-cadastro">+ Novo paciente</button>
-              </div>
-              <div class="tabela-scroll">
-                <table id="tabela-cadastro-pacientes"></table>
-              </div>
-              <p id="aviso-cadastro-pacientes" style="margin:12px 0 0;color:var(--ink-400);font-size:12px;"></p>
-            </div>
-
-
             <div class="cartao" style="max-width:820px;">
               <h3>Importar produção em massa (CSV)</h3>
               <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
@@ -1053,7 +1067,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.20.1</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.21.0</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
