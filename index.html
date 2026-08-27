@@ -1067,7 +1067,7 @@
     </section>
   </main>
   <footer class="rodape-sistema">
-    <span>ProdClin <b id="versao-sistema">v6.21.0</b></span>
+    <span>ProdClin <b id="versao-sistema">v6.21.1</b></span>
     <span class="separador-rodape">•</span>
     <span>Desenvolvido por <b>DSP Group</b></span>
   </footer>
@@ -1084,6 +1084,25 @@
         <button type="button" class="botao perigo" id="botao-excluir-modal" style="margin-right:auto;">Excluir</button>
         <button type="button" class="botao sutil" id="botao-cancelar-modal">Cancelar</button>
         <button type="submit" class="botao">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ===================== MODAL PACIENTE (novo/editar) ===================== -->
+<div class="sobreposicao" id="sobreposicao-modal-paciente">
+  <div class="modal">
+    <h3 id="titulo-modal-paciente">Novo paciente</h3>
+    <form id="form-modal-paciente">
+      <div class="grade-form">
+        <div class="campo" style="grid-column:1/-1;"><label>Nome completo *</label><input type="text" id="modal-paciente-nome" required></div>
+        <div class="campo"><label>WhatsApp</label><input type="text" id="modal-paciente-whatsapp" placeholder="(00) 00000-0000"></div>
+        <div class="campo"><label>Endereço</label><input type="text" id="modal-paciente-endereco"></div>
+      </div>
+      <div class="modal-acoes">
+        <button type="button" class="botao sutil" id="botao-cancelar-modal-paciente">Cancelar</button>
+        <button type="submit" class="botao">Salvar paciente</button>
       </div>
     </form>
   </div>

@@ -1057,11 +1057,12 @@ async function carregarCadastroProfissionais(podeEditar){
 /* =====================================================================
    CADASTRO DE PACIENTES — ~5.000 registros, então funciona por BUSCA (não
    lista tudo de cara). Digita o nome, mostra até 30 resultados, clica em
-   "Editar" abre os campos WhatsApp/Endereço na própria linha. Também dá
-   pra criar um paciente novo direto por aqui (fora do fluxo de
-   Lançamento), pelo botão "+ Novo paciente".
+   "Editar" abre um modal (igual ao de editar atendimento) com Nome/WhatsApp/
+   Endereço. "+ Novo paciente" abre o mesmo modal, vazio.
 ===================================================================== */
 let cadastroPacientesPronto = false;
+let pacienteEmEdicaoId = null; // null = criando um novo; senão, id de quem está sendo editado
+
 function prepararCadastroPacientes(podeEditar){
   document.getElementById('aviso-cadastro-pacientes').textContent =
     'Digite pelo menos 2 letras do nome pra buscar (mostra até 30 resultados por vez).';
@@ -1082,14 +1083,45 @@ function prepararCadastroPacientes(podeEditar){
     timeoutBusca = setTimeout(()=>buscarEExibirPacientes(termo), 350); // espera parar de digitar
   });
 
-  document.getElementById('botao-novo-paciente-cadastro').addEventListener('click', async ()=>{
-    const nome = prompt('Nome completo do novo paciente:');
-    if(!nome || !nome.trim()) return;
-    const resp = await api('criarPaciente', {nome: nome.trim()});
-    if(!resp.ok){ alert(resp.erro || 'Não foi possível criar.'); return; }
-    document.getElementById('busca-cadastro-pacientes').value = nome.trim();
-    buscarEExibirPacientes(nome.trim());
+  document.getElementById('botao-novo-paciente-cadastro').addEventListener('click', ()=>abrirModalPaciente(null));
+
+  document.getElementById('botao-cancelar-modal-paciente').addEventListener('click', fecharModalPaciente);
+  document.getElementById('sobreposicao-modal-paciente').addEventListener('click', (ev)=>{
+    if(ev.target.id==='sobreposicao-modal-paciente') fecharModalPaciente();
   });
+  document.getElementById('form-modal-paciente').addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    const nome = document.getElementById('modal-paciente-nome').value.trim();
+    if(!nome){ alert('Preencha o nome do paciente.'); return; }
+    const botao = ev.target.querySelector('button[type="submit"]');
+    const rotuloOriginal = botao.textContent;
+    botao.disabled = true; botao.textContent = 'Salvando...';
+    const dadosPaciente = {
+      nome, whatsapp: document.getElementById('modal-paciente-whatsapp').value,
+      endereco: document.getElementById('modal-paciente-endereco').value
+    };
+    const resp = pacienteEmEdicaoId
+      ? await api('atualizarPaciente', Object.assign({id: pacienteEmEdicaoId}, dadosPaciente))
+      : await api('criarPaciente', dadosPaciente);
+    botao.disabled = false; botao.textContent = rotuloOriginal;
+    if(!resp.ok){ alert(resp.erro || 'Não foi possível salvar.'); return; }
+    fecharModalPaciente();
+    document.getElementById('busca-cadastro-pacientes').value = nome;
+    buscarEExibirPacientes(nome);
+  });
+}
+
+function abrirModalPaciente(paciente){
+  pacienteEmEdicaoId = paciente ? paciente.id : null;
+  document.getElementById('titulo-modal-paciente').textContent = paciente ? 'Editar paciente' : 'Novo paciente';
+  document.getElementById('modal-paciente-nome').value = paciente ? paciente.nome : '';
+  document.getElementById('modal-paciente-whatsapp').value = paciente ? (paciente.whatsapp||'') : '';
+  document.getElementById('modal-paciente-endereco').value = paciente ? (paciente.endereco||'') : '';
+  document.getElementById('sobreposicao-modal-paciente').classList.add('aberta');
+}
+function fecharModalPaciente(){
+  document.getElementById('sobreposicao-modal-paciente').classList.remove('aberta');
+  pacienteEmEdicaoId = null;
 }
 
 async function buscarEExibirPacientes(termo){
@@ -1102,7 +1134,6 @@ async function buscarEExibirPacientes(termo){
     return;
   }
   const podeEditar = document.getElementById('botao-novo-paciente-cadastro').style.display !== 'none';
-  const desabilitado = podeEditar ? '' : 'disabled';
   const pacientes = resp.pacientes || [];
   aviso.textContent = pacientes.length===30 ? 'Mostrando os 30 primeiros — refine a busca pra achar um específico.' : `${pacientes.length} encontrado${pacientes.length===1?'':'s'}.`;
   tabela.innerHTML = pacientes.length===0 ? '<tr><td class="vazio">Nenhum paciente encontrado com esse nome.</td></tr>' : `
@@ -1110,23 +1141,15 @@ async function buscarEExibirPacientes(termo){
     <tbody>${pacientes.map(p=>`
       <tr data-id="${p.id}">
         <td>${p.nome}</td>
-        <td><input type="text" class="input-paciente-whatsapp" value="${p.whatsapp||''}" ${desabilitado} placeholder="(00) 00000-0000" style="width:150px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td><input type="text" class="input-paciente-endereco" value="${p.endereco||''}" ${desabilitado} style="width:220px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-        <td>${podeEditar?'<button class="botao secundario pequeno botao-salvar-paciente-cadastro">Salvar</button>':''}</td>
+        <td>${p.whatsapp||'—'}</td>
+        <td>${p.endereco||'—'}</td>
+        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-paciente-cadastro" data-id="${p.id}" data-nome="${p.nome.replace(/"/g,'&quot;')}" data-whatsapp="${(p.whatsapp||'').replace(/"/g,'&quot;')}" data-endereco="${(p.endereco||'').replace(/"/g,'&quot;')}">Editar</button>`:''}</td>
       </tr>`).join('')}</tbody>`;
 
   if(!podeEditar) return;
-  tabela.querySelectorAll('.botao-salvar-paciente-cadastro').forEach(botao=>{
-    botao.addEventListener('click', async (ev)=>{
-      const linha = ev.target.closest('tr');
-      const resp2 = await api('atualizarPaciente', {
-        id: linha.dataset.id,
-        nome: linha.querySelector('td').textContent,
-        whatsapp: linha.querySelector('.input-paciente-whatsapp').value,
-        endereco: linha.querySelector('.input-paciente-endereco').value
-      });
-      ev.target.textContent = resp2.ok ? 'Salvo ✓' : 'Erro';
-      setTimeout(()=>ev.target.textContent='Salvar', 1800);
+  tabela.querySelectorAll('.botao-editar-paciente-cadastro').forEach(botao=>{
+    botao.addEventListener('click', ()=>{
+      abrirModalPaciente({id: botao.dataset.id, nome: botao.dataset.nome, whatsapp: botao.dataset.whatsapp, endereco: botao.dataset.endereco});
     });
   });
 }

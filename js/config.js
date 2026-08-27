@@ -785,6 +785,18 @@
             Testado: as 3 sub-abas aparecem, os dois cadastros carregam
             certinho no novo endereço, e Configurações continua
             funcionando normal sem eles.
+   v6.21.1 — Cadastro de Pacientes: o botão "+ Novo paciente" deixou de
+            usar um `prompt()` do navegador — agora abre um modal de
+            verdade (Nome/WhatsApp/Endereço), igual ao já usado pra editar
+            atendimento. "Editar" (que antes deixava os campos editáveis
+            direto na linha da tabela) agora também abre esse mesmo modal,
+            já preenchido. Tabela ficou só de leitura, com o botão
+            "Editar" em cada linha. Modal novo em index.html
+            (#sobreposicao-modal-paciente), lógica em configuracoes.js
+            (abrirModalPaciente/fecharModalPaciente).
+            Testado: abre vazio pra criar, cria de fato, abre preenchido
+            pra editar, salva sem duplicar, e Cancelar fecha sem alterar
+            nada.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
