@@ -163,7 +163,7 @@ document.getElementById('form-lancamento').addEventListener('submit', async (ev)
 function prepararSubNavLancamento(){
   const podeVerForm = temPermissao('ver_lancamento');
   const podeVerPacientes = podeVerCadastroPacientes();
-  const podeVerProfissionais = temPermissaoParametro('ver_parametros_cadastros', 'ver_configuracoes');
+  const podeVerProfissionais = estado.papel==='gerente';
   const visibilidade = {
     'lancamento-form': podeVerForm,
     'lancamento-pacientes': podeVerPacientes,
@@ -194,7 +194,7 @@ function trocarSubAbaLancamento(subId){
 async function atualizarSubAbaLancamentoAtiva(){
   if(estado.subAbaLancamento==='lancamento-form') await atualizarMeusLancamentos();
   if(estado.subAbaLancamento==='lancamento-pacientes') prepararCadastroPacientes(podeEditarCadastroPacientes());
-  if(estado.subAbaLancamento==='lancamento-profissionais') await carregarCadastroProfissionais(temPermissaoParametro('editar_parametros_cadastros', 'editar_configuracoes'));
+  if(estado.subAbaLancamento==='lancamento-profissionais') await carregarCadastroProfissionais(estado.papel==='gerente');
 }
 
 async function atualizarAbaLancamento(){

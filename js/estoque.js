@@ -30,9 +30,10 @@ function prepararSubNavEstoque(){
     'estoque-entrada': podeEditar,
     'estoque-solicitar': podeSolicitar,
     'estoque-dispensar': podeDispensar,
+    'estoque-dispensados': podeSolicitar || podeDispensar,
     'estoque-relatorio': podeEditar || podeDispensar
   };
-  const rotulos = {'estoque-materiais':'Cadastro','estoque-entrada':'Entrada (NF)','estoque-solicitar':'Solicitar','estoque-dispensar':'Dispensar','estoque-relatorio':'Relatório'};
+  const rotulos = {'estoque-materiais':'Cadastro','estoque-entrada':'Entrada (NF)','estoque-solicitar':'Solicitar','estoque-dispensar':'Dispensar','estoque-dispensados':'Dispensados','estoque-relatorio':'Relatório'};
   const disponiveis = Object.keys(visibilidade).filter(id=>visibilidade[id]);
   const nav = document.getElementById('sub-nav-estoque');
   if(!disponiveis.includes(estado.subAbaEstoque)) estado.subAbaEstoque = disponiveis[0] || null;
@@ -48,7 +49,7 @@ function prepararSubNavEstoque(){
 function trocarSubAbaEstoque(subId){
   estado.subAbaEstoque = subId;
   document.querySelectorAll('#sub-nav-estoque .sub-aba').forEach(el=>el.classList.toggle('ativa', el.dataset.sub===subId));
-  ['estoque-materiais','estoque-entrada','estoque-solicitar','estoque-dispensar','estoque-relatorio'].forEach(id=>{
+  ['estoque-materiais','estoque-entrada','estoque-solicitar','estoque-dispensar','estoque-dispensados','estoque-relatorio'].forEach(id=>{
     document.getElementById(id).classList.toggle('ativa', id===subId);
   });
   atualizarSubAbaEstoqueAtiva();
@@ -58,6 +59,7 @@ async function atualizarSubAbaEstoqueAtiva(){
   if(estado.subAbaEstoque==='estoque-materiais') renderizarCatalogoMateriais();
   if(estado.subAbaEstoque==='estoque-entrada') prepararEntradaEstoque();
   if(estado.subAbaEstoque==='estoque-solicitar') await prepararSolicitarEstoque();
+  if(estado.subAbaEstoque==='estoque-dispensados') await prepararDispensados();
   if(estado.subAbaEstoque==='estoque-dispensar') await carregarSolicitacoesPendentes();
   if(estado.subAbaEstoque==='estoque-relatorio') await carregarRelatorioEstoque();
 }
@@ -244,6 +246,7 @@ function prepararEntradaEstoque(){
   }
   if(estoqueSubAbaPronta.entrada) return;
   estoqueSubAbaPronta.entrada = true;
+  prepararImportacaoPdfNf();
   document.getElementById('botao-registrar-entrada').addEventListener('click', async ()=>{
     const confirmacao = document.getElementById('confirmacao-entrada-estoque');
     const quantidade = document.getElementById('entrada-quantidade').value;
@@ -417,4 +420,152 @@ async function carregarRelatorioEstoque(){
         <td style="color:${vencido?'var(--danger)':'var(--gold-600)'};">${new Date(l.validade).toLocaleDateString('pt-BR')} ${vencido?'(vencido)':`(${diasRestantes}d)`}</td>
         <td class="mono">${l.quantidade_atual}</td></tr>`;
     }).join('')}</tbody>`;
+}
+
+
+/* ---------------------------------------------------------------------
+   DISPENSADOS — gestão + confirmação de recebimento (só aqui a baixa de
+   estoque acontece de fato, depois que o solicitante confirma).
+--------------------------------------------------------------------- */
+let dispensadosPronto = false;
+async function prepararDispensados(){
+  const selSolicitante = document.getElementById('dispensados-filtro-solicitante');
+  if(selSolicitante.options.length <= 1){
+    selSolicitante.innerHTML = '<option value="">Todos os solicitantes</option>' +
+      [...new Set((await api('listarSolicitacoesMaterial', {status:['dispensado','confirmado']})).solicitacoes.map(s=>s.solicitado_por).filter(Boolean))]
+        .map(u=>`<option value="${u}">${u}</option>`).join('');
+  }
+  await carregarDispensados();
+  if(dispensadosPronto) return;
+  dispensadosPronto = true;
+
+  selSolicitante.addEventListener('change', carregarDispensados);
+  document.getElementById('dispensados-filtro-status').addEventListener('change', carregarDispensados);
+
+  document.getElementById('botao-confirmar-recebimento').addEventListener('click', async ()=>{
+    const marcados = Array.from(document.querySelectorAll('.chk-dispensado-recebido:checked')).map(el=>el.dataset.id);
+    if(marcados.length===0) return;
+    const confirmacao = document.getElementById('confirmacao-dispensados');
+    const observacao = document.getElementById('dispensados-observacao').value;
+    confirmacao.style.color = 'var(--ink-400)'; confirmacao.textContent = 'Confirmando...';
+    let erro = null;
+    for(const id of marcados){
+      const resp = await api('confirmarRecebimentoSolicitacao', {id, confirmado_por: estado.usuario, observacao});
+      if(!resp.ok) erro = resp.erro;
+    }
+    if(erro){ confirmacao.style.color='var(--danger)'; confirmacao.textContent = erro; return; }
+    confirmacao.style.color = 'var(--teal-700)'; confirmacao.textContent = 'Recebimento confirmado ✓ — estoque baixado.';
+    document.getElementById('dispensados-observacao').value = '';
+    await carregarDispensados();
+    setTimeout(()=>{ if(confirmacao.textContent.startsWith('Recebimento')) confirmacao.textContent=''; }, 3000);
+  });
+}
+
+async function carregarDispensados(){
+  const filtroStatus = document.getElementById('dispensados-filtro-status').value;
+  const filtroSolicitante = document.getElementById('dispensados-filtro-solicitante').value;
+  const statusBusca = filtroStatus==='todos' ? ['dispensado','confirmado'] : filtroStatus==='confirmado' ? ['confirmado'] : ['dispensado'];
+  const resp = await api('listarSolicitacoesMaterial', {status: statusBusca, solicitado_por: filtroSolicitante || undefined});
+  const tabela = document.getElementById('tabela-dispensados');
+  const lista = resp.ok ? (resp.solicitacoes||[]) : [];
+
+  // Só pode marcar/confirmar quem solicitou aquele item, ou quem tem
+  // permissão de dispensar (farmácia/gerente pode confirmar em nome de
+  // alguém, se precisar).
+  const podeConfirmarGeral = temPermissao('dispensar_estoque');
+
+  tabela.innerHTML = lista.length===0 ? '<tr><td class="vazio">Nada aqui.</td></tr>' : `
+    <thead><tr><th></th><th>Material</th><th>Qtd.</th><th>Solicitante</th><th>Dispensado em</th><th>Status</th><th>Recebido por / Observação</th></tr></thead>
+    <tbody>${lista.map(s=>{
+      const podeConfirmarEsta = s.status==='dispensado' && (podeConfirmarGeral || s.solicitado_por===estado.usuario);
+      return `<tr data-id="${s.id}">
+        <td>${podeConfirmarEsta?`<input type="checkbox" class="chk-dispensado-recebido" data-id="${s.id}">`:''}</td>
+        <td>${(s.materiais||{}).nome||'—'}</td>
+        <td>${s.quantidade} ${(s.materiais||{}).unidade||''}</td>
+        <td>${s.solicitado_por||'—'}</td>
+        <td>${new Date(s.solicitado_em).toLocaleDateString('pt-BR')}</td>
+        <td>${s.status==='confirmado'?'<span style="color:var(--teal-700);">Confirmado</span>':'<span style="color:var(--gold-600);">Aguardando confirmação</span>'}</td>
+        <td>${s.status==='confirmado'?`${s.confirmado_por||'—'}${s.observacao_recebimento?' — '+s.observacao_recebimento:''}`:'—'}</td>
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  const temCheckboxVisivel = tabela.querySelectorAll('.chk-dispensado-recebido').length > 0;
+  document.getElementById('dispensados-acoes-confirmacao').style.display = temCheckboxVisivel ? 'block' : 'none';
+}
+
+
+/* ---------------------------------------------------------------------
+   IMPORTAÇÃO DE NF EM PDF — extrai o texto (pdf.js), tenta achar CNPJ do
+   fornecedor / Nº da NF / Data por regex, e pré-preenche o formulário.
+   NÃO tenta extrair Material/Quantidade/Lote/Validade automaticamente —
+   cada fornecedor descreve item de um jeito diferente, arriscar isso
+   sozinho geraria erro silencioso de estoque. Texto extraído fica
+   visível pra copiar manualmente o que precisar.
+--------------------------------------------------------------------- */
+function prepararImportacaoPdfNf(){
+  if(typeof pdfjsLib !== 'undefined'){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  document.getElementById('entrada-pdf-arquivo').addEventListener('change', async (ev)=>{
+    const arquivo = ev.target.files[0];
+    const status = document.getElementById('entrada-pdf-status');
+    if(!arquivo) return;
+    if(typeof pdfjsLib === 'undefined'){
+      status.style.color = 'var(--danger)';
+      status.textContent = 'Não consegui carregar o leitor de PDF (sem internet?). Preencha manualmente.';
+      return;
+    }
+    status.style.color = 'var(--ink-400)';
+    status.textContent = 'Lendo PDF...';
+    try{
+      const bytes = await arquivo.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
+      let textoCompleto = '';
+      for(let i=1; i<=pdf.numPages; i++){
+        const pagina = await pdf.getPage(i);
+        const conteudo = await pagina.getTextContent();
+        textoCompleto += conteudo.items.map(it=>it.str).join(' ') + '\n';
+      }
+
+      document.getElementById('entrada-pdf-texto').value = textoCompleto;
+      document.getElementById('entrada-pdf-texto-detalhes').style.display = 'block';
+
+      const achados = [];
+
+      // CNPJ do fornecedor — tenta casar contra o cadastro já existente
+      const matchCnpj = textoCompleto.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
+      if(matchCnpj){
+        const cnpjLimpo = matchCnpj[0].replace(/\D/g,'');
+        const fornecedorAchado = estoqueCacheFornecedores.find(f=>String(f.cnpj||'').replace(/\D/g,'')===cnpjLimpo);
+        if(fornecedorAchado){
+          document.getElementById('entrada-fornecedor').value = fornecedorAchado.id;
+          achados.push(`Fornecedor: ${fornecedorAchado.nome} (por CNPJ)`);
+        } else {
+          achados.push(`CNPJ ${matchCnpj[0]} encontrado, mas nenhum fornecedor cadastrado bate com ele — cadastre ele em Cadastro → Fornecedores primeiro, se for novo.`);
+        }
+      }
+
+      // Número da NF — procura perto de palavras-chave comuns
+      const matchNf = textoCompleto.match(/(?:N[ºO°]?\s*(?:DA\s*)?(?:NOTA|NF-?E?)?\s*[:\-]?\s*)(\d{3,9})/i);
+      if(matchNf){
+        document.getElementById('entrada-nf').value = matchNf[1];
+        achados.push(`Nº da NF: ${matchNf[1]}`);
+      }
+
+      // Data de emissão — primeira data no formato dd/mm/aaaa do documento
+      const matchData = textoCompleto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if(matchData){
+        document.getElementById('entrada-data').value = `${matchData[3]}-${matchData[2]}-${matchData[1]}`;
+        achados.push(`Data: ${matchData[0]}`);
+      }
+
+      status.style.color = achados.length ? 'var(--teal-700)' : 'var(--gold-600)';
+      status.textContent = achados.length
+        ? `Encontrado: ${achados.join(' · ')}. Confira antes de salvar — Material/Lote/Validade/Quantidade continuam manuais.`
+        : 'Não consegui identificar nada automaticamente neste PDF — preencha manualmente (o texto extraído está disponível abaixo, se ajudar a copiar).';
+    }catch(e){
+      status.style.color = 'var(--danger)';
+      status.textContent = 'Não consegui ler esse PDF (pode ser PDF escaneado/imagem, sem texto — nesse caso preencha manualmente).';
+    }
+  });
 }

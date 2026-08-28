@@ -964,6 +964,42 @@
             seleção de paciente preenche os 3 campos de exibição + Convênio/
             Carteirinha, campos de exibição ficam fora do registro salvo, e
             limpar a seleção volta tudo pro estado inicial.
+   v6.29.0 — 2 mudanças a pedido do usuário:
+            (1) Cadastro de Profissionais virou gerente-only FIXO — saiu
+            de "Parâmetros — Cadastros" (que não governa mais essa tela).
+            Ninguém mais consegue liberar isso por Direitos e Privilégios,
+            nem gerente pra outro papel — igual Direitos e Privilégios em
+            si já era.
+            (2) Fluxo de Dispensação virou 2 etapas: farmácia "Dispensa"
+            (reserva do lote FEFO, dispensacoes.status='reservado', SEM
+            baixar estoque) → solicitante confirma recebimento na aba nova
+            "Dispensados" (checkbox por item + observação opcional) → SÓ
+            AÍ a baixa de fato acontece (estoque_lotes.quantidade_atual
+            desconta, dispensacoes.status vira 'confirmado').
+            Aba "Dispensados" (nova, Estoque): filtros por solicitante e
+            status (Aguardando confirmação/Confirmados/Todos). Confirmar é
+            liberado pra quem solicitou aquele item (solicitado_por bate
+            com o usuário logado) OU quem tem dispensar_estoque
+            (farmácia/gerente pode confirmar em nome de alguém).
+            Cálculo de "estoque insuficiente" na hora de Dispensar agora
+            desconta reservas já feitas mas ainda não confirmadas (evita
+            duas solicitações concorrentes estourarem o mesmo lote).
+            Requer SQL: sql/09_confirmacao_recebimento.sql (novo status
+            'confirmado' em solicitacoes_material, colunas
+            confirmado_por/confirmado_em/observacao_recebimento; novo
+            status em dispensacoes: 'reservado'/'confirmado').
+            Testado: trava de Profissionais não cede nem com override
+            explícito; dispensar reserva sem baixar; confirmar baixa
+            exatamente a quantidade certa; não deixa confirmar 2x.
+   v6.29.1 — Importação de NF em PDF (Estoque → Entrada). Extrai texto via
+            pdf.js (CDN), tenta achar CNPJ (casa contra fornecedor já
+            cadastrado), Nº da NF e Data — pré-preenche esses 3 campos.
+            Material/Lote/Validade/Quantidade continuam manuais, de
+            propósito. Texto extraído fica visível pra copiar o que
+            precisar. PDF escaneado (sem texto) cai no erro tratado,
+            avisa pra preencher manual.
+            Testado: regex de CNPJ/NF/Data contra texto de exemplo — os 3
+            bateram certo.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

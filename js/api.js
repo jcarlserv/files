@@ -412,7 +412,9 @@ async function supabaseApi(acao, dados) {
     }
     case 'listarSolicitacoesMaterial': {
       let query = supabaseClient.from('solicitacoes_material').select('*, materiais(nome, unidade), profissionais(nome)').order('solicitado_em', {ascending:false});
-      if(dados.status) query = query.eq('status', dados.status);
+      if(Array.isArray(dados.status)) query = query.in('status', dados.status);
+      else if(dados.status) query = query.eq('status', dados.status);
+      if(dados.solicitado_por) query = query.eq('solicitado_por', dados.solicitado_por);
       const { data, error } = await query;
       if(error) return {ok:false, erro:error.message};
       return {ok:true, solicitacoes: data||[]};
@@ -431,25 +433,35 @@ async function supabaseApi(acao, dados) {
       if(!solicitacao) return {ok:false, erro:'Solicitação não encontrada.'};
       if(solicitacao.status !== 'pendente') return {ok:false, erro:'Essa solicitação já foi resolvida.'};
 
-      const { data: lotes, error: errLotes } = await supabaseClient.from('estoque_lotes')
-        .select('*').eq('material_id', solicitacao.material_id).gt('quantidade_atual', 0)
-        .order('validade', {ascending:true, nullsFirst:false});
+      const [{ data: lotes, error: errLotes }, { data: reservados, error: errRes }] = await Promise.all([
+        supabaseClient.from('estoque_lotes').select('*').eq('material_id', solicitacao.material_id).gt('quantidade_atual', 0)
+          .order('validade', {ascending:true, nullsFirst:false}),
+        supabaseClient.from('dispensacoes').select('lote_id, quantidade').eq('status', 'reservado')
+      ]);
       if(errLotes) return {ok:false, erro:errLotes.message};
+      if(errRes) return {ok:false, erro:errRes.message};
 
-      const totalDisponivel = (lotes||[]).reduce((s,l)=>s+Number(l.quantidade_atual), 0);
+      const reservadoPorLote = {};
+      (reservados||[]).forEach(r=>{ reservadoPorLote[r.lote_id] = (reservadoPorLote[r.lote_id]||0) + Number(r.quantidade); });
+      const lotesComDisponivel = (lotes||[]).map(l=>({
+        ...l, disponivel: Number(l.quantidade_atual) - (reservadoPorLote[l.id]||0)
+      })).filter(l=>l.disponivel > 0);
+
+      const totalDisponivel = lotesComDisponivel.reduce((s,l)=>s+l.disponivel, 0);
       if(totalDisponivel < Number(solicitacao.quantidade)){
         return {ok:false, erro:`Estoque insuficiente — disponível: ${totalDisponivel}, solicitado: ${solicitacao.quantidade}.`};
       }
 
+      // NÃO baixa o estoque aqui — só reserva (dispensacoes com status
+      // 'reservado'). A baixa de verdade só acontece quando o solicitante
+      // confirma o recebimento (ver 'confirmarRecebimentoSolicitacao').
       let restante = Number(solicitacao.quantidade);
-      for(const lote of lotes){
+      for(const lote of lotesComDisponivel){
         if(restante<=0) break;
-        const usar = Math.min(restante, Number(lote.quantidade_atual));
-        const { error: errBaixa } = await supabaseClient.from('estoque_lotes')
-          .update({quantidade_atual: Number(lote.quantidade_atual) - usar}).eq('id', lote.id);
-        if(errBaixa) return {ok:false, erro:errBaixa.message};
+        const usar = Math.min(restante, lote.disponivel);
         const { error: errDisp } = await supabaseClient.from('dispensacoes').insert({
-          solicitacao_id: dados.id, lote_id: lote.id, quantidade: usar, dispensado_por: dados.dispensado_por||null
+          solicitacao_id: dados.id, lote_id: lote.id, quantidade: usar,
+          dispensado_por: dados.dispensado_por||null, status: 'reservado'
         });
         if(errDisp) return {ok:false, erro:errDisp.message};
         restante -= usar;
@@ -457,6 +469,36 @@ async function supabaseApi(acao, dados) {
 
       const { error: errStatus } = await supabaseClient.from('solicitacoes_material')
         .update({status:'dispensado'}).eq('id', dados.id);
+      return errStatus ? {ok:false, erro:errStatus.message} : {ok:true};
+    }
+
+    // Solicitante confirma que recebeu — SÓ AQUI a baixa de estoque
+    // acontece de fato. Marca as reservas como 'confirmado' e desconta de
+    // estoque_lotes.quantidade_atual.
+    case 'confirmarRecebimentoSolicitacao': {
+      const { data: solicitacao, error: errSol } = await supabaseClient.from('solicitacoes_material')
+        .select('*').eq('id', dados.id).maybeSingle();
+      if(errSol) return {ok:false, erro:errSol.message};
+      if(!solicitacao) return {ok:false, erro:'Solicitação não encontrada.'};
+      if(solicitacao.status !== 'dispensado') return {ok:false, erro:'Essa solicitação não está aguardando confirmação.'};
+
+      const { data: reservas, error: errRes } = await supabaseClient.from('dispensacoes')
+        .select('*').eq('solicitacao_id', dados.id).eq('status', 'reservado');
+      if(errRes) return {ok:false, erro:errRes.message};
+
+      for(const reserva of (reservas||[])){
+        const { data: lote } = await supabaseClient.from('estoque_lotes').select('quantidade_atual').eq('id', reserva.lote_id).maybeSingle();
+        if(!lote) continue;
+        const { error: errBaixa } = await supabaseClient.from('estoque_lotes')
+          .update({quantidade_atual: Number(lote.quantidade_atual) - Number(reserva.quantidade)}).eq('id', reserva.lote_id);
+        if(errBaixa) return {ok:false, erro:errBaixa.message};
+        await supabaseClient.from('dispensacoes').update({status:'confirmado'}).eq('id', reserva.id);
+      }
+
+      const { error: errStatus } = await supabaseClient.from('solicitacoes_material').update({
+        status:'confirmado', confirmado_por: dados.confirmado_por||null,
+        confirmado_em: new Date().toISOString(), observacao_recebimento: dados.observacao||null
+      }).eq('id', dados.id);
       return errStatus ? {ok:false, erro:errStatus.message} : {ok:true};
     }
 
@@ -1034,7 +1076,9 @@ function mockApi(acao, dados) {
     }
     case 'listarSolicitacoesMaterial': {
       let lista = demo.solicitacoesMaterial.slice();
-      if(dados.status) lista = lista.filter(s=>s.status===dados.status);
+      if(Array.isArray(dados.status)) lista = lista.filter(s=>dados.status.includes(s.status));
+      else if(dados.status) lista = lista.filter(s=>s.status===dados.status);
+      if(dados.solicitado_por) lista = lista.filter(s=>s.solicitado_por===dados.solicitado_por);
       lista = lista.map(s=>({
         ...s,
         materiais: {nome: (demo.materiais.find(m=>m.id===s.material_id)||{}).nome, unidade: (demo.materiais.find(m=>m.id===s.material_id)||{}).unidade},
@@ -1052,22 +1096,41 @@ function mockApi(acao, dados) {
       const s = demo.solicitacoesMaterial.find(x=>x.id===dados.id);
       if(!s) return {ok:false, erro:'Solicitação não encontrada.'};
       if(s.status!=='pendente') return {ok:false, erro:'Essa solicitação já foi resolvida.'};
-      const lotes = demo.estoqueLotes.filter(l=>l.material_id===s.material_id && l.quantidade_atual>0)
+      const reservadoPorLote = {};
+      demo.dispensacoes.filter(d=>d.status==='reservado').forEach(d=>{ reservadoPorLote[d.lote_id] = (reservadoPorLote[d.lote_id]||0) + Number(d.quantidade); });
+      const lotes = demo.estoqueLotes.filter(l=>l.material_id===s.material_id)
+        .map(l=>({...l, disponivel: Number(l.quantidade_atual) - (reservadoPorLote[l.id]||0)}))
+        .filter(l=>l.disponivel>0)
         .sort((a,b)=>{
           if(!a.validade) return 1; if(!b.validade) return -1;
           return new Date(a.validade)-new Date(b.validade);
         });
-      const totalDisponivel = lotes.reduce((sm,l)=>sm+Number(l.quantidade_atual),0);
+      const totalDisponivel = lotes.reduce((sm,l)=>sm+l.disponivel,0);
       if(totalDisponivel < Number(s.quantidade)) return {ok:false, erro:`Estoque insuficiente — disponível: ${totalDisponivel}, solicitado: ${s.quantidade}.`};
+      // Não baixa aqui — só reserva. Baixa real ocorre em confirmarRecebimentoSolicitacao.
       let restante = Number(s.quantidade);
       for(const lote of lotes){
         if(restante<=0) break;
-        const usar = Math.min(restante, Number(lote.quantidade_atual));
-        lote.quantidade_atual -= usar;
-        demo.dispensacoes.push({id:'demo-disp-'+Date.now()+Math.random(), solicitacao_id:s.id, lote_id:lote.id, quantidade:usar, dispensado_por:dados.dispensado_por||null, dispensado_em:new Date().toISOString()});
+        const usar = Math.min(restante, lote.disponivel);
+        demo.dispensacoes.push({id:'demo-disp-'+Date.now()+Math.random(), solicitacao_id:s.id, lote_id:lote.id, quantidade:usar, dispensado_por:dados.dispensado_por||null, dispensado_em:new Date().toISOString(), status:'reservado'});
         restante -= usar;
       }
       s.status = 'dispensado';
+      return {ok:true};
+    }
+    case 'confirmarRecebimentoSolicitacao': {
+      const s = demo.solicitacoesMaterial.find(x=>x.id===dados.id);
+      if(!s) return {ok:false, erro:'Solicitação não encontrada.'};
+      if(s.status!=='dispensado') return {ok:false, erro:'Essa solicitação não está aguardando confirmação.'};
+      demo.dispensacoes.filter(d=>d.solicitacao_id===s.id && d.status==='reservado').forEach(d=>{
+        const lote = demo.estoqueLotes.find(l=>l.id===d.lote_id);
+        if(lote) lote.quantidade_atual -= Number(d.quantidade);
+        d.status = 'confirmado';
+      });
+      s.status = 'confirmado';
+      s.confirmado_por = dados.confirmado_por||null;
+      s.confirmado_em = new Date().toISOString();
+      s.observacao_recebimento = dados.observacao||null;
       return {ok:true};
     }
 
