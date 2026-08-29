@@ -590,61 +590,168 @@ async function extrairTextoPdfComLinhas(pdf){
   for(let i=1; i<=pdf.numPages; i++){
     const pagina = await pdf.getPage(i);
     const conteudo = await pagina.getTextContent();
-    let ultimoY = null;
-    let linhaAtual = '';
+
+    // Agrupa os trechos por posição vertical (y) em vez de assumir que o
+    // pdf.js devolve tudo na ordem de leitura — em DANFE com colunas isso
+    // não é verdade. Tolerância de 2.5pt cobre variação de baseline dentro
+    // da mesma linha sem fundir linhas vizinhas.
+    const linhas = [];
     conteudo.items.forEach(item=>{
+      if(!item.str || !item.str.trim()) return;
       const y = item.transform[5];
-      if(ultimoY !== null && Math.abs(y - ultimoY) > 2){
-        textoCompleto += linhaAtual.trim() + '\n';
-        linhaAtual = '';
-      }
-      linhaAtual += item.str + ' ';
-      ultimoY = y;
+      const x = item.transform[4];
+      let linha = linhas.find(l => Math.abs(l.y - y) <= 2.5);
+      if(!linha){ linha = {y, itens: []}; linhas.push(linha); }
+      linha.itens.push({x, str: item.str});
     });
-    textoCompleto += linhaAtual.trim() + '\n';
+
+    linhas.sort((a,b)=> b.y - a.y);                       // topo → base
+    linhas.forEach(linha=>{
+      linha.itens.sort((a,b)=> a.x - b.x);                // esquerda → direita
+      textoCompleto += linha.itens.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim() + '\n';
+    });
   }
   return textoCompleto;
 }
 
 
+/* Parser de DANFE independente de layout ----------------------------------
+   Emissores diferentes montam a tabela de produtos em ordens diferentes e
+   nem sempre imprimem os mesmos rótulos ("IDENTIFICAÇÃO DO EMITENTE",
+   "DADOS DOS PRODUTOS / SERVIÇOS"...). Por isso a extração aqui não procura
+   textos fixos: procura ESTRUTURA — NCM (8 dígitos), CFOP (4 dígitos),
+   unidade (sigla) e valores decimais na mesma linha. Isso vale para
+   qualquer DANFE de texto (não serve para PDF escaneado/imagem).
+------------------------------------------------------------------------- */
+
+const NF_UNIDADES = ['UN','UND','UNID','PC','PÇ','CX','FR','FRC','AMP','KG','G','MG','ML','L','MT','M','M2','M3','PT','PAR','RL','TB','KIT','SC','GAL','DZ','LT','CT','BL','FD','JG','RS','SER'];
+
+function nfEhNumeroDecimal(token){
+  return /^\d{1,3}(\.\d{3})*(,\d+)?$/.test(token) || /^\d+([.,]\d+)?$/.test(token);
+}
+function nfParaNumero(token){
+  // "1.234,50" → 1234.50 · "1234.50" → 1234.50
+  if(token.includes(',')) return parseFloat(token.replace(/\./g,'').replace(',','.'));
+  return parseFloat(token);
+}
+
 function extrairDadosNfPdf(texto){
   const resultado = {fornecedor: null, numeroNf: null, itens: []};
+  const linhas = texto.split('\n').map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean);
 
-  // Fornecedor: nome (bloco após "IDENTIFICAÇÃO DO EMITENTE", primeira
-  // linha), CNPJ (primeira ocorrência de "CNPJ / CPF" — é sempre a do
-  // emitente, a do destinatário só aparece depois), endereço (linhas
-  // seguintes do mesmo bloco), IE.
-  const blocoEmitente = texto.match(/IDENTIFICAÇÃO DO EMITENTE\s*([\s\S]+?)DANFE/);
+  /* ---------- Fornecedor (emitente) ---------- */
+  // O CNPJ do emitente é sempre o primeiro do documento; o do destinatário
+  // vem depois. Vale com ou sem o rótulo "CNPJ / CPF".
+  const todosCnpj = [...texto.matchAll(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g)].map(m=>m[0]);
+  const cnpjEmitente = todosCnpj[0] || null;
+
+  // Nome: bloco rotulado, se existir; senão a linha mais "cara de razão
+  // social" antes do primeiro CNPJ (letras, tamanho razoável, sem ser
+  // rótulo do formulário).
+  let nome = null, endereco = null;
+  const blocoEmitente = texto.match(/IDENTIFICA[ÇC][ÃA]O DO EMITENTE\s*([\s\S]+?)(?:DANFE|DOCUMENTO AUXILIAR)/i);
   if(blocoEmitente){
-    const linhas = blocoEmitente[1].split('\n').map(l=>l.trim()).filter(Boolean);
+    const ls = blocoEmitente[1].split('\n').map(l=>l.trim()).filter(Boolean);
+    nome = ls[0] || null;
+    endereco = ls.slice(1).join(', ') || null;
+  }
+  if(!nome){
+    const idxCnpj = linhas.findIndex(l => cnpjEmitente && l.includes(cnpjEmitente));
+    const janela = linhas.slice(0, idxCnpj > 0 ? idxCnpj : 12);
+    const ruido = /DANFE|DOCUMENTO AUXILIAR|NOTA FISCAL|ENTRADA|SA[ÍI]DA|CHAVE DE ACESSO|CONSULTA DE AUTENTICIDADE|IDENTIFICA|RECEBEMOS DE|S[ÉE]RIE|FOLHA/i;
+    const candidatas = janela.filter(l => l.length >= 6 && /[A-Za-zÀ-ú]{4,}/.test(l) && !ruido.test(l) && !/^\d/.test(l));
+    nome = candidatas.find(l => /(LTDA|S\.?A\b|ME\b|EIRELI|EPP|COM[EÉ]RCIO|DISTRIBUID|FARMA|IND[UÚ]STRIA)/i.test(l)) || candidatas[0] || null;
+    const idxNome = linhas.indexOf(nome);
+    if(idxNome >= 0){
+      endereco = linhas.slice(idxNome+1, idxNome+4)
+        .filter(l => /(RUA|AV|AVENIDA|ROD|ESTRADA|TRAV|PRA[ÇC]A|CEP|N[ºO°]|BAIRRO|\d{5}-?\d{3})/i.test(l))
+        .join(', ') || null;
+    }
+  }
+
+  const matchIE = texto.match(/INSCRI[ÇC][ÃA]O ESTADUAL\s*:?\s*([\d.\-\/]{6,20})/i)
+               || texto.match(/\bI\.?\s?E\.?\s*:?\s*([\d.\-\/]{6,20})/i);
+
+  if(nome || cnpjEmitente){
     resultado.fornecedor = {
-      nome: linhas[0] || null,
-      endereco: linhas.slice(1).join(', ') || null
+      nome: nome || null,
+      endereco: endereco || null,
+      cnpj: cnpjEmitente,
+      inscricao_estadual: matchIE ? matchIE[1].replace(/[^\d]/g,'') : null
     };
   }
-  const cnpjs = [...texto.matchAll(/CNPJ\s*\/\s*CPF\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/g)];
-  if(cnpjs.length && resultado.fornecedor) resultado.fornecedor.cnpj = cnpjs[0][1];
-  const matchIE = texto.match(/INSCRIÇÃO ESTADUAL\s*(\d{6,12})/);
-  if(matchIE && resultado.fornecedor) resultado.fornecedor.inscricao_estadual = matchIE[1];
 
-  // Número da NF
-  const matchNf = texto.match(/N[ºO°]\.?\s*(\d{3}\.?\d{3}\.?\d{3})/);
-  if(matchNf) resultado.numeroNf = matchNf[1];
+  /* ---------- Número da NF ---------- */
+  const mNf = texto.match(/N[ºO°]\.?\s*:?\s*(\d{1,3}\.\d{3}\.\d{3})/)        // 000.123.456
+           || texto.match(/N[ºO°]\.?\s*:?\s*(\d{4,9})\b/)                    // 123456
+           || texto.match(/N[UÚ]MERO\s*:?\s*(\d{4,9})\b/i);
+  if(mNf) resultado.numeroNf = mNf[1];
 
-  // Itens — só dentro da(s) área(s) de tabela de produtos (evita casar
-  // números soltos do resto do documento). Código precisa estar no
-  // início de linha, senão pega lixo no meio do texto.
-  const blocosItens = texto.split('DADOS DOS PRODUTOS / SERVIÇOS').slice(1)
-    .map(b => b.split(/DADOS ADICIONAIS|Impresso em/)[0]);
-  const areaItens = blocosItens.join('\n');
-  const regexItem = /^(\d{2,6})\s+([\s\S]+?)\s+(\d{8})\s+\d+\/\d+\s+(\d{4})\s+([A-Z]{2,4})\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+0,00/gm;
-  let m;
-  while((m = regexItem.exec(areaItens)) !== null){
-    const descricao = m[2].replace(/\n?Lista\s*\([^)]*\)/gi,'').replace(/\n?PF:\s*[\d.,]+/gi,'').replace(/\s+/g,' ').trim();
-    resultado.itens.push({
-      codigo: m[1], descricao, unidade: m[5], quantidade: m[6], valorUnit: m[7], valorTotal: m[8]
-    });
+  /* ---------- Itens ---------- */
+  // Restringe à área da tabela quando o rótulo existe; senão varre tudo e
+  // deixa o filtro estrutural fazer o trabalho.
+  let areaLinhas = linhas;
+  const iniItens = linhas.findIndex(l => /DADOS DOS PRODUTOS|DESCRI[ÇC][ÃA]O DO PRODUTO|C[ÓO]D(IGO)?\s*(DO)?\s*PROD/i.test(l));
+  if(iniItens >= 0){
+    const restante = linhas.slice(iniItens+1);
+    const fim = restante.findIndex(l => /DADOS ADICIONAIS|INFORMA[ÇC][ÕO]ES COMPLEMENTARES|C[ÁA]LCULO DO ISSQN|RESERVADO AO FISCO|Impresso em/i.test(l));
+    areaLinhas = fim >= 0 ? restante.slice(0, fim) : restante;
   }
+
+  const linhaRuim = /BASE DE C[ÁA]LCULO|VALOR TOTAL DA NOTA|VALOR DO FRETE|TOTAL DOS PRODUTOS|TRANSPORTADOR|DUPLICATA|VENCIMENTO|ICMS SUBSTITU|C[ÁA]LCULO DO IMPOSTO|CHAVE DE ACESSO|PROTOCOLO/i;
+
+  areaLinhas.forEach(linha=>{
+    if(linhaRuim.test(linha)) return;
+    const tokens = linha.split(' ').filter(Boolean);
+
+    // Âncora: NCM = token de exatamente 8 dígitos (ou 0000.00.00).
+    let iNcm = tokens.findIndex(t => /^\d{8}$/.test(t) || /^\d{4}\.\d{2}\.\d{2}$/.test(t));
+    if(iNcm <= 0) return;                       // sem NCM, ou NCM no início (não é item)
+
+    // Unidade: primeira sigla conhecida depois do NCM.
+    let iUnid = -1;
+    for(let i = iNcm+1; i < tokens.length; i++){
+      const t = tokens[i].toUpperCase().replace(/[^A-ZÇ0-9]/g,'');
+      if(NF_UNIDADES.includes(t)){ iUnid = i; break; }
+    }
+    if(iUnid === -1) return;                    // sem unidade não dá pra confiar na linha
+
+    // Valores: os três primeiros decimais depois da unidade = qtd, unit, total.
+    const numeros = [];
+    for(let i = iUnid+1; i < tokens.length && numeros.length < 3; i++){
+      if(nfEhNumeroDecimal(tokens[i])) numeros.push(tokens[i]);
+    }
+    if(numeros.length < 3) return;
+
+    // Código: primeiro token da linha se for código plausível.
+    const codigo = /^[A-Z0-9.\-\/]{2,15}$/i.test(tokens[0]) && /\d/.test(tokens[0]) ? tokens[0] : null;
+    if(!codigo) return;
+
+    // Descrição: tudo entre o código e o NCM, limpo de resíduos comuns.
+    const descricao = tokens.slice(1, iNcm).join(' ')
+      .replace(/Lista\s*\([^)]*\)/gi,'')
+      .replace(/PF:\s*[\d.,]+/gi,'')
+      .replace(/\s+/g,' ').trim();
+    if(!descricao) return;
+
+    // Sanidade: qtd × unit ≈ total (tolerância 2%). Descarta linha em que
+    // as colunas foram lidas fora de ordem.
+    const [q, vu, vt] = numeros.map(nfParaNumero);
+    if(q > 0 && vu > 0 && vt > 0 && Math.abs(q*vu - vt) / vt > 0.02) return;
+
+    resultado.itens.push({
+      codigo,
+      descricao,
+      unidade: tokens[iUnid].toUpperCase(),
+      quantidade: numeros[0],
+      valorUnit: numeros[1],
+      valorTotal: numeros[2]
+    });
+  });
+
+  // Remove duplicatas por código (DANFE de várias páginas repete cabeçalho).
+  const vistos = new Set();
+  resultado.itens = resultado.itens.filter(it => vistos.has(it.codigo) ? false : (vistos.add(it.codigo), true));
 
   return resultado;
 }
@@ -684,10 +791,28 @@ function prepararImportacaoCadastroPdf(){
       document.getElementById('cadastro-pdf-texto').value = textoCompleto;
       document.getElementById('cadastro-pdf-texto-detalhes').style.display = 'block';
       const extraido = extrairDadosNfPdf(textoCompleto);
-      if(!extraido.fornecedor || extraido.itens.length===0){
+      console.log('[Importar NF] extraído:', extraido);
+
+      // Falha total (nem fornecedor nem itens) quase sempre = PDF sem
+      // camada de texto (escaneado/foto). Diferencia isso de "layout
+      // estranho" olhando quanto texto o pdf.js conseguiu extrair.
+      if(!extraido.fornecedor && extraido.itens.length===0){
         status.style.color = 'var(--danger)';
-        status.textContent = 'Não consegui reconhecer o layout desse PDF — abra "Ver texto extraído" abaixo, copia e me manda pra eu ajustar.';
+        status.textContent = textoCompleto.replace(/\s/g,'').length < 200
+          ? 'Esse PDF não tem texto — é escaneado/imagem. A importação só funciona com o DANFE em PDF de texto (o que o fornecedor emite), ou peça o XML da NF-e.'
+          : 'Li o texto, mas não reconheci a estrutura de NF-e (DANFE) nele. Confira se o arquivo é mesmo a nota, e veja o texto extraído abaixo.';
         return;
+      }
+
+      // Sucesso parcial: mostra o que deu, em vez de descartar tudo.
+      if(extraido.itens.length === 0){
+        status.style.color = 'var(--gold-600)';
+        status.textContent = 'Achei o fornecedor, mas nenhum item na tabela de produtos — confira o texto extraído abaixo e cadastre os materiais manualmente.';
+      }
+      if(!extraido.fornecedor){
+        extraido.fornecedor = {nome:null, endereco:null, cnpj:null, inscricao_estadual:null};
+        status.style.color = 'var(--gold-600)';
+        status.textContent = 'Achei os itens, mas não identifiquei o emitente — preencha o nome/CNPJ do fornecedor na revisão abaixo.';
       }
 
       // Verifica se o fornecedor já existe (por CNPJ)
@@ -702,8 +827,10 @@ function prepararImportacaoCadastroPdf(){
 
       importacaoNfCadastroResultado = {extraido, fornecedorExistente};
       renderizarRevisaoImportacaoCadastro();
-      status.style.color = 'var(--teal-700)';
-      status.textContent = `Lido com sucesso — ${extraido.itens.length} itens encontrados. Revise abaixo antes de salvar.`;
+      if(extraido.itens.length > 0 && extraido.fornecedor.nome){   // não sobrescreve aviso de leitura parcial
+        status.style.color = 'var(--teal-700)';
+        status.textContent = `Lido com sucesso — ${extraido.itens.length} itens encontrados. Revise abaixo antes de salvar.`;
+      }
     }catch(e){
       console.error('[Importar NF] erro:', e);
       status.style.color = 'var(--danger)';

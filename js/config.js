@@ -1078,6 +1078,14 @@
             Testado: o mesmo texto real da NF do usuário, SEM quebra de
             linha (simulando o bug antigo), reproduz exatamente o erro
             relatado (0 itens encontrados) — confirma a causa raiz.
+   v6.31.3 — Importação de NF (Cadastro) voltou a falhar com "Não consegui
+            reconhecer o layout": o parser dependia de rótulos e de uma
+            ordem fixa de colunas, que muda de emissor pra emissor. Agora
+            a extração é por estrutura (NCM, sigla de unidade, valores) e
+            valida qtd × unitário ≈ total. A montagem de linhas passou a
+            ordenar por Y e X (ordem de leitura real em página com
+            colunas). Erro agora separa PDF escaneado de layout não
+            reconhecido, e aceita leitura parcial em vez de descartar tudo.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
