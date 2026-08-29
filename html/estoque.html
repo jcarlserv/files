@@ -26,6 +26,10 @@
           </p>
           <input type="file" id="cadastro-pdf-arquivo" accept="application/pdf">
           <p id="cadastro-pdf-status" style="margin:10px 0 0;font-size:12.5px;color:var(--ink-400);"></p>
+          <details id="cadastro-pdf-texto-detalhes" style="display:none;margin-top:10px;">
+            <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-600);">Ver texto extraído do PDF (útil se não reconhecer o layout)</summary>
+            <textarea id="cadastro-pdf-texto" readonly style="width:100%;height:180px;margin-top:8px;font-family:monospace;font-size:11.5px;padding:10px;border:1.5px solid var(--line);border-radius:8px;"></textarea>
+          </details>
           <div id="cadastro-pdf-revisao" style="display:none;"></div>
           <div style="margin-top:16px;">
             <button class="botao" id="botao-salvar-importacao-cadastro">Salvar catálogo</button>

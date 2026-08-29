@@ -1060,6 +1060,24 @@
             aparecia no console.
             Testado: cenário de pdf.js não carregado mostra mensagem
             clara na tela; cancelar o seletor de arquivo não trava nada.
+   v6.31.2 — Achado e corrigido: a causa real de "Não consegui reconhecer
+            o layout desse PDF" (usuário testou com uma NF real e bateu
+            nisso). Confirmado com teste isolado: o pdf.js devolve o texto
+            do PDF em pedaços soltos, SEM quebra de linha nenhuma — juntar
+            tudo só com espaço (como o código fazia) produz uma "sopa de
+            texto" sem linha nenhuma, e os regex de extração (que
+            dependem de linha pra achar cada campo) não reconhecem nada.
+            Corrigido com extrairTextoPdfComLinhas — reconstrói quebra de
+            linha de verdade comparando a posição vertical (Y) de cada
+            trecho de texto (técnica padrão pra isso). Aplicado nas duas
+            telas que leem PDF (Entrada NF e Cadastro).
+            De brinde: painel "Ver texto extraído" (igual o que já
+            existia em Entrada) adicionado também em Cadastro — aparece
+            mesmo quando falha, pra poder copiar e mandar se algum layout
+            de PDF diferente não for reconhecido no futuro.
+            Testado: o mesmo texto real da NF do usuário, SEM quebra de
+            linha (simulando o bug antigo), reproduz exatamente o erro
+            relatado (0 itens encontrados) — confirma a causa raiz.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

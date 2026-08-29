@@ -521,12 +521,7 @@ function prepararImportacaoPdfNf(){
     try{
       const bytes = await arquivo.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
-      let textoCompleto = '';
-      for(let i=1; i<=pdf.numPages; i++){
-        const pagina = await pdf.getPage(i);
-        const conteudo = await pagina.getTextContent();
-        textoCompleto += conteudo.items.map(it=>it.str).join(' ') + '\n';
-      }
+      const textoCompleto = await extrairTextoPdfComLinhas(pdf);
 
       document.getElementById('entrada-pdf-texto').value = textoCompleto;
       document.getElementById('entrada-pdf-texto-detalhes').style.display = 'block';
@@ -583,6 +578,35 @@ function prepararImportacaoPdfNf(){
 
 // Função pura de extração — separada da UI de propósito, pra dar pra
 // testar isoladamente (regex validado contra NF real antes de integrar).
+// Extrai o texto de um PDF já carregado pelo pdf.js, reconstruindo quebra
+// de linha de verdade — o pdf.js devolve os trechos de texto soltos, sem
+// indicar quebra de linha nenhuma; a única forma de saber se dois trechos
+// estão na MESMA linha ou em linhas diferentes é comparando a posição
+// vertical (transform[5]) de cada um. Sem isso, o texto vira uma sopa sem
+// quebra nenhuma e os regex de extração (que dependem de linha) não
+// reconhecem nada — foi exatamente o bug que o usuário relatou.
+async function extrairTextoPdfComLinhas(pdf){
+  let textoCompleto = '';
+  for(let i=1; i<=pdf.numPages; i++){
+    const pagina = await pdf.getPage(i);
+    const conteudo = await pagina.getTextContent();
+    let ultimoY = null;
+    let linhaAtual = '';
+    conteudo.items.forEach(item=>{
+      const y = item.transform[5];
+      if(ultimoY !== null && Math.abs(y - ultimoY) > 2){
+        textoCompleto += linhaAtual.trim() + '\n';
+        linhaAtual = '';
+      }
+      linhaAtual += item.str + ' ';
+      ultimoY = y;
+    });
+    textoCompleto += linhaAtual.trim() + '\n';
+  }
+  return textoCompleto;
+}
+
+
 function extrairDadosNfPdf(texto){
   const resultado = {fornecedor: null, numeroNf: null, itens: []};
 
@@ -655,17 +679,14 @@ function prepararImportacaoCadastroPdf(){
 
       const bytes = await arquivo.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
-      let textoCompleto = '';
-      for(let i=1; i<=pdf.numPages; i++){
-        const pagina = await pdf.getPage(i);
-        const conteudo = await pagina.getTextContent();
-        textoCompleto += conteudo.items.map(it=>it.str).join(' ') + '\n';
-      }
+      const textoCompleto = await extrairTextoPdfComLinhas(pdf);
       console.log('[Importar NF] texto extraído, tamanho:', textoCompleto.length);
+      document.getElementById('cadastro-pdf-texto').value = textoCompleto;
+      document.getElementById('cadastro-pdf-texto-detalhes').style.display = 'block';
       const extraido = extrairDadosNfPdf(textoCompleto);
       if(!extraido.fornecedor || extraido.itens.length===0){
         status.style.color = 'var(--danger)';
-        status.textContent = 'Não consegui reconhecer o layout desse PDF — confira se é uma NF-e (DANFE) de texto, não escaneada.';
+        status.textContent = 'Não consegui reconhecer o layout desse PDF — abra "Ver texto extraído" abaixo, copia e me manda pra eu ajustar.';
         return;
       }
 
