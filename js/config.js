@@ -1086,6 +1086,10 @@
             ordenar por Y e X (ordem de leitura real em página com
             colunas). Erro agora separa PDF escaneado de layout não
             reconhecido, e aceita leitura parcial em vez de descartar tudo.
+   v6.31.4 — Revisão da importação de NF mostrava só o nome do fornecedor;
+            agora exibe e permite editar CNPJ, inscrição estadual e
+            endereço antes de salvar (esses dados já eram lidos da NF, mas
+            iam pro banco sem passar pela conferência).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

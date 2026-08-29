@@ -846,10 +846,12 @@ function prepararImportacaoCadastroPdf(){
 
     let fornecedorId = fornecedorExistente ? fornecedorExistente.id : null;
     if(!fornecedorId){
-      const nomeEditado = document.getElementById('revisao-fornecedor-nome').value;
+      const campo = id => (document.getElementById(id)?.value || '').trim() || null;
       const resp = await api('criarFornecedor', {
-        nome: nomeEditado, cnpj: extraido.fornecedor.cnpj, endereco: extraido.fornecedor.endereco,
-        inscricao_estadual: extraido.fornecedor.inscricao_estadual
+        nome: campo('revisao-fornecedor-nome'),
+        cnpj: campo('revisao-fornecedor-cnpj'),
+        endereco: campo('revisao-fornecedor-endereco'),
+        inscricao_estadual: campo('revisao-fornecedor-ie')
       });
       if(!resp.ok){ status.style.color='var(--danger)'; status.textContent = resp.erro; return; }
       fornecedorId = resp.fornecedor.id;
@@ -886,9 +888,17 @@ function renderizarRevisaoImportacaoCadastro(){
   const div = document.getElementById('cadastro-pdf-revisao');
   div.style.display = 'block';
 
+  const esc = v => String(v==null?'':v).replace(/"/g,'&quot;');
+  const f = extraido.fornecedor;
+
   const blocoFornecedor = fornecedorExistente
-    ? `<p style="color:var(--teal-700);font-size:13px;font-weight:600;">Fornecedor já cadastrado: ${fornecedorExistente.nome} — não será duplicado.</p>`
-    : `<div class="campo"><label>Nome do fornecedor (novo — confira antes de salvar)</label><input type="text" id="revisao-fornecedor-nome" value="${(extraido.fornecedor.nome||'').replace(/"/g,'&quot;')}"></div>`;
+    ? `<p style="color:var(--teal-700);font-size:13px;font-weight:600;">Fornecedor já cadastrado: ${fornecedorExistente.nome} — não será duplicado.</p>
+       <p style="font-size:12.5px;color:var(--ink-600);">CNPJ ${esc(fornecedorExistente.cnpj||f.cnpj)} · IE ${esc(fornecedorExistente.inscricao_estadual||f.inscricao_estadual)||'—'}<br>${esc(fornecedorExistente.endereco||f.endereco)||''}</p>`
+    : `<p style="font-size:12.5px;color:var(--ink-600);margin-bottom:8px;">Fornecedor novo — confira os dados lidos da NF antes de salvar.</p>
+       <div class="campo"><label>Nome / razão social</label><input type="text" id="revisao-fornecedor-nome" value="${esc(f.nome)}"></div>
+       <div class="campo"><label>CNPJ</label><input type="text" id="revisao-fornecedor-cnpj" value="${esc(f.cnpj)}"></div>
+       <div class="campo"><label>Inscrição estadual</label><input type="text" id="revisao-fornecedor-ie" value="${esc(f.inscricao_estadual)}"></div>
+       <div class="campo"><label>Endereço</label><input type="text" id="revisao-fornecedor-endereco" value="${esc(f.endereco)}"></div>`;
 
   div.innerHTML = `
     <h4 style="margin:16px 0 8px;">Fornecedor</h4>
