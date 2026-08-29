@@ -471,7 +471,9 @@ CREATE POLICY acesso_total_anon ON permissoes FOR ALL USING (true) WITH CHECK (t
     'Parâmetros — Identidade': 'Logo, cor, nome da clínica.'
   };
   const grupos = agruparPermissoesPorTela();
-  const linhaGrupos = grupos.map(g=>`<th colspan="${g.itens.length}" style="text-align:center;border-left:2px solid var(--line);" title="${(explicacaoGrupo[g.tela]||'').replace(/"/g,'&quot;')}">${g.tela}</th>`).join('');
+  const linhaGrupos = grupos.map(g=>`<th colspan="${g.itens.length}" style="text-align:center;border-left:2px solid var(--line);">
+    ${g.tela}<br><span style="font-weight:400;font-size:10px;color:var(--ink-400);">${(explicacaoGrupo[g.tela]||'')}</span>
+  </th>`).join('');
   const linhaColunas = grupos.map(g=>g.itens.map(p=>`<th style="text-align:center;font-size:10.5px;border-left:${g.itens.indexOf(p)===0?'2px solid var(--line)':'none'};">${p.rotulo}</th>`).join('')).join('');
 
 

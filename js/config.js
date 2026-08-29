@@ -1004,6 +1004,8 @@
             pra "Cadastros do Sistema" (mais claro). Todos os grupos da
             matriz ganharam tooltip (passar o mouse no cabeçalho) com
             explicação curta do que cada um cobre.
+   v6.29.3 — Direitos e Privilégios: explicação de cada grupo virou texto
+            visível abaixo do título (era só tooltip no hover).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
