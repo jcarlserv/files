@@ -1029,6 +1029,25 @@
             divisão; os 13 elementos-chave de todos os módulos aparecem
             certinho depois de montado; ordem dos scripts confirmada
             (sessao-login por último, supabase-js antes de config.js).
+   v6.31.0 — Estoque → Cadastro: importação de Fornecedor + Materiais
+            direto do PDF da NF (extrairDadosNfPdf, testado contra NF real
+            do usuário — HOSPMEDICA, 20 itens, 100% de acerto). Se o
+            fornecedor já existe (mesmo CNPJ), reaproveita — só cadastra
+            materiais novos, reconhecidos pelo código do produto na NF
+            (campo novo materiais.codigo_fornecedor, evita duplicar em
+            reimportações da mesma nota ou de notas futuras do mesmo
+            fornecedor). Tela de revisão obrigatória antes de salvar —
+            cada item pode ser desmarcado/editado, fornecedor novo tem o
+            nome editável, nada é gravado sem clicar em "Salvar catálogo".
+            Campos novos: fornecedores ganha endereco/cidade/uf/cep/
+            inscricao_estadual; materiais ganha codigo_fornecedor/
+            nf_origem (registra de qual NF o material veio na primeira
+            vez).
+            Requer SQL: sql/10_fornecedores_materiais_campos_nf.sql
+            Testado ponta a ponta com o PDF real: extração dos 20 itens
+            (nome/unidade/valor todos batendo), criação de fornecedor+20
+            materiais, e reimportação da mesma nota reconhecendo tudo sem
+            duplicar nada.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

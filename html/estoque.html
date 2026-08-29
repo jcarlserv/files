@@ -18,6 +18,20 @@
       <!-- ===== MATERIAIS (catálogo + fornecedores) ===== -->
       <div class="sub-painel ativa" id="estoque-materiais">
         <div class="cartao">
+          <h3>Importar Fornecedor e Materiais (PDF da NF)</h3>
+          <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+            Extrai fornecedor e a lista de itens direto do PDF da nota. Se o fornecedor já estiver
+            cadastrado (mesmo CNPJ), não duplica — só cadastra os materiais que ainda não existem
+            (reconhecidos pelo código do produto na NF). Nada é salvo sem você revisar e confirmar abaixo.
+          </p>
+          <input type="file" id="cadastro-pdf-arquivo" accept="application/pdf">
+          <p id="cadastro-pdf-status" style="margin:10px 0 0;font-size:12.5px;color:var(--ink-400);"></p>
+          <div id="cadastro-pdf-revisao" style="display:none;"></div>
+          <div style="margin-top:16px;">
+            <button class="botao" id="botao-salvar-importacao-cadastro">Salvar catálogo</button>
+          </div>
+        </div>
+        <div class="cartao">
           <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
             <h3 style="margin:0;">Fornecedores</h3>
             <button class="botao secundario" id="botao-novo-fornecedor">+ Novo fornecedor</button>

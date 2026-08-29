@@ -107,6 +107,7 @@ function renderizarCatalogoMateriais(){
   if(!estoqueSubAbaPronta.materiais){
     botaoNovo.addEventListener('click', ()=>abrirModalMaterial(null));
     document.getElementById('botao-novo-fornecedor').addEventListener('click', ()=>abrirModalFornecedor(null));
+    prepararImportacaoCadastroPdf();
     estoqueSubAbaPronta.materiais = true;
   }
   renderizarFornecedores();
@@ -568,4 +569,186 @@ function prepararImportacaoPdfNf(){
       status.textContent = 'Não consegui ler esse PDF (pode ser PDF escaneado/imagem, sem texto — nesse caso preencha manualmente).';
     }
   });
+}
+
+
+/* =====================================================================
+   IMPORTAÇÃO DE FORNECEDOR + MATERIAIS VIA PDF (aba Cadastro) — extrai
+   fornecedor (CNPJ, nome, endereço) e a lista de itens da tabela de
+   produtos. Se o fornecedor já existir (por CNPJ), reaproveita — só
+   cadastra materiais novos (por código do fornecedor). Mostra lista pra
+   revisão/edição antes de qualquer coisa ser salva — nada é gravado sem
+   clicar em "Salvar catálogo".
+===================================================================== */
+
+// Função pura de extração — separada da UI de propósito, pra dar pra
+// testar isoladamente (regex validado contra NF real antes de integrar).
+function extrairDadosNfPdf(texto){
+  const resultado = {fornecedor: null, numeroNf: null, itens: []};
+
+  // Fornecedor: nome (bloco após "IDENTIFICAÇÃO DO EMITENTE", primeira
+  // linha), CNPJ (primeira ocorrência de "CNPJ / CPF" — é sempre a do
+  // emitente, a do destinatário só aparece depois), endereço (linhas
+  // seguintes do mesmo bloco), IE.
+  const blocoEmitente = texto.match(/IDENTIFICAÇÃO DO EMITENTE\s*([\s\S]+?)DANFE/);
+  if(blocoEmitente){
+    const linhas = blocoEmitente[1].split('\n').map(l=>l.trim()).filter(Boolean);
+    resultado.fornecedor = {
+      nome: linhas[0] || null,
+      endereco: linhas.slice(1).join(', ') || null
+    };
+  }
+  const cnpjs = [...texto.matchAll(/CNPJ\s*\/\s*CPF\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/g)];
+  if(cnpjs.length && resultado.fornecedor) resultado.fornecedor.cnpj = cnpjs[0][1];
+  const matchIE = texto.match(/INSCRIÇÃO ESTADUAL\s*(\d{6,12})/);
+  if(matchIE && resultado.fornecedor) resultado.fornecedor.inscricao_estadual = matchIE[1];
+
+  // Número da NF
+  const matchNf = texto.match(/N[ºO°]\.?\s*(\d{3}\.?\d{3}\.?\d{3})/);
+  if(matchNf) resultado.numeroNf = matchNf[1];
+
+  // Itens — só dentro da(s) área(s) de tabela de produtos (evita casar
+  // números soltos do resto do documento). Código precisa estar no
+  // início de linha, senão pega lixo no meio do texto.
+  const blocosItens = texto.split('DADOS DOS PRODUTOS / SERVIÇOS').slice(1)
+    .map(b => b.split(/DADOS ADICIONAIS|Impresso em/)[0]);
+  const areaItens = blocosItens.join('\n');
+  const regexItem = /^(\d{2,6})\s+([\s\S]+?)\s+(\d{8})\s+\d+\/\d+\s+(\d{4})\s+([A-Z]{2,4})\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+0,00/gm;
+  let m;
+  while((m = regexItem.exec(areaItens)) !== null){
+    const descricao = m[2].replace(/\n?Lista\s*\([^)]*\)/gi,'').replace(/\n?PF:\s*[\d.,]+/gi,'').replace(/\s+/g,' ').trim();
+    resultado.itens.push({
+      codigo: m[1], descricao, unidade: m[5], quantidade: m[6], valorUnit: m[7], valorTotal: m[8]
+    });
+  }
+
+  return resultado;
+}
+
+
+let importacaoNfCadastroPronta = false;
+let importacaoNfCadastroResultado = null;
+
+function prepararImportacaoCadastroPdf(){
+  if(importacaoNfCadastroPronta) return;
+  importacaoNfCadastroPronta = true;
+
+  if(typeof pdfjsLib !== 'undefined'){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  document.getElementById('cadastro-pdf-arquivo').addEventListener('change', async (ev)=>{
+    const arquivo = ev.target.files[0];
+    const status = document.getElementById('cadastro-pdf-status');
+    if(!arquivo) return;
+    if(typeof pdfjsLib === 'undefined'){
+      status.style.color = 'var(--danger)'; status.textContent = 'Leitor de PDF não carregou (sem internet?).';
+      return;
+    }
+    status.style.color = 'var(--ink-400)'; status.textContent = 'Lendo PDF...';
+    document.getElementById('cadastro-pdf-revisao').style.display = 'none';
+    try{
+      const bytes = await arquivo.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
+      let textoCompleto = '';
+      for(let i=1; i<=pdf.numPages; i++){
+        const pagina = await pdf.getPage(i);
+        const conteudo = await pagina.getTextContent();
+        textoCompleto += conteudo.items.map(it=>it.str).join(' ') + '\n';
+      }
+      const extraido = extrairDadosNfPdf(textoCompleto);
+      if(!extraido.fornecedor || extraido.itens.length===0){
+        status.style.color = 'var(--danger)';
+        status.textContent = 'Não consegui reconhecer o layout desse PDF — confira se é uma NF-e (DANFE) de texto, não escaneada.';
+        return;
+      }
+
+      // Verifica se o fornecedor já existe (por CNPJ)
+      const respForn = extraido.fornecedor.cnpj ? await api('buscarFornecedorPorCnpj', {cnpj: extraido.fornecedor.cnpj}) : {ok:true, fornecedor:null};
+      const fornecedorExistente = respForn.ok ? respForn.fornecedor : null;
+
+      // Verifica cada item — já existe material com esse código de fornecedor?
+      for(const item of extraido.itens){
+        const respMat = await api('buscarMaterialPorCodigoFornecedor', {codigo_fornecedor: item.codigo});
+        item.jaExiste = respMat.ok && !!respMat.material;
+      }
+
+      importacaoNfCadastroResultado = {extraido, fornecedorExistente};
+      renderizarRevisaoImportacaoCadastro();
+      status.style.color = 'var(--teal-700)';
+      status.textContent = `Lido com sucesso — ${extraido.itens.length} itens encontrados. Revise abaixo antes de salvar.`;
+    }catch(e){
+      status.style.color = 'var(--danger)';
+      status.textContent = 'Não consegui ler esse PDF (pode ser escaneado/imagem, sem texto).';
+    }
+  });
+
+  document.getElementById('botao-salvar-importacao-cadastro').addEventListener('click', async ()=>{
+    if(!importacaoNfCadastroResultado) return;
+    const {extraido, fornecedorExistente} = importacaoNfCadastroResultado;
+    const status = document.getElementById('cadastro-pdf-status');
+    status.style.color = 'var(--ink-400)'; status.textContent = 'Salvando...';
+
+    let fornecedorId = fornecedorExistente ? fornecedorExistente.id : null;
+    if(!fornecedorId){
+      const nomeEditado = document.getElementById('revisao-fornecedor-nome').value;
+      const resp = await api('criarFornecedor', {
+        nome: nomeEditado, cnpj: extraido.fornecedor.cnpj, endereco: extraido.fornecedor.endereco,
+        inscricao_estadual: extraido.fornecedor.inscricao_estadual
+      });
+      if(!resp.ok){ status.style.color='var(--danger)'; status.textContent = resp.erro; return; }
+      fornecedorId = resp.fornecedor.id;
+    }
+
+    let criados = 0, pulados = 0;
+    const linhas = document.querySelectorAll('#tabela-revisao-itens tbody tr');
+    for(const linha of linhas){
+      const incluir = linha.querySelector('.chk-incluir-item').checked;
+      if(!incluir){ pulados++; continue; }
+      const codigo = linha.dataset.codigo;
+      const jaExiste = linha.dataset.jaExiste === '1';
+      if(jaExiste){ pulados++; continue; }
+      const nome = linha.querySelector('.input-revisao-nome').value;
+      const unidade = linha.querySelector('.input-revisao-unidade').value;
+      await api('criarMaterial', {nome, unidade, codigo_fornecedor: codigo, nf_origem: extraido.numeroNf});
+      criados++;
+    }
+
+    await carregarFornecedoresEstoque();
+    await carregarMateriaisEstoque();
+    renderizarCatalogoMateriais();
+
+    status.style.color = 'var(--teal-700)';
+    status.textContent = `Salvo ✓ — ${criados} material(is) novo(s) cadastrado(s), ${pulados} já existiam ou foram desmarcados.`;
+    document.getElementById('cadastro-pdf-revisao').style.display = 'none';
+    importacaoNfCadastroResultado = null;
+    document.getElementById('cadastro-pdf-arquivo').value = '';
+  });
+}
+
+function renderizarRevisaoImportacaoCadastro(){
+  const {extraido, fornecedorExistente} = importacaoNfCadastroResultado;
+  const div = document.getElementById('cadastro-pdf-revisao');
+  div.style.display = 'block';
+
+  const blocoFornecedor = fornecedorExistente
+    ? `<p style="color:var(--teal-700);font-size:13px;font-weight:600;">Fornecedor já cadastrado: ${fornecedorExistente.nome} — não será duplicado.</p>`
+    : `<div class="campo"><label>Nome do fornecedor (novo — confira antes de salvar)</label><input type="text" id="revisao-fornecedor-nome" value="${(extraido.fornecedor.nome||'').replace(/"/g,'&quot;')}"></div>`;
+
+  div.innerHTML = `
+    <h4 style="margin:16px 0 8px;">Fornecedor</h4>
+    ${blocoFornecedor}
+    <h4 style="margin:16px 0 8px;">Itens encontrados (${extraido.itens.length}) — NF nº ${extraido.numeroNf||'?'}</h4>
+    <div class="tabela-scroll"><table id="tabela-revisao-itens">
+      <thead><tr><th></th><th>Código</th><th>Nome</th><th>Unidade</th><th>Situação</th></tr></thead>
+      <tbody>${extraido.itens.map(item=>`
+        <tr data-codigo="${item.codigo}" data-ja-existe="${item.jaExiste?'1':'0'}">
+          <td><input type="checkbox" class="chk-incluir-item" ${item.jaExiste?'':'checked'}></td>
+          <td class="mono">${item.codigo}</td>
+          <td><input type="text" class="input-revisao-nome" value="${item.descricao.replace(/"/g,'&quot;')}" ${item.jaExiste?'disabled':''} style="width:280px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
+          <td><input type="text" class="input-revisao-unidade" value="${item.unidade}" ${item.jaExiste?'disabled':''} style="width:70px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
+          <td>${item.jaExiste?'<span style="color:var(--ink-400);">Já cadastrado</span>':'<span style="color:var(--gold-600);">Novo</span>'}</td>
+        </tr>`).join('')}</tbody>
+    </table></div>
+  `;
 }

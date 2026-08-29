@@ -19,6 +19,7 @@ de novo sem duplicar nada, exceto o `06_listas_especialidades.sql`, que faz um
 | `07_pacientes_data_nascimento.sql` | v6.24.0 | Paciente ganha Data de Nascimento |
 | `08_pacientes_cpf.sql` | v6.25.1 | Paciente ganha CPF |
 | `09_confirmacao_recebimento.sql` | v6.29.0 | Dispensação em 2 etapas: reserva → confirmação (baixa só na confirmação) |
+| `10_fornecedores_materiais_campos_nf.sql` | v6.31.0 | Campos extras pra importação de NF (endereço/IE do fornecedor, código/NF do material) |
 
 ## BASE_DE_DADOS.md
 

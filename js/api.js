@@ -344,14 +344,19 @@ async function supabaseApi(acao, dados) {
     }
     case 'criarFornecedor': {
       const { data, error } = await supabaseClient.from('fornecedores')
-        .insert({nome:dados.nome, cnpj:dados.cnpj||null, contato:dados.contato||null}).select().single();
+        .insert({nome:dados.nome, cnpj:dados.cnpj||null, contato:dados.contato||null, endereco:dados.endereco||null, cidade:dados.cidade||null, uf:dados.uf||null, cep:dados.cep||null, inscricao_estadual:dados.inscricao_estadual||null}).select().single();
       if(error) return {ok:false, erro:error.message};
       return {ok:true, fornecedor:data};
     }
     case 'atualizarFornecedor': {
       const { error } = await supabaseClient.from('fornecedores')
-        .update({nome:dados.nome, cnpj:dados.cnpj||null, contato:dados.contato||null}).eq('id', dados.id);
+        .update({nome:dados.nome, cnpj:dados.cnpj||null, contato:dados.contato||null, endereco:dados.endereco||null, cidade:dados.cidade||null, uf:dados.uf||null, cep:dados.cep||null, inscricao_estadual:dados.inscricao_estadual||null}).eq('id', dados.id);
       return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+    case 'buscarFornecedorPorCnpj': {
+      const { data, error } = await supabaseClient.from('fornecedores').select('*').eq('cnpj', dados.cnpj).maybeSingle();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, fornecedor:data};
     }
 
     // ---------- ESTOQUE — Materiais (catálogo) ----------
@@ -362,8 +367,13 @@ async function supabaseApi(acao, dados) {
     }
     case 'criarMaterial': {
       const { data, error } = await supabaseClient.from('materiais')
-        .insert({nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0})
+        .insert({nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, codigo_fornecedor:dados.codigo_fornecedor||null, nf_origem:dados.nf_origem||null})
         .select().single();
+      if(error) return {ok:false, erro:error.message};
+      return {ok:true, material:data};
+    }
+    case 'buscarMaterialPorCodigoFornecedor': {
+      const { data, error } = await supabaseClient.from('materiais').select('*').eq('codigo_fornecedor', dados.codigo_fornecedor).maybeSingle();
       if(error) return {ok:false, erro:error.message};
       return {ok:true, material:data};
     }
@@ -1027,7 +1037,7 @@ function mockApi(acao, dados) {
     // ---------- ESTOQUE (demo) ----------
     case 'listarFornecedores': return {ok:true, fornecedores: demo.fornecedores.slice().sort((a,b)=>a.nome.localeCompare(b.nome))};
     case 'criarFornecedor': {
-      const novo = {id:'demo-forn-'+Date.now(), nome:dados.nome, cnpj:dados.cnpj||null, contato:dados.contato||null};
+      const novo = {id:'demo-forn-'+Date.now(), nome:dados.nome, cnpj:dados.cnpj||null, contato:dados.contato||null, endereco:dados.endereco||null, cidade:dados.cidade||null, uf:dados.uf||null, cep:dados.cep||null, inscricao_estadual:dados.inscricao_estadual||null};
       demo.fornecedores.push(novo);
       return {ok:true, fornecedor:novo};
     }
@@ -1035,13 +1045,20 @@ function mockApi(acao, dados) {
       const f = demo.fornecedores.find(x=>x.id===dados.id);
       if(!f) return {ok:false, erro:'Fornecedor não encontrado.'};
       f.nome=dados.nome; f.cnpj=dados.cnpj||null; f.contato=dados.contato||null;
+      f.endereco=dados.endereco||null; f.cidade=dados.cidade||null; f.uf=dados.uf||null; f.cep=dados.cep||null; f.inscricao_estadual=dados.inscricao_estadual||null;
       return {ok:true};
+    }
+    case 'buscarFornecedorPorCnpj': {
+      return {ok:true, fornecedor: demo.fornecedores.find(f=>f.cnpj===dados.cnpj) || null};
     }
     case 'listarMateriais': return {ok:true, materiais: demo.materiais.slice().sort((a,b)=>a.nome.localeCompare(b.nome))};
     case 'criarMaterial': {
-      const novo = {id:'demo-mat-'+Date.now(), nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, ativo:true};
+      const novo = {id:'demo-mat-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, ativo:true, codigo_fornecedor:dados.codigo_fornecedor||null, nf_origem:dados.nf_origem||null};
       demo.materiais.push(novo);
       return {ok:true, material:novo};
+    }
+    case 'buscarMaterialPorCodigoFornecedor': {
+      return {ok:true, material: demo.materiais.find(m=>m.codigo_fornecedor===dados.codigo_fornecedor) || null};
     }
     case 'atualizarMaterial': {
       const m = demo.materiais.find(x=>x.id===dados.id);
