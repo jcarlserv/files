@@ -1006,6 +1006,29 @@
             explicação curta do que cada um cobre.
    v6.29.3 — Direitos e Privilégios: explicação de cada grupo virou texto
             visível abaixo do título (era só tooltip no hover).
+   v6.30.0 — Reestruturação de arquivos, a pedido do usuário: os 7 painéis
+            (Início, Lançamento, Verificação, Dashboard, Financeiro,
+            Estoque, Configurações) e os 6 modais saíram do index.html e
+            viraram arquivos próprios em html/ (inicio.html,
+            lancamento.html, verificacao.html, dashboard.html,
+            financeiro.html, estoque.html, configuracoes.html,
+            modais.html). index.html caiu de ~56KB pra ~5KB — ficou só o
+            esqueleto (login, header, nav) + um carregador que busca cada
+            html/*.html via fetch e injeta no lugar certo, ANTES de
+            carregar qualquer script do app (importante: vários arquivos
+            JS fazem addEventListener direto no carregamento, sem esperar
+            nada — se os scripts rodassem antes dos fragmentos existirem,
+            quebrava tudo). Scripts continuam carregando em sequência
+            (não em paralelo), sessao-login.js por último, exatamente
+            como antes.
+            Nenhum ID mudou, nenhum JS foi tocado — é só onde o HTML mora
+            fisicamente.
+            Testado: os 8 fragmentos respondem 200 com conteúdo correto
+            num servidor local de verdade; simulação completa da injeção
+            reproduz exatamente o HTML final que existia antes da
+            divisão; os 13 elementos-chave de todos os módulos aparecem
+            certinho depois de montado; ordem dos scripts confirmada
+            (sessao-login por último, supabase-js antes de config.js).
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

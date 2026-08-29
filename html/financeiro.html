@@ -1,0 +1,115 @@
+<section class="painel" id="painel-financeiro">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Financeiro</h2>
+          <p>Fluxo de Caixa, DRE e Plano de Contas — dado contábil, digitado manualmente (não vem da produção).</p>
+        </div>
+        <div class="filtros">
+          <div class="campo"><label>Mês</label><select id="financeiro-mes"></select></div>
+          <div class="campo"><label>Ano</label><select id="financeiro-ano"></select></div>
+        </div>
+      </div>
+
+      <div class="sub-nav" id="subnav-financeiro">
+        <button type="button" class="sub-aba" data-subaba="fluxo-caixa">Fluxo de Caixa</button>
+        <button type="button" class="sub-aba" data-subaba="dre">DRE</button>
+        <button type="button" class="sub-aba" data-subaba="plano-contas">Plano de Contas</button>
+      </div>
+
+      <!-- ---------- Sub-aba: Fluxo de Caixa ---------- -->
+      <div class="sub-painel" id="financeiro-sub-fluxo-caixa">
+        <div class="grade-kpi">
+          <div class="kpi"><div class="rotulo">Entradas do mês</div><div class="valor teal" id="fluxo-kpi-entradas">—</div></div>
+          <div class="kpi"><div class="rotulo">Saídas do mês</div><div class="valor" id="fluxo-kpi-saidas">—</div></div>
+          <div class="kpi"><div class="rotulo">Saldo do período</div><div class="valor" id="fluxo-kpi-saldo">—</div></div>
+        </div>
+
+        <div class="cartao">
+          <h3>Novo lançamento</h3>
+          <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+            Regime de caixa — registre a data em que o dinheiro realmente entrou ou saiu (diferente
+            do DRE, que é por mês de competência). Vincular a uma conta do plano é opcional, só
+            ajuda a comparar depois.
+          </p>
+          <div class="grade-form">
+            <div class="campo"><label>Data</label><input type="date" id="fluxo-data"></div>
+            <div class="campo"><label>Tipo</label>
+              <select id="fluxo-tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
+            </div>
+            <div class="campo" style="grid-column:1/-1;">
+              <label>Conta do plano de Contas (opcional)</label>
+              <div style="position:relative;max-width:520px;">
+                <button type="button" class="botao sutil" id="fluxo-conta-plano-toggle" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;">
+                  <span id="fluxo-conta-plano-rotulo">— (nenhuma)</span><span style="color:var(--ink-400);">▾</span>
+                </button>
+                <div id="fluxo-conta-plano-painel" style="display:none;position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:320px;overflow-y:auto;background:#fff;border:1.5px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;"></div>
+                <input type="hidden" id="fluxo-conta-plano" value="">
+              </div>
+            </div>
+            <div class="campo"><label>Descrição</label><input type="text" id="fluxo-descricao" placeholder="Ex.: Pagamento conta de luz"></div>
+            <div class="campo"><label>Valor (R$)</label><input type="number" id="fluxo-valor" step="0.01"></div>
+            <div class="campo"><label>Banco</label>
+              <select id="fluxo-banco">
+                <option value="">—</option>
+                <option>Caixa</option><option>Unicred</option><option>BNB</option><option>Cora</option><option>InfinitePay</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
+            <button class="botao secundario" id="botao-adicionar-fluxo">Adicionar lançamento</button>
+            <span id="confirmacao-fluxo" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+          </div>
+        </div>
+
+        <div class="cartao">
+          <h3>Lançamentos do mês</h3>
+          <div class="tabela-scroll">
+            <table id="tabela-fluxo-caixa"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- Sub-aba: DRE ---------- -->
+      <div class="sub-painel" id="financeiro-sub-dre">
+        <div class="grade-kpi">
+          <div class="kpi"><div class="rotulo">Receita líquida</div><div class="valor teal" id="financeiro-kpi-receita">—</div></div>
+          <div class="kpi"><div class="rotulo">Lucro bruto</div><div class="valor" id="financeiro-kpi-margem">—</div></div>
+          <div class="kpi"><div class="rotulo">Resultado operacional (EBITDA)</div><div class="valor" id="financeiro-kpi-ebitda">—</div></div>
+          <div class="kpi"><div class="rotulo">Lucro líquido</div><div class="valor" id="financeiro-kpi-resultado">—</div></div>
+          <div class="kpi"><div class="rotulo">Margem líquida</div><div class="valor" id="financeiro-kpi-margem-pct">—</div></div>
+        </div>
+        <div class="cartao">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="margin:0;">Demonstrativo de Resultados</h3>
+            <button class="botao sutil pequeno" id="botao-exportar-dre">Exportar DRE (CSV)</button>
+          </div>
+          <div class="tabela-scroll"><table id="tabela-dre-financeiro"></table></div>
+        </div>
+      </div>
+
+      <!-- ---------- Sub-aba: Plano de Contas ---------- -->
+      <div class="sub-painel" id="financeiro-sub-plano-contas">
+        <div class="cartao">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+            <h3 style="margin:0;">Plano de contas</h3>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <button class="botao sutil pequeno" id="botao-baixar-modelo-financeiro">Baixar planilha-modelo</button>
+              <button class="botao sutil pequeno" id="botao-exportar-plano-contas">Exportar plano de contas (CSV)</button>
+              <label class="botao sutil pequeno" style="cursor:pointer;">
+                Importar planilha (CSV)
+                <input type="file" id="input-importar-financeiro" accept=".csv,text/csv" style="display:none;">
+              </label>
+              <button class="botao secundario" id="botao-salvar-valores-financeiro">Salvar valores do mês</button>
+              <span id="confirmacao-financeiro" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+            </div>
+          </div>
+          <div id="resumo-importacao-financeiro" style="margin:-6px 0 14px;font-size:13px;color:var(--ink-600);"></div>
+          <p style="margin:-6px 0 14px;color:var(--ink-400);font-size:12.5px;">
+            Clique na seta pra abrir/fechar uma conta. Só contas sem subconta aceitam valor — as demais
+            somam automaticamente o que está por baixo delas. "+ subconta" cria uma conta nova ali
+            dentro, com o código gerado sozinho.
+          </p>
+          <div id="financeiro-arvore"><p class="vazio">Carregando...</p></div>
+        </div>
+      </div>
+    </section>
