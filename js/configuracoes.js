@@ -453,8 +453,25 @@ CREATE POLICY acesso_total_anon ON permissoes FOR ALL USING (true) WITH CHECK (t
     return;
   }
   const rotuloPapel = p => p==='atendente' ? 'Atendente' : (p==='profissional' ? 'Profissional' : (p==='gerente' ? 'Gerente' : p));
+  const explicacaoGrupo = {
+    'Início': 'Dashboard inicial com gráficos gerais.',
+    'Lançamento': 'Registrar atendimentos.',
+    'Verificar': 'Conferir/editar lançamentos, financeiro dos atendimentos.',
+    'Crítica': 'Revisar e corrigir lançamentos com pendência.',
+    'RMR': 'Relatório de produção por profissional.',
+    'Metas': 'Metas de produção por profissional/mês.',
+    'Análises': 'Cruzamentos e análises de dados.',
+    'Apresentação': 'Modo apresentação (slides).',
+    'Financeiro': 'DRE, plano de contas, fluxo de caixa.',
+    'Estoque': 'Materiais, entrada por NF, solicitação e dispensação.',
+    'Configurações': 'Acesso geral à tela de Configurações.',
+    'Cadastros do Sistema': 'Listas, matrizes de vínculo, campos travados, importar CSV.',
+    'Parâmetros — Pacientes': 'Cadastro de Pacientes.',
+    'Parâmetros — Financeiro': 'Configurações do módulo Financeiro.',
+    'Parâmetros — Identidade': 'Logo, cor, nome da clínica.'
+  };
   const grupos = agruparPermissoesPorTela();
-  const linhaGrupos = grupos.map(g=>`<th colspan="${g.itens.length}" style="text-align:center;border-left:2px solid var(--line);">${g.tela}</th>`).join('');
+  const linhaGrupos = grupos.map(g=>`<th colspan="${g.itens.length}" style="text-align:center;border-left:2px solid var(--line);" title="${(explicacaoGrupo[g.tela]||'').replace(/"/g,'&quot;')}">${g.tela}</th>`).join('');
   const linhaColunas = grupos.map(g=>g.itens.map(p=>`<th style="text-align:center;font-size:10.5px;border-left:${g.itens.indexOf(p)===0?'2px solid var(--line)':'none'};">${p.rotulo}</th>`).join('')).join('');
 
 

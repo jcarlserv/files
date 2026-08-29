@@ -1000,6 +1000,10 @@
             avisa pra preencher manual.
             Testado: regex de CNPJ/NF/Data contra texto de exemplo — os 3
             bateram certo.
+   v6.29.2 — Direitos e Privilégios: "Parâmetros — Cadastros" renomeado
+            pra "Cadastros do Sistema" (mais claro). Todos os grupos da
+            matriz ganharam tooltip (passar o mouse no cabeçalho) com
+            explicação curta do que cada um cobre.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";
