@@ -1048,6 +1048,18 @@
             (nome/unidade/valor todos batendo), criação de fornecedor+20
             materiais, e reimportação da mesma nota reconhecendo tudo sem
             duplicar nada.
+   v6.31.1 — Correção: importação de NF em PDF (Cadastro) não dava
+            nenhum feedback quando falhava em silêncio — endurecido pra
+            nunca mais isso acontecer. Mostra na TELA (não só no console)
+            se o pdf.js não carregou (rede/firewall bloqueando o CDN), se
+            o PDF não tem texto reconhecível, ou qualquer outro erro —
+            com a mensagem real, não genérica. Logs de diagnóstico
+            adicionados (visíveis no F12 → Console) em cada etapa.
+            Favicon adicionado (SVG embutido, sem arquivo externo — letra
+            "C" na cor da marca), resolvendo o 404 de favicon.ico que
+            aparecia no console.
+            Testado: cenário de pdf.js não carregado mostra mensagem
+            clara na tela; cancelar o seletor de arquivo não trava nada.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

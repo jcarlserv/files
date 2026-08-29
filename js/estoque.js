@@ -638,16 +638,21 @@ function prepararImportacaoCadastroPdf(){
   }
 
   document.getElementById('cadastro-pdf-arquivo').addEventListener('change', async (ev)=>{
-    const arquivo = ev.target.files[0];
     const status = document.getElementById('cadastro-pdf-status');
-    if(!arquivo) return;
-    if(typeof pdfjsLib === 'undefined'){
-      status.style.color = 'var(--danger)'; status.textContent = 'Leitor de PDF não carregou (sem internet?).';
-      return;
-    }
-    status.style.color = 'var(--ink-400)'; status.textContent = 'Lendo PDF...';
-    document.getElementById('cadastro-pdf-revisao').style.display = 'none';
+    console.log('[Importar NF] arquivo selecionado, iniciando...'); // ajuda a diagnosticar no F12 se algo travar silenciosamente
     try{
+      const arquivo = ev.target.files[0];
+      if(!arquivo){ console.log('[Importar NF] nenhum arquivo (cancelou o seletor).'); return; }
+      status.style.color = 'var(--ink-400)'; status.textContent = 'Lendo PDF...';
+      document.getElementById('cadastro-pdf-revisao').style.display = 'none';
+
+      if(typeof pdfjsLib === 'undefined'){
+        status.style.color = 'var(--danger)';
+        status.textContent = 'O leitor de PDF (pdf.js) não carregou — provavelmente bloqueado por firewall/rede da clínica, ou sem internet no momento. Recarregue a página (Cmd/Ctrl+Shift+R) com internet ativa e tente de novo.';
+        console.log('[Importar NF] pdfjsLib indefinido — CDN não carregou.');
+        return;
+      }
+
       const bytes = await arquivo.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
       let textoCompleto = '';
@@ -656,6 +661,7 @@ function prepararImportacaoCadastroPdf(){
         const conteudo = await pagina.getTextContent();
         textoCompleto += conteudo.items.map(it=>it.str).join(' ') + '\n';
       }
+      console.log('[Importar NF] texto extraído, tamanho:', textoCompleto.length);
       const extraido = extrairDadosNfPdf(textoCompleto);
       if(!extraido.fornecedor || extraido.itens.length===0){
         status.style.color = 'var(--danger)';
@@ -678,8 +684,9 @@ function prepararImportacaoCadastroPdf(){
       status.style.color = 'var(--teal-700)';
       status.textContent = `Lido com sucesso — ${extraido.itens.length} itens encontrados. Revise abaixo antes de salvar.`;
     }catch(e){
+      console.error('[Importar NF] erro:', e);
       status.style.color = 'var(--danger)';
-      status.textContent = 'Não consegui ler esse PDF (pode ser escaneado/imagem, sem texto).';
+      status.textContent = 'Erro ao ler o PDF: ' + (e && e.message ? e.message : String(e));
     }
   });
 
