@@ -20,6 +20,8 @@ de novo sem duplicar nada, exceto o `06_listas_especialidades.sql`, que faz um
 | `08_pacientes_cpf.sql` | v6.25.1 | Paciente ganha CPF |
 | `09_confirmacao_recebimento.sql` | v6.29.0 | Dispensação em 2 etapas: reserva → confirmação (baixa só na confirmação) |
 | `10_fornecedores_materiais_campos_nf.sql` | v6.31.0 | Campos extras pra importação de NF (endereço/IE do fornecedor, código/NF do material) |
+| `11_materiais_valor_codigo_barras.sql` | v6.34.0 | Valor de referência e código de barras no Material |
+| `12_listas_categorias_unidades_material.sql` | v6.37.0 | Categorias e Unidades de Material viram listas gerenciáveis (com valores padrão semeados) |
 
 ## BASE_DE_DADOS.md
 

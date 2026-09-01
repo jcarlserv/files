@@ -25,7 +25,9 @@ const DEFINICAO_LISTAS_CONFIG = [
   {chave:'formas_pagamento', rotulo:'Formas de pagamento'},
   {chave:'biopsias_frascos', rotulo:'Biópsia (frascos)'},
   {chave:'exames', rotulo:'Exames'},
-  {chave:'especialidades', rotulo:'Especialidades (profissionais)'}
+  {chave:'especialidades', rotulo:'Especialidades (profissionais)'},
+  {chave:'categorias_material', rotulo:'Categorias de Material (Estoque)'},
+  {chave:'unidades_material', rotulo:'Unidades de Material (Estoque)'}
 ];
 let listaConfigSelectPronto = false;
 
@@ -479,16 +481,16 @@ CREATE POLICY acesso_total_anon ON permissoes FOR ALL USING (true) WITH CHECK (t
 
   tabela.innerHTML = `
     <thead>
-      <tr><th rowspan="2">Nome</th><th rowspan="2">Usuário</th><th rowspan="2">Papel</th>${linhaGrupos}</tr>
+      <tr><th rowspan="2" class="col-congelada col-congelada-1">Nome</th><th rowspan="2" class="col-congelada col-congelada-2">Usuário</th><th rowspan="2" class="col-congelada col-congelada-3">Papel</th>${linhaGrupos}</tr>
       <tr>${linhaColunas}</tr>
     </thead>
     <tbody>${usuarios.map(u=>{
       const ehGerente = u.papel === 'gerente';
       return `
       <tr data-usuario="${u.usuario}">
-        <td>${u.nome_profissional || u.usuario}</td>
-        <td class="mono">${u.usuario}</td>
-        <td><span class="tag">${rotuloPapel(u.papel)}</span></td>
+        <td class="col-congelada col-congelada-1">${u.nome_profissional || u.usuario}</td>
+        <td class="mono col-congelada col-congelada-2">${u.usuario}</td>
+        <td class="col-congelada col-congelada-3"><span class="tag">${rotuloPapel(u.papel)}</span></td>
         ${DEFINICAO_PERMISSOES.map((p,i)=>`<td style="text-align:center;border-left:${grupos.some(g=>g.itens[0]===p)?'2px solid var(--line)':'none'};" ${ehGerente?'title="Gerente sempre tem acesso total — não editável aqui."':''}><input type="checkbox" class="chk-permissao" data-chave="${p.chave}" ${(ehGerente || u.permissoes[p.chave])?'checked':''} ${ehGerente?'disabled':''}></td>`).join('')}
       </tr>`;
     }).join('')}</tbody>`;

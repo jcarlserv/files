@@ -7,87 +7,145 @@
       </div>
 
       <div class="sub-nav" id="sub-nav-estoque">
-        <div class="sub-aba ativa" data-sub="estoque-materiais">Cadastro</div>
-        <div class="sub-aba" data-sub="estoque-entrada">Entrada (NF)</div>
+        <div class="sub-aba ativa" data-sub="estoque-materiais">Fornecedor</div>
+        <div class="sub-aba" data-sub="estoque-entrada">Material</div>
         <div class="sub-aba" data-sub="estoque-solicitar">Solicitar</div>
         <div class="sub-aba" data-sub="estoque-dispensar">Dispensar</div>
         <div class="sub-aba" data-sub="estoque-dispensados">Dispensados</div>
         <div class="sub-aba" data-sub="estoque-relatorio">Relatório</div>
       </div>
 
-      <!-- ===== MATERIAIS (catálogo + fornecedores) ===== -->
+      <!-- ===== FORNECEDOR (Listagem / Cadastro Manual / Cadastro Automático) ===== -->
       <div class="sub-painel ativa" id="estoque-materiais">
-        <div class="cartao">
-          <h3>Importar Fornecedor e Materiais (PDF da NF)</h3>
-          <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-            Extrai fornecedor e a lista de itens direto do PDF da nota. Se o fornecedor já estiver
-            cadastrado (mesmo CNPJ), não duplica — só cadastra os materiais que ainda não existem
-            (reconhecidos pelo código do produto na NF). Nada é salvo sem você revisar e confirmar abaixo.
-          </p>
-          <input type="file" id="cadastro-pdf-arquivo" accept="application/pdf">
-          <p id="cadastro-pdf-status" style="margin:10px 0 0;font-size:12.5px;color:var(--ink-400);"></p>
-          <details id="cadastro-pdf-texto-detalhes" style="display:none;margin-top:10px;">
-            <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-600);">Ver texto extraído do PDF (útil se não reconhecer o layout)</summary>
-            <textarea id="cadastro-pdf-texto" readonly style="width:100%;height:180px;margin-top:8px;font-family:monospace;font-size:11.5px;padding:10px;border:1.5px solid var(--line);border-radius:8px;"></textarea>
-          </details>
-          <div id="cadastro-pdf-revisao" style="display:none;"></div>
-          <div style="margin-top:16px;">
-            <button class="botao" id="botao-salvar-importacao-cadastro">Salvar catálogo</button>
+        <div class="sub-nav" id="sub-nav-fornecedor" style="margin-bottom:20px;">
+          <div class="sub-aba ativa" data-modo="lista">Listagem</div>
+          <div class="sub-aba" data-modo="manual">Cadastro Manual</div>
+          <div class="sub-aba" data-modo="automatico">Cadastro Automático</div>
+        </div>
+
+        <div id="fornecedor-modo-lista">
+          <div class="cartao">
+            <h3>Fornecedores cadastrados</h3>
+            <div class="tabela-scroll"><table id="tabela-fornecedores"></table></div>
           </div>
         </div>
-        <div class="cartao">
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-            <h3 style="margin:0;">Fornecedores</h3>
-            <button class="botao secundario" id="botao-novo-fornecedor">+ Novo fornecedor</button>
+
+        <div id="fornecedor-modo-manual" style="display:none;">
+          <div class="cartao">
+            <h3 id="titulo-form-fornecedor">Novo fornecedor</h3>
+            <div class="grade-form">
+              <div class="campo"><label>Nome *</label><input type="text" id="form-fornecedor-nome"></div>
+              <div class="campo"><label>CNPJ</label><input type="text" id="form-fornecedor-cnpj" placeholder="00.000.000/0000-00"></div>
+              <div class="campo"><label>Contato</label><input type="text" id="form-fornecedor-contato"></div>
+              <div class="campo"><label>Inscrição estadual</label><input type="text" id="form-fornecedor-ie"></div>
+              <div class="campo" style="grid-column:1/-1;"><label>Endereço</label><input type="text" id="form-fornecedor-endereco"></div>
+              <div class="campo"><label>Cidade</label><input type="text" id="form-fornecedor-cidade"></div>
+              <div class="campo"><label>UF</label><input type="text" id="form-fornecedor-uf" maxlength="2" style="width:70px;"></div>
+              <div class="campo"><label>CEP</label><input type="text" id="form-fornecedor-cep"></div>
+            </div>
+            <div style="margin-top:16px;display:flex;align-items:center;gap:10px;">
+              <button class="botao" id="botao-salvar-fornecedor-manual">Salvar fornecedor</button>
+              <button class="botao sutil" id="botao-cancelar-edicao-fornecedor" style="display:none;">Cancelar edição</button>
+              <span id="confirmacao-fornecedor-manual" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+            </div>
           </div>
-          <div class="tabela-scroll"><table id="tabela-fornecedores"></table></div>
         </div>
-        <div class="cartao">
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-            <h3 style="margin:0;">Catálogo de materiais</h3>
-            <button class="botao secundario" id="botao-novo-material">+ Novo material</button>
+
+        <div id="fornecedor-modo-automatico" style="display:none;">
+          <div class="cartao">
+            <h3>Importar Fornecedor (PDF da NF)</h3>
+            <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+              Extrai só os dados do fornecedor (emitente) do PDF — nome, CNPJ, endereço, IE. Não mexe em
+              materiais aqui (isso fica na aba Material). Se o CNPJ já estiver cadastrado, não duplica.
+            </p>
+            <input type="file" id="fornecedor-pdf-arquivo" accept="application/pdf">
+            <p id="fornecedor-pdf-status" style="margin:10px 0 0;font-size:12.5px;color:var(--ink-400);"></p>
+            <details id="fornecedor-pdf-texto-detalhes" style="display:none;margin-top:10px;">
+              <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-600);">Ver texto extraído do PDF</summary>
+              <textarea id="fornecedor-pdf-texto" readonly style="width:100%;height:180px;margin-top:8px;font-family:monospace;font-size:11.5px;padding:10px;border:1.5px solid var(--line);border-radius:8px;"></textarea>
+            </details>
+            <div id="fornecedor-pdf-revisao" style="display:none;"></div>
           </div>
-          <div class="tabela-scroll"><table id="tabela-materiais"></table></div>
         </div>
       </div>
 
-      <!-- ===== ENTRADA POR NF ===== -->
+      <!-- ===== MATERIAL (Cadastro Manual / Cadastro Automático) ===== -->
       <div class="sub-painel" id="estoque-entrada">
-        <div class="cartao">
-          <h3>Importar Nota Fiscal (PDF)</h3>
-          <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-            Extrai o texto do PDF e tenta identificar Fornecedor (por CNPJ), Nº da NF e Data — preenche o
-            formulário abaixo automaticamente quando encontra. <b>Material, Lote, Validade e Quantidade
-            continuam manuais</b> — cada fornecedor descreve item de um jeito diferente, então não arrisco
-            adivinhar isso sozinho. O texto extraído fica visível pra você copiar o que precisar.
-          </p>
-          <input type="file" id="entrada-pdf-arquivo" accept="application/pdf">
-          <p id="entrada-pdf-status" style="margin:10px 0 0;font-size:12.5px;color:var(--ink-400);"></p>
-          <details id="entrada-pdf-texto-detalhes" style="display:none;margin-top:12px;">
-            <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-600);">Ver texto extraído do PDF</summary>
-            <textarea id="entrada-pdf-texto" readonly style="width:100%;height:180px;margin-top:8px;font-family:monospace;font-size:11.5px;padding:10px;border:1.5px solid var(--line);border-radius:8px;"></textarea>
-          </details>
+        <div class="sub-nav" id="sub-nav-material" style="margin-bottom:20px;">
+          <div class="sub-aba ativa" data-modo="lista">Listagem</div>
+          <div class="sub-aba" data-modo="manual">Cadastro Manual</div>
+          <div class="sub-aba" data-modo="automatico">Cadastro Automático</div>
         </div>
 
-        <div class="cartao">
-          <h3>Registrar entrada por Nota Fiscal</h3>
-          <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
-            Cada entrada vira um lote próprio, com sua validade — mesmo material pode ter vários lotes com
-            datas diferentes ao mesmo tempo.
-          </p>
-          <div class="grade-form">
-            <div class="campo"><label>Material</label><select id="entrada-material"></select></div>
-            <div class="campo"><label>Fornecedor</label><select id="entrada-fornecedor"><option value="">—</option></select></div>
-            <div class="campo"><label>Nota Fiscal</label><input type="text" id="entrada-nf"></div>
-            <div class="campo"><label>Lote</label><input type="text" id="entrada-lote"></div>
-            <div class="campo"><label>Data de entrada</label><input type="date" id="entrada-data"></div>
-            <div class="campo"><label>Validade</label><input type="date" id="entrada-validade"></div>
-            <div class="campo"><label>Quantidade</label><input type="number" id="entrada-quantidade" step="1"></div>
-            <div class="campo"><label>Valor unitário (R$)</label><input type="number" id="entrada-valor-unitario" step="0.01"></div>
+        <div id="material-modo-lista">
+          <div class="cartao">
+            <h3>Catálogo de materiais</h3>
+            <div class="tabela-scroll"><table id="tabela-materiais"></table></div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;margin-top:16px;">
-            <button class="botao" id="botao-registrar-entrada">Registrar entrada</button>
-            <span id="confirmacao-entrada-estoque" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+        </div>
+
+        <div id="material-modo-manual" style="display:none;">
+          <div class="cartao">
+            <h3 id="titulo-form-material">Novo material</h3>
+            <div class="grade-form">
+              <div class="campo"><label>Nome *</label><input type="text" id="form-material-nome"></div>
+              <div class="campo"><label>Categoria</label><select id="form-material-categoria"><option value="">—</option></select></div>
+              <div class="campo"><label>Unidade</label><select id="form-material-unidade"><option value="">—</option></select></div>
+              <div class="campo"><label>Estoque mínimo</label><input type="number" id="form-material-estoque-minimo" step="1"></div>
+              <div class="campo"><label>Código do fornecedor</label><input type="text" id="form-material-codigo-fornecedor"></div>
+              <div class="campo"><label>Valor de referência (R$)</label><input type="number" id="form-material-valor-referencia" step="0.01"></div>
+              <div class="campo"><label>Código de barras</label><input type="text" id="form-material-codigo-barras"></div>
+              <div class="campo"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="form-material-ativo" checked style="width:auto;"> Ativo</label></div>
+            </div>
+            <div style="margin-top:16px;display:flex;align-items:center;gap:10px;">
+              <button class="botao" id="botao-salvar-material-manual">Salvar material</button>
+              <button class="botao sutil" id="botao-cancelar-edicao-material" style="display:none;">Cancelar edição</button>
+              <span id="confirmacao-material-manual" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+            </div>
+          </div>
+
+          <div class="cartao">
+            <h3>Registrar entrada por Nota Fiscal</h3>
+            <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+              Cada entrada vira um lote próprio, com sua validade — mesmo material pode ter vários lotes com
+              datas diferentes ao mesmo tempo.
+            </p>
+            <div class="grade-form">
+              <div class="campo"><label>Material</label><select id="entrada-material"></select></div>
+              <div class="campo"><label>Fornecedor</label><select id="entrada-fornecedor"><option value="">—</option></select></div>
+              <div class="campo"><label>Nota Fiscal</label><input type="text" id="entrada-nf"></div>
+              <div class="campo"><label>Lote</label><input type="text" id="entrada-lote"></div>
+              <div class="campo"><label>Data de entrada</label><input type="date" id="entrada-data"></div>
+              <div class="campo"><label>Validade</label><input type="date" id="entrada-validade"></div>
+              <div class="campo"><label>Quantidade</label><input type="number" id="entrada-quantidade" step="1"></div>
+              <div class="campo"><label>Valor unitário (R$)</label><input type="number" id="entrada-valor-unitario" step="0.01"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:16px;">
+              <button class="botao" id="botao-registrar-entrada">Registrar entrada</button>
+              <span id="confirmacao-entrada-estoque" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+            </div>
+          </div>
+          <div class="cartao">
+            <h3>Entradas registradas</h3>
+            <div class="tabela-scroll"><table id="tabela-entradas"></table></div>
+          </div>
+        </div>
+
+        <div id="material-modo-automatico" style="display:none;">
+          <div class="cartao">
+            <h3>Importar Materiais (PDF da NF)</h3>
+            <p style="margin:-8px 0 16px;color:var(--ink-400);font-size:12.5px;">
+              Extrai os itens da tabela de produtos do PDF e cadastra no catálogo os que ainda não existirem
+              (reconhecidos pelo código do fornecedor). Só cadastro — pra dar entrada no estoque, use
+              "Registrar entrada por Nota Fiscal" (Cadastro Manual). Nada é salvo sem você revisar e confirmar.
+            </p>
+            <input type="file" id="material-pdf-arquivo" accept="application/pdf">
+            <p id="material-pdf-status" style="margin:10px 0 0;font-size:12.5px;color:var(--ink-400);"></p>
+            <details id="material-pdf-texto-detalhes" style="display:none;margin-top:10px;">
+              <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-600);">Ver texto extraído do PDF</summary>
+              <textarea id="material-pdf-texto" readonly style="width:100%;height:180px;margin-top:8px;font-family:monospace;font-size:11.5px;padding:10px;border:1.5px solid var(--line);border-radius:8px;"></textarea>
+            </details>
+            <div id="material-pdf-revisao" style="display:none;"></div>
           </div>
         </div>
       </div>

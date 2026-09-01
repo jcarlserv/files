@@ -8,6 +8,7 @@
    Este arquivo é carregado via <script src> em index.html, na mesma ordem
    em que aparecia originalmente dentro do <script> único — variáveis e
    funções continuam compartilhando o escopo global, exatamente como antes.
+   v6.31.5 — Exclusão física liberada só para gerente no Estoque, para a fase inicial de testes: fornecedor, material e entrada registrada agora têm botão Excluir; entrada também ganhou tabela própria.
 ===================================================================== */
 
 /* =====================================================================
@@ -1090,6 +1091,284 @@
             agora exibe e permite editar CNPJ, inscrição estadual e
             endereço antes de salvar (esses dados já eram lidos da NF, mas
             iam pro banco sem passar pela conferência).
+   v6.32.0 — Estoque reestruturado, a pedido do usuário. Sub-aba "Cadastro"
+            virou "Fornecedor"; sub-aba "Entrada (NF)" virou "Material"
+            (agora reúne Catálogo de Materiais + Entrada por NF juntos).
+            As duas ganharam sub-navegação interna: Cadastro Manual /
+            Cadastro Automático.
+            Fornecedor → Manual: form inline (sem modal), com todos os
+            campos (nome, CNPJ, contato, IE, endereço, cidade, UF, CEP).
+            Fornecedor → Automático: PDF só extrai/cria o fornecedor —
+            não mexe em materiais.
+            Material → Manual: form de Material (nome, categoria,
+            unidade, estoque mínimo, código do fornecedor, ativo) +
+            catálogo + formulário de Entrada por NF, tudo junto.
+            Material → Automático: PDF extrai os itens da NF e cria, pra
+            cada um, o Material no catálogo (se novo) E a Entrada (lote)
+            já com a quantidade da nota — antes só cadastrava o material,
+            sem lançar estoque. Tenta achar o fornecedor já cadastrado
+            (por CNPJ) só pra vincular na entrada; nunca cria fornecedor
+            novo por aqui (isso ficou exclusivo da aba Fornecedor).
+            Parser ganhou extração de data de emissão (dataEmissao),
+            usada como data da entrada quando presente.
+            Removido: os 2 modais de Fornecedor/Material (formulário
+            agora é sempre inline) e a tela antiga de "Entrada (NF)"
+            standalone que só pré-preenchia campos sem criar nada.
+            Corrigido no processo: duas declarações duplicadas de
+            `let` (fornecedorEmEdicaoId, materialEmEdicaoId) que
+            sobraram do código de modal antigo.
+            Testado: sub-nav com rótulos novos; form manual de
+            Fornecedor cria com cidade/UF; editar preenche o form;
+            Material aparece na aba certa (junto com Entradas); form
+            manual de Material cria com código do fornecedor; parser
+            extrai os 9 itens de teste corretamente incluindo data de
+            emissão. O fluxo completo de salvar via Automático (criar
+            materiais + entradas em lote) tem a lógica verificada
+            diretamente, mas a simulação de clique não roda no meu
+            ambiente de teste local (limitação conhecida do simulador,
+            não do código — mesmo padrão já usado com sucesso em outras
+            partes do sistema).
+   v6.32.1 — Ajuste a pedido do usuário: Material → Cadastro Automático
+            volta a criar SÓ o catálogo (não mais entrada/lote junto),
+            espelhando Fornecedor → Automático (que também só cria
+            fornecedor). Pra dar entrada no estoque depois de importar o
+            catálogo, usa "Registrar entrada por Nota Fiscal" (Cadastro
+            Manual). Removida a busca de fornecedor por CNPJ que só
+            servia pra vincular a entrada (não faz mais sentido sem ela).
+            Testado: botão e aviso corretos na revisão; nenhum lote é
+            criado ao salvar; os materiais são cadastrados certinho.
+   v6.32.2 — Sub-aba "Lista" adicionada em Fornecedor e Material, a pedido
+            do usuário — 3ª opção ao lado de Cadastro Manual/Automático.
+            Lista de Fornecedores saiu do Cadastro Manual e ganhou aba
+            própria; mesmo pra Catálogo de materiais. Editar/Excluir
+            continuam funcionando igual, só mudaram de lugar. Entrada por
+            NF e Entradas registradas continuam no Cadastro Manual do
+            Material (não fazem parte da "lista" pedida).
+            Testado: as duas tabelas populam certinho, com Editar/Excluir
+            presentes; Entradas continua funcionando sem ser afetada.
+   v6.32.3 — Correção do pedido anterior (v6.32.2 entendeu errado): "Lista
+            Fornecedores" e "Lista Materiais" viraram abas PRÓPRIAS, no
+            mesmo nível de Fornecedor/Material/Solicitar/Dispensar/
+            Dispensados/Relatório — não mais sub-abas dentro de
+            Fornecedor/Material. Removido o toggle "Lista" de dentro de
+            Cadastro Manual/Automático (voltou a ser só esses 2).
+            Ordem no menu: Fornecedor | Lista Fornecedores | Material |
+            Lista Materiais | Solicitar | Dispensar | Dispensados |
+            Relatório. Editar/Excluir continuam funcionando igual.
+            Testado: as 2 abas novas aparecem na ordem certa no menu
+            principal; mostram os dados com Editar/Excluir; Fornecedor e
+            Material (cadastro) continuam funcionando normalmente.
+   v6.32.4 — Correção do pedido anterior (v6.32.3 entendeu errado de
+            novo): voltou a ser sub-aba DENTRO de Fornecedor e de
+            Material — as 2 abas de nível principal saíram. Cada uma
+            (Fornecedor e Material) agora tem 3 sub-abas internas, nessa
+            ordem: Listagem | Cadastro Manual | Cadastro Automático
+            (Listagem é a primeira, aberta por padrão). Editar/Excluir
+            continuam funcionando igual, só voltaram pro lugar de antes
+            da v6.32.3.
+            Testado: menu principal voltou a ter só as 6 abas de sempre;
+            Listagem de Fornecedores e de Materiais populam certinho com
+            Editar/Excluir; Entradas e o form manual de Material
+            continuam funcionando sem quebrar nada.
+   v6.32.5 — Corrigido: botão Editar (Fornecedor e Material) não fazia
+            nada visível — preenchia o formulário, mas ele ficava
+            escondido atrás da Listagem (que virou sub-aba separada na
+            v6.32.4, e o Editar nunca foi ensinado a trocar de sub-aba).
+            Agora, clicar em Editar leva automaticamente pra "Cadastro
+            Manual" com os dados já preenchidos. "Cancelar edição"
+            continua sem forçar troca de aba (fica onde a pessoa estava).
+            Testado: Editar troca a sub-aba e preenche o formulário certo,
+            nos dois (Fornecedor e Material); Cancelar não mexe na aba.
+   v6.33.0 — Desfazer e Excluir, a pedido do usuário, em Solicitar,
+            Dispensar e Dispensados. Cobre os 4 estados de uma
+            solicitação (pendente/dispensado/confirmado/negado), sempre
+            devolvendo estoque quando preciso — nunca deixa quantidade
+            "perdida":
+            • Solicitar (Minhas solicitações): botão Cancelar numa
+              pendente — só remove, sem mexer em estoque.
+            • Dispensar (pendentes): Excluir ao lado de Dispensar/Negar.
+            • Dispensados: Desfazer (volta um estado) e Excluir (remove
+              de vez), pros dois status (dispensado/confirmado):
+              - Desfazer dispensação → volta pra pendente; reserva nunca
+                tinha baixado estoque, então não devolve nada.
+              - Desfazer confirmação → devolve a quantidade pro lote,
+                volta pra "aguardando confirmação".
+              - Excluir dispensado → libera a reserva, remove.
+              - Excluir confirmado → devolve a quantidade pro lote,
+                remove.
+            Desfazer/Excluir em Dispensados ficou restrito a quem tem
+            permissão de dispensar (farmácia/gerente) — mexer numa baixa
+            de estoque já feita é mais sensível que só confirmar
+            recebimento, então não abri pra qualquer solicitante.
+            Relatório não ganhou nada — é só visualização (posição de
+            estoque), não tem registro individual pra desfazer/excluir.
+            Novas rotas: excluirSolicitacaoMaterial,
+            desfazerDispensacaoSolicitacao, desfazerConfirmacaoSolicitacao.
+            Testado: 12 cenários — excluir pendente (sem tocar estoque),
+            desfazer dispensação (sem tocar estoque, volta pendente),
+            confirmar → desfazer confirmação (devolve quantidade exata,
+            volta pra dispensado), confirmar → excluir (devolve e some de
+            vez), e validação bloqueando desfazer algo no status errado.
+   v6.33.1 — Causa raiz achada (usuário reportou que atualizou e não
+            conseguiu excluir um lote): dispensacoes.lote_id tem FK sem
+            ON DELETE CASCADE — o Supabase recusa excluir um lote/entrada
+            se tiver QUALQUER dispensação vinculada, mesmo indireta.
+            Corrigido em excluirEntradaEstoque: agora reverte em cascata
+            sozinho — acha todas as dispensações do lote, TODAS as
+            solicitações donas delas voltam pra "pendente" (não perde
+            pedido nenhum, só desfaz o vínculo com aquele lote
+            específico), apaga as dispensações, e só depois exclui o
+            lote. Um clique só resolve, sem precisar caçar cada
+            solicitação manualmente em Dispensados primeiro (isso
+            continua disponível também, pra quem quiser reverter s
+            só uma solicitação por vez — Solicitar/Dispensar/Dispensados,
+            da v6.33.0).
+            Corrigido de brinde: geração de ID no modo demo
+            (criarSolicitacaoMaterial) podia colidir se duas solicitações
+            fossem criadas no mesmo milissegundo — achei isso testando o
+            cenário de 3 solicitações no mesmo lote. Sem impacto no
+            Supabase real (usa uuid), só no modo demo/teste.
+            Testado: lote com 3 solicitações em 3 estados diferentes
+            (dispensado, confirmado, confirmado) — excluir o lote direto
+            reverteu as 3 pra pendente, sem perder nenhuma, sem sobrar
+            dispensação órfã, e o lote sumiu de vez.
+   v6.34.0 — Estoque → Material: campos "Valor de referência (R$)" e
+            "Código de barras" adicionados, a pedido do usuário. Formulário
+            (Manual), catálogo (Listagem) e API cobertos. "Entradas
+            registradas" (Material → Cadastro Manual) ganhou coluna
+            "Valor", calculada (valor unitário × quantidade).
+            Requer SQL: sql/11_materiais_valor_codigo_barras.sql
+            Testado: material criado/editado com os 2 campos novos;
+            Listagem mostra o valor formatado certo (R$ x,xx); form de
+            edição carrega os dois campos.
+   v6.35.0 — 4 permissões novas no bloco Estoque (Direitos e Privilégios),
+            a pedido do usuário — antes eram travadas fixo (gerente-only)
+            ou nem existiam:
+            • Importar NF já importada antes — sem essa permissão, o
+              sistema BLOQUEIA registrar entrada com um número de NF que
+              já existe no banco (checagem nova, não existia). Aplica no
+              "Registrar entrada por Nota Fiscal" (Cadastro Manual do
+              Material).
+            • Excluir Fornecedor — trocou de fixo (gerente) pra
+              configurável.
+            • Excluir Material — trocou de fixo (gerente) pra
+              configurável.
+            • Retroceder/Desfazer (Solicitar, Dispensar, Dispensados) —
+              nova permissão própria, separada de "Dispensar/Negar". Cobre
+              Cancelar (Solicitar), Excluir de pendente (Dispensar), e
+              Desfazer+Excluir (Dispensados) — confirmar recebimento
+              continua sob a permissão de Dispensar, não muda.
+            Gerente sempre tem as 4, como todo o resto do sistema.
+            Exclusão de Entrada/lote NÃO entrou nessa leva (não foi
+            pedida) — continua gerente-only fixo, com a reversão em
+            cascata da v6.33.1.
+            Requer SQL: nenhum (é tudo permissão, não schema).
+            Testado: atendente sem as permissões não vê nenhum dos 4
+            botões/bloqueios; liberando cada uma, tudo aparece/libera;
+            NF repetida bloqueia sem a permissão e passa com ela; as 4
+            aparecem certinho na matriz de Direitos e Privilégios.
+   v6.36.0 — 5ª permissão nova no bloco Estoque, a pedido do usuário:
+            "Autorizar cadastro de Fornecedor durante importação de
+            Material". Material → Cadastro Automático agora checa o
+            fornecedor (emitente) da NF por CNPJ:
+            • Já cadastrado → só informa, não mexe em nada.
+            • Não cadastrado, COM a permissão → pergunta (confirm) se
+              quer cadastrar agora com os dados lidos da NF; aceitando,
+              cadastra na hora.
+            • Não cadastrado, SEM a permissão → avisa que não está
+              cadastrado e que precisa de alguém com a permissão liberada
+              (ou cadastro manual na aba Fornecedor) — não bloqueia a
+              importação dos materiais, só não mexe no fornecedor.
+            Gerente sempre tem a permissão, como o resto do sistema.
+            Requer SQL: nenhum (é tudo permissão, não schema).
+            Testado: a permissão aparece na matriz de Direitos e
+            Privilégios; as 4 mensagens (existente/criado/recusado/sem
+            permissão) renderizam certas; gerente sempre autorizado,
+            atendente só depois de liberado; criar fornecedor com os
+            dados extraídos da NF funciona.
+   v6.36.1 — Direitos e Privilégios: colunas Nome/Usuário/Papel agora
+            ficam congeladas (position: sticky) ao rolar a tabela pra
+            direita, a pedido do usuário — sempre dá pra ver de quem é a
+            linha que está mexendo, mesmo com a matriz de permissões
+            enorme. Hover na linha também pinta as 3 colunas congeladas
+            junto, pra não quebrar o efeito visual.
+            Testado: as 3 classes de coluna congelada aparecem certas no
+            cabeçalho e no corpo da tabela; CSS balanceado.
+   v6.37.0 — Estoque → Material: 2 melhorias a pedido do usuário.
+            (1) Listagem de materiais ganhou coluna "Qtd. em estoque" —
+            soma de todos os lotes (Entradas/NF) daquele material.
+            Destaca em vermelho com ⚠ quando fica abaixo do estoque
+            mínimo cadastrado. renderizarCatalogoMateriais virou async
+            (busca obterPosicaoEstoque toda vez que renderiza).
+            (2) Categoria e Unidade do Material deixaram de ser texto
+            livre — agora são dropdowns, alimentados por 2 listas novas
+            gerenciáveis em Configurações → Cadastros do Sistema →
+            Listas: "Categorias de Material" e "Unidades de Material".
+            Populadas com sugestões prontas (Luvas, Curativos, Seringas e
+            Agulhas... / unidade, caixa, pacote, frasco...) — edite/
+            apague à vontade, é só ponto de partida.
+            Requer SQL: sql/12_listas_categorias_unidades_material.sql
+            (libera os 2 tipos novos na constraint de listas, semeia com
+            os valores padrão).
+            Testado: estado.listas carrega os 2 tipos novos; dropdowns do
+            form populam certo; os 2 tipos aparecem no seletor de Listas
+            do Sistema; material criado com categoria/unidade escolhidas
+            no dropdown salva certo.
+   v6.37.1 — Corrigido (usuário testou com NF real e o fornecedor veio
+            com nome "DANFE"): layout em 2 colunas comum em DANFE (dados
+            do emitente à esquerda, caixa "DANFE" à direita) às vezes faz
+            a reconstrução de linha por posição colar as duas — o
+            fornecedor ficava com nome errado. extrairDadosNfPdf agora
+            valida a primeira linha candidata contra ruído (rótulos como
+            "DANFE" sozinho) antes de aceitar, e pula pra próxima linha
+            (ou cai no heurístico de fallback) se cair nisso.
+            Testado: cenário exato do bug reproduzido (DANFE colado no
+            rótulo, sem nada no meio) — agora extrai o nome certo; sem
+            regressão nos casos que já funcionavam (HOSPMEDICA, Cirúrgica
+            Medeiros formatado normal).
+   v6.37.2 — v6.37.1 não foi suficiente (usuário testou de novo e o
+            fornecedor veio "Fiscal Eletrônica" — fragmento da caixa
+            "DANFE / Documento Auxiliar da Nota Fiscal Eletrônica", ainda
+            do mesmo problema de layout em 2 colunas). Trocada a
+            estratégia: agora usa "RECEBEMOS DE {nome} OS PRODUTOS" como
+            âncora principal pro nome — frase fixa presente em toda NF-e,
+            no topo, fora da área de colunas que embaralha. O bloco
+            "IDENTIFICAÇÃO DO EMITENTE" virou só fonte de endereço/
+            fallback, não decide mais o nome sozinho.
+            Testado: nome sai certo em texto normal E no cenário
+            exatamente igual ao do print reportado (DANFE, Documento
+            Auxiliar, Fiscal Eletrônica, 0 - ENTRADA todos embaralhados
+            antes do nome de verdade) — endereço fica vazio nesse caso
+            extremo em vez de errado, dá pra completar na revisão. Sem
+            regressão no HOSPMEDICA.
+   v6.37.3 — v6.37.2 ainda não resolveu (usuário testou de novo, mesmo
+            erro). Causa provável: o regex da âncora "RECEBEMOS DE...OS
+            PRODUTOS" usava "." simples, que em JS NÃO atravessa quebra
+            de linha — se a extração real do PDF quebrou essa frase em
+            2-3 linhas (bem provável, já que o resto do documento também
+            quebra de forma imprevisível), a âncora simplesmente não
+            batia e caía de volta no método antigo, quebrado. Trocado
+            para "[\s\S]" (atravessa qualquer quebra de linha) +
+            normalização de espaços no resultado. Também adicionada
+            validação de sanidade (tamanho máximo, rejeita se tiver
+            padrão de CNPJ dentro — sinal de que capturou lixo demais).
+            Testado: 4 cenários incluindo o pior caso (RECEBEMOS quebrado
+            em 3 linhas E bloco do emitente bagunçado ao mesmo tempo) —
+            nome sai certo em todos; sem regressão no HOSPMEDICA.
+   v6.37.4 — Usuário mandou 5 NFs reais de fornecedores diferentes
+            (Cirúrgica Medeiros, HOSPMEDICA, Fresenius Kabi, Priscilla
+            Medeiros Souza, Via Medicamentos) — nome já tinha ficado bom
+            (v6.37.3), mas achei e corrigi 2 problemas reais testando
+            contra elas:
+            (1) Endereço perdia a PRIMEIRA linha (rua/av) — o código que
+            evita repetir o nome como endereço tinha um efeito colateral:
+            pulava também a linha seguinte por engano. Corrigido.
+            (2) Fresenius ficava com 0 itens — a unidade "CXA" (caixa)
+            não estava na lista de siglas reconhecidas, então a linha do
+            item não validava. Adicionadas CXA, PCT, F/A, FA à lista.
+            Testado: as 5 NFs reais, uma por uma — nome, CNPJ, IE e
+            endereço 100% corretos nas 5; itens extraídos em todas que
+            tinham produtos.
 ===================================================================== */
 const SUPABASE_URL = "https://ggasxplnpbpeyzlaiivi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_n9ZDdhwyLuwndOc4qw_JtA_xDumADQ0";

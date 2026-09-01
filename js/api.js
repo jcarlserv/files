@@ -353,6 +353,11 @@ async function supabaseApi(acao, dados) {
         .update({nome:dados.nome, cnpj:dados.cnpj||null, contato:dados.contato||null, endereco:dados.endereco||null, cidade:dados.cidade||null, uf:dados.uf||null, cep:dados.cep||null, inscricao_estadual:dados.inscricao_estadual||null}).eq('id', dados.id);
       return error ? {ok:false, erro:error.message} : {ok:true};
     }
+    case 'excluirFornecedor': {
+      // Só gerente pode excluir (validação na UI, mas reforça aqui)
+      const { error } = await supabaseClient.from('fornecedores').delete().eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
     case 'buscarFornecedorPorCnpj': {
       const { data, error } = await supabaseClient.from('fornecedores').select('*').eq('cnpj', dados.cnpj).maybeSingle();
       if(error) return {ok:false, erro:error.message};
@@ -367,7 +372,7 @@ async function supabaseApi(acao, dados) {
     }
     case 'criarMaterial': {
       const { data, error } = await supabaseClient.from('materiais')
-        .insert({nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, codigo_fornecedor:dados.codigo_fornecedor||null, nf_origem:dados.nf_origem||null})
+        .insert({nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, codigo_fornecedor:dados.codigo_fornecedor||null, nf_origem:dados.nf_origem||null, valor_referencia: dados.valor_referencia ? Number(dados.valor_referencia) : null, codigo_barras: dados.codigo_barras||null})
         .select().single();
       if(error) return {ok:false, erro:error.message};
       return {ok:true, material:data};
@@ -379,13 +384,43 @@ async function supabaseApi(acao, dados) {
     }
     case 'atualizarMaterial': {
       const { error } = await supabaseClient.from('materiais')
-        .update({nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, ativo:dados.ativo!==false})
+        .update({nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, ativo:dados.ativo!==false, valor_referencia: dados.valor_referencia ? Number(dados.valor_referencia) : null, codigo_barras: dados.codigo_barras||null})
         .eq('id', dados.id);
       return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+    case 'excluirMaterial': {
+      const { error } = await supabaseClient.from('materiais').delete().eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true};
+    }
+    // Excluir um lote/entrada — reverte tudo que estiver pendurado nele
+    // primeiro (senão o banco recusa: dispensacoes.lote_id tem FK sem
+    // cascade). Pra cada dispensação vinculada, a solicitação volta pra
+    // 'pendente' (não perde o pedido, só desfaz o vínculo com esse lote
+    // específico) e a dispensação é apagada. Só depois disso o lote sai.
+    case 'excluirEntradaEstoque': {
+      const { data: dispensacoes } = await supabaseClient.from('dispensacoes').select('*').eq('lote_id', dados.id);
+      const solicitacoesRevertidas = new Set();
+      for(const disp of (dispensacoes||[])){
+        if(!solicitacoesRevertidas.has(disp.solicitacao_id)){
+          await supabaseClient.from('solicitacoes_material').update({
+            status:'pendente', confirmado_por:null, confirmado_em:null, observacao_recebimento:null
+          }).eq('id', disp.solicitacao_id);
+          solicitacoesRevertidas.add(disp.solicitacao_id);
+        }
+      }
+      await supabaseClient.from('dispensacoes').delete().eq('lote_id', dados.id);
+      const { error } = await supabaseClient.from('estoque_lotes').delete().eq('id', dados.id);
+      return error ? {ok:false, erro:error.message} : {ok:true, solicitacoesRevertidas: solicitacoesRevertidas.size};
     }
 
     // ---------- ESTOQUE — Entrada por NF (cria um lote) ----------
     case 'criarEntradaEstoque': {
+      if(dados.nota_fiscal && !dados.permitir_nf_repetida){
+        const { data: existente } = await supabaseClient.from('estoque_lotes').select('id').eq('nota_fiscal', dados.nota_fiscal).limit(1);
+        if(existente && existente.length){
+          return {ok:false, erro:`A NF ${dados.nota_fiscal} já foi importada antes. Se for intencional (nota com múltiplas remessas, correção, etc.), peça pra alguém com a permissão "Importar NF já importada antes" liberar.`, nfRepetida:true};
+        }
+      }
       const { data, error } = await supabaseClient.from('estoque_lotes').insert({
         material_id: dados.material_id, fornecedor_id: dados.fornecedor_id||null,
         lote: dados.lote||null, nota_fiscal: dados.nota_fiscal||null,
@@ -510,6 +545,62 @@ async function supabaseApi(acao, dados) {
         confirmado_em: new Date().toISOString(), observacao_recebimento: dados.observacao||null
       }).eq('id', dados.id);
       return errStatus ? {ok:false, erro:errStatus.message} : {ok:true};
+    }
+
+    // Desfaz uma dispensação (reserva) — volta pra 'pendente' e apaga as
+    // reservas (dispensacoes status='reservado'). Não mexe em
+    // quantidade_atual do lote, porque reservar nunca chegou a descontar
+    // — só a confirmação desconta de verdade.
+    case 'desfazerDispensacaoSolicitacao': {
+      const { data: solicitacao } = await supabaseClient.from('solicitacoes_material').select('status').eq('id', dados.id).maybeSingle();
+      if(!solicitacao) return {ok:false, erro:'Solicitação não encontrada.'};
+      if(solicitacao.status !== 'dispensado') return {ok:false, erro:'Só dá pra desfazer uma dispensação que ainda está aguardando confirmação.'};
+      const { error: errDel } = await supabaseClient.from('dispensacoes').delete().eq('solicitacao_id', dados.id).eq('status', 'reservado');
+      if(errDel) return {ok:false, erro:errDel.message};
+      const { error: errUpd } = await supabaseClient.from('solicitacoes_material').update({status:'pendente'}).eq('id', dados.id);
+      return errUpd ? {ok:false, erro:errUpd.message} : {ok:true};
+    }
+
+    // Desfaz uma confirmação — devolve a quantidade pro lote (soma de
+    // volta em quantidade_atual), volta as reservas pra 'reservado', e a
+    // solicitação volta pra 'dispensado' (aguardando confirmação de novo).
+    case 'desfazerConfirmacaoSolicitacao': {
+      const { data: solicitacao } = await supabaseClient.from('solicitacoes_material').select('status').eq('id', dados.id).maybeSingle();
+      if(!solicitacao) return {ok:false, erro:'Solicitação não encontrada.'};
+      if(solicitacao.status !== 'confirmado') return {ok:false, erro:'Só dá pra desfazer uma confirmação já feita.'};
+      const { data: confirmadas } = await supabaseClient.from('dispensacoes').select('*').eq('solicitacao_id', dados.id).eq('status', 'confirmado');
+      for(const disp of (confirmadas||[])){
+        const { data: lote } = await supabaseClient.from('estoque_lotes').select('quantidade_atual').eq('id', disp.lote_id).maybeSingle();
+        if(!lote) continue;
+        await supabaseClient.from('estoque_lotes').update({quantidade_atual: Number(lote.quantidade_atual) + Number(disp.quantidade)}).eq('id', disp.lote_id);
+        await supabaseClient.from('dispensacoes').update({status:'reservado'}).eq('id', disp.id);
+      }
+      const { error: errUpd } = await supabaseClient.from('solicitacoes_material').update({
+        status:'dispensado', confirmado_por:null, confirmado_em:null, observacao_recebimento:null
+      }).eq('id', dados.id);
+      return errUpd ? {ok:false, erro:errUpd.message} : {ok:true};
+    }
+
+    // Excluir de vez — cobre os 4 estados possíveis. Se tiver reserva ou
+    // confirmação em aberto, devolve o estoque antes de apagar o registro
+    // (nunca deixa quantidade "perdida" no ar).
+    case 'excluirSolicitacaoMaterial': {
+      const { data: solicitacao } = await supabaseClient.from('solicitacoes_material').select('status').eq('id', dados.id).maybeSingle();
+      if(!solicitacao) return {ok:false, erro:'Solicitação não encontrada.'};
+
+      if(solicitacao.status === 'confirmado'){
+        const { data: confirmadas } = await supabaseClient.from('dispensacoes').select('*').eq('solicitacao_id', dados.id).eq('status', 'confirmado');
+        for(const disp of (confirmadas||[])){
+          const { data: lote } = await supabaseClient.from('estoque_lotes').select('quantidade_atual').eq('id', disp.lote_id).maybeSingle();
+          if(!lote) continue;
+          await supabaseClient.from('estoque_lotes').update({quantidade_atual: Number(lote.quantidade_atual) + Number(disp.quantidade)}).eq('id', disp.lote_id);
+        }
+      }
+      // Reservado (dispensado) ou confirmado (já devolvido acima) — apaga
+      // as linhas de dispensacoes de qualquer forma, não sobra órfã.
+      await supabaseClient.from('dispensacoes').delete().eq('solicitacao_id', dados.id);
+      const { error: errDel } = await supabaseClient.from('solicitacoes_material').delete().eq('id', dados.id);
+      return errDel ? {ok:false, erro:errDel.message} : {ok:true};
     }
 
 
@@ -1048,12 +1139,18 @@ function mockApi(acao, dados) {
       f.endereco=dados.endereco||null; f.cidade=dados.cidade||null; f.uf=dados.uf||null; f.cep=dados.cep||null; f.inscricao_estadual=dados.inscricao_estadual||null;
       return {ok:true};
     }
+    case 'excluirFornecedor': {
+      const idx = demo.fornecedores.findIndex(x=>x.id===dados.id);
+      if(idx===-1) return {ok:false, erro:'Fornecedor não encontrado.'};
+      demo.fornecedores.splice(idx, 1);
+      return {ok:true};
+    }
     case 'buscarFornecedorPorCnpj': {
       return {ok:true, fornecedor: demo.fornecedores.find(f=>f.cnpj===dados.cnpj) || null};
     }
     case 'listarMateriais': return {ok:true, materiais: demo.materiais.slice().sort((a,b)=>a.nome.localeCompare(b.nome))};
     case 'criarMaterial': {
-      const novo = {id:'demo-mat-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, ativo:true, codigo_fornecedor:dados.codigo_fornecedor||null, nf_origem:dados.nf_origem||null};
+      const novo = {id:'demo-mat-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:dados.nome, categoria:dados.categoria||null, unidade:dados.unidade||'unidade', estoque_minimo:Number(dados.estoque_minimo)||0, ativo:true, codigo_fornecedor:dados.codigo_fornecedor||null, nf_origem:dados.nf_origem||null, valor_referencia: dados.valor_referencia ? Number(dados.valor_referencia) : null, codigo_barras: dados.codigo_barras||null};
       demo.materiais.push(novo);
       return {ok:true, material:novo};
     }
@@ -1065,11 +1162,41 @@ function mockApi(acao, dados) {
       if(!m) return {ok:false, erro:'Material não encontrado.'};
       m.nome=dados.nome; m.categoria=dados.categoria||null; m.unidade=dados.unidade||'unidade';
       m.estoque_minimo=Number(dados.estoque_minimo)||0; m.ativo=dados.ativo!==false;
+      m.valor_referencia = dados.valor_referencia ? Number(dados.valor_referencia) : null;
+      m.codigo_barras = dados.codigo_barras||null;
       return {ok:true};
     }
+    case 'excluirMaterial': {
+      const idx = demo.materiais.findIndex(x=>x.id===dados.id);
+      if(idx===-1) return {ok:false, erro:'Material não encontrado.'};
+      demo.materiais.splice(idx, 1);
+      return {ok:true};
+    }
+    case 'excluirEntradaEstoque': {
+      const idx = demo.estoqueLotes.findIndex(x=>x.id===dados.id);
+      if(idx===-1) return {ok:false, erro:'Entrada não encontrada.'};
+      const dispensacoesDoLote = demo.dispensacoes.filter(d=>d.lote_id===dados.id);
+      const solicitacoesRevertidas = new Set();
+      dispensacoesDoLote.forEach(disp=>{
+        if(!solicitacoesRevertidas.has(disp.solicitacao_id)){
+          const s = demo.solicitacoesMaterial.find(x=>x.id===disp.solicitacao_id);
+          if(s){ s.status='pendente'; s.confirmado_por=null; s.confirmado_em=null; s.observacao_recebimento=null; }
+          solicitacoesRevertidas.add(disp.solicitacao_id);
+        }
+      });
+      demo.dispensacoes = demo.dispensacoes.filter(d=>d.lote_id!==dados.id);
+      demo.estoqueLotes.splice(idx, 1);
+      return {ok:true, solicitacoesRevertidas: solicitacoesRevertidas.size};
+    }
     case 'criarEntradaEstoque': {
+      if(dados.nota_fiscal && !dados.permitir_nf_repetida){
+        const jaExiste = demo.estoqueLotes.some(l=>l.nota_fiscal===dados.nota_fiscal);
+        if(jaExiste){
+          return {ok:false, erro:`A NF ${dados.nota_fiscal} já foi importada antes. Se for intencional, peça pra alguém com a permissão "Importar NF já importada antes" liberar.`, nfRepetida:true};
+        }
+      }
       const novo = {
-        id:'demo-lote-'+Date.now(), material_id:dados.material_id, fornecedor_id:dados.fornecedor_id||null,
+        id:'demo-lote-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), material_id:dados.material_id, fornecedor_id:dados.fornecedor_id||null,
         lote:dados.lote||null, nota_fiscal:dados.nota_fiscal||null,
         data_entrada: dados.data_entrada || new Date().toISOString().slice(0,10), validade: dados.validade||null,
         quantidade_entrada: Number(dados.quantidade)||0, quantidade_atual: Number(dados.quantidade)||0,
@@ -1083,7 +1210,7 @@ function mockApi(acao, dados) {
     }
     case 'criarSolicitacaoMaterial': {
       const novo = {
-        id:'demo-sol-'+Date.now(), material_id:dados.material_id, profissional_id:dados.profissional_id||null,
+        id:'demo-sol-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), material_id:dados.material_id, profissional_id:dados.profissional_id||null,
         procedimento:dados.procedimento||null, exame:dados.exame||null, quantidade:Number(dados.quantidade)||0,
         status:'pendente', observacao:dados.observacao||null, solicitado_por:dados.solicitado_por||null,
         solicitado_em:new Date().toISOString()
@@ -1148,6 +1275,40 @@ function mockApi(acao, dados) {
       s.confirmado_por = dados.confirmado_por||null;
       s.confirmado_em = new Date().toISOString();
       s.observacao_recebimento = dados.observacao||null;
+      return {ok:true};
+    }
+    case 'desfazerDispensacaoSolicitacao': {
+      const s = demo.solicitacoesMaterial.find(x=>x.id===dados.id);
+      if(!s) return {ok:false, erro:'Solicitação não encontrada.'};
+      if(s.status!=='dispensado') return {ok:false, erro:'Só dá pra desfazer uma dispensação que ainda está aguardando confirmação.'};
+      demo.dispensacoes = demo.dispensacoes.filter(d=>!(d.solicitacao_id===s.id && d.status==='reservado'));
+      s.status = 'pendente';
+      return {ok:true};
+    }
+    case 'desfazerConfirmacaoSolicitacao': {
+      const s = demo.solicitacoesMaterial.find(x=>x.id===dados.id);
+      if(!s) return {ok:false, erro:'Solicitação não encontrada.'};
+      if(s.status!=='confirmado') return {ok:false, erro:'Só dá pra desfazer uma confirmação já feita.'};
+      demo.dispensacoes.filter(d=>d.solicitacao_id===s.id && d.status==='confirmado').forEach(d=>{
+        const lote = demo.estoqueLotes.find(l=>l.id===d.lote_id);
+        if(lote) lote.quantidade_atual += Number(d.quantidade);
+        d.status = 'reservado';
+      });
+      s.status = 'dispensado';
+      s.confirmado_por = null; s.confirmado_em = null; s.observacao_recebimento = null;
+      return {ok:true};
+    }
+    case 'excluirSolicitacaoMaterial': {
+      const s = demo.solicitacoesMaterial.find(x=>x.id===dados.id);
+      if(!s) return {ok:false, erro:'Solicitação não encontrada.'};
+      if(s.status==='confirmado'){
+        demo.dispensacoes.filter(d=>d.solicitacao_id===s.id && d.status==='confirmado').forEach(d=>{
+          const lote = demo.estoqueLotes.find(l=>l.id===d.lote_id);
+          if(lote) lote.quantidade_atual += Number(d.quantidade);
+        });
+      }
+      demo.dispensacoes = demo.dispensacoes.filter(d=>d.solicitacao_id!==s.id);
+      demo.solicitacoesMaterial = demo.solicitacoesMaterial.filter(x=>x.id!==s.id);
       return {ok:true};
     }
 

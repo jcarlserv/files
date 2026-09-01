@@ -33,7 +33,7 @@ function prepararSubNavEstoque(){
     'estoque-dispensados': podeSolicitar || podeDispensar,
     'estoque-relatorio': podeEditar || podeDispensar
   };
-  const rotulos = {'estoque-materiais':'Cadastro','estoque-entrada':'Entrada (NF)','estoque-solicitar':'Solicitar','estoque-dispensar':'Dispensar','estoque-dispensados':'Dispensados','estoque-relatorio':'Relatório'};
+  const rotulos = {'estoque-materiais':'Fornecedor','estoque-entrada':'Material','estoque-solicitar':'Solicitar','estoque-dispensar':'Dispensar','estoque-dispensados':'Dispensados','estoque-relatorio':'Relatório'};
   const disponiveis = Object.keys(visibilidade).filter(id=>visibilidade[id]);
   const nav = document.getElementById('sub-nav-estoque');
   if(!disponiveis.includes(estado.subAbaEstoque)) estado.subAbaEstoque = disponiveis[0] || null;
@@ -56,12 +56,35 @@ function trocarSubAbaEstoque(subId){
 }
 
 async function atualizarSubAbaEstoqueAtiva(){
-  if(estado.subAbaEstoque==='estoque-materiais') renderizarCatalogoMateriais();
-  if(estado.subAbaEstoque==='estoque-entrada') prepararEntradaEstoque();
+  if(estado.subAbaEstoque==='estoque-materiais') await prepararAbaFornecedor();
+  if(estado.subAbaEstoque==='estoque-entrada') await prepararAbaMaterial();
   if(estado.subAbaEstoque==='estoque-solicitar') await prepararSolicitarEstoque();
   if(estado.subAbaEstoque==='estoque-dispensados') await prepararDispensados();
   if(estado.subAbaEstoque==='estoque-dispensar') await carregarSolicitacoesPendentes();
   if(estado.subAbaEstoque==='estoque-relatorio') await carregarRelatorioEstoque();
+}
+
+
+// Toggle genérico "Cadastro Manual / Cadastro Automático" — reaproveitado
+// em Fornecedor e Material. navId = id do sub-nav interno; paineis = mapa
+// {manual: idDoDiv, automatico: idDoDiv}.
+function prepararToggleManualAutomatico(navId, paineis){
+  const nav = document.getElementById(navId);
+  nav.querySelectorAll('.sub-aba').forEach(el=>{
+    el.addEventListener('click', ()=> trocarModoInterno(navId, paineis, el.dataset.modo));
+  });
+}
+
+// Troca de modo programaticamente (não só por clique) — usado pelo botão
+// "Editar" da Listagem, que precisa levar a pessoa pra "Cadastro Manual"
+// automaticamente (senão o formulário fica preenchido escondido atrás da
+// Listagem, sem a pessoa ver nada acontecer ao clicar em Editar).
+function trocarModoInterno(navId, paineis, modo){
+  const nav = document.getElementById(navId);
+  nav.querySelectorAll('.sub-aba').forEach(el=>el.classList.toggle('ativa', el.dataset.modo===modo));
+  Object.keys(paineis).forEach(chave=>{
+    document.getElementById(paineis[chave]).style.display = (chave===modo) ? 'block' : 'none';
+  });
 }
 
 
@@ -78,176 +101,239 @@ async function carregarFornecedoresEstoque(){
   estoqueCacheFornecedores = resp.ok ? (resp.fornecedores||[]) : [];
 }
 
-function renderizarCatalogoMateriais(){
+async function prepararAbaFornecedor(){
+  renderizarFornecedores();
+  if(!estoqueSubAbaPronta.fornecedor){
+    prepararToggleManualAutomatico('sub-nav-fornecedor', {lista:'fornecedor-modo-lista', manual:'fornecedor-modo-manual', automatico:'fornecedor-modo-automatico'});
+    prepararFormFornecedor();
+    prepararImportacaoFornecedorPdf();
+    estoqueSubAbaPronta.fornecedor = true;
+  }
+}
+
+async function prepararAbaMaterial(){
+  await renderizarCatalogoMateriais();
+  await prepararEntradaEstoque();
+  if(!estoqueSubAbaPronta.material){
+    prepararToggleManualAutomatico('sub-nav-material', {lista:'material-modo-lista', manual:'material-modo-manual', automatico:'material-modo-automatico'});
+    prepararFormMaterial();
+    prepararImportacaoMaterialPdf();
+    estoqueSubAbaPronta.material = true;
+  }
+}
+
+async function renderizarCatalogoMateriais(){
   const podeEditar = temPermissao('editar_estoque');
+  const podeExcluir = temPermissao('excluir_material_estoque');
   const tabela = document.getElementById('tabela-materiais');
+
+  // Quantidade em estoque = soma de todos os lotes (Entradas) daquele
+  // material — vem da NF, não é um campo do cadastro do material em si.
+  const respPosicao = await api('obterPosicaoEstoque', {});
+  const lotes = respPosicao.ok ? (respPosicao.lotes||[]) : [];
+  const quantidadePorMaterial = {};
+  lotes.forEach(l=>{ quantidadePorMaterial[l.material_id] = (quantidadePorMaterial[l.material_id]||0) + Number(l.quantidade_atual||0); });
+
   tabela.innerHTML = `
-    <thead><tr><th>Nome</th><th>Categoria</th><th>Unidade</th><th>Estoque mínimo</th><th>Ativo</th><th></th></tr></thead>
-    <tbody>${estoqueCacheMateriais.map(m=>`
+    <thead><tr><th>Nome</th><th>Categoria</th><th>Unidade</th><th>Qtd. em estoque</th><th>Estoque mínimo</th><th>Valor</th><th>Ativo</th><th></th></tr></thead>
+    <tbody>${estoqueCacheMateriais.map(m=>{
+      const qtd = quantidadePorMaterial[m.id] || 0;
+      const abaixoDoMinimo = qtd < Number(m.estoque_minimo||0);
+      return `
       <tr data-id="${m.id}">
         <td>${m.nome}</td>
         <td>${m.categoria||'—'}</td>
         <td>${m.unidade||'unidade'}</td>
+        <td class="mono" style="${abaixoDoMinimo?'color:var(--danger);font-weight:600;':''}">${qtd}${abaixoDoMinimo?' ⚠':''}</td>
         <td class="mono">${m.estoque_minimo||0}</td>
+        <td class="mono">${m.valor_referencia!=null ? 'R$ '+Number(m.valor_referencia).toFixed(2).replace('.',',') : '—'}</td>
         <td>${m.ativo?'<span style="color:var(--teal-700);">Sim</span>':'<span style="color:var(--ink-400);">Não</span>'}</td>
-        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-material" data-id="${m.id}">Editar</button>`:''}</td>
-      </tr>`).join('')}</tbody>`;
+        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-material" data-id="${m.id}">Editar</button>`:''}${podeExcluir?`<button class="botao sutil pequeno botao-excluir-material" data-id="${m.id}" data-nome="${m.nome.replace(/"/g,'&quot;')}">Excluir</button>`:''}</td>
+      </tr>`;
+    }).join('')}</tbody>`;
 
-  const botaoNovo = document.getElementById('botao-novo-material');
-  botaoNovo.style.display = podeEditar ? 'inline-flex' : 'none';
   if(podeEditar){
     tabela.querySelectorAll('.botao-editar-material').forEach(botao=>{
       botao.addEventListener('click', ()=>{
         const material = estoqueCacheMateriais.find(m=>m.id===botao.dataset.id);
-        if(material) abrirModalMaterial(material);
+        if(material) preencherFormMaterial(material);
       });
     });
   }
-
-  if(!estoqueSubAbaPronta.materiais){
-    botaoNovo.addEventListener('click', ()=>abrirModalMaterial(null));
-    document.getElementById('botao-novo-fornecedor').addEventListener('click', ()=>abrirModalFornecedor(null));
-    prepararImportacaoCadastroPdf();
-    estoqueSubAbaPronta.materiais = true;
+  if(podeExcluir){
+    tabela.querySelectorAll('.botao-excluir-material').forEach(botao=>{
+      botao.addEventListener('click', ()=>excluirMaterialEstoque(botao.dataset.id, botao.dataset.nome));
+    });
   }
-  renderizarFornecedores();
 }
 
 function renderizarFornecedores(){
   const podeEditar = temPermissao('editar_estoque');
+  const podeExcluir = temPermissao('excluir_fornecedor_estoque');
   const tabela = document.getElementById('tabela-fornecedores');
-  document.getElementById('botao-novo-fornecedor').style.display = podeEditar ? 'inline-flex' : 'none';
   tabela.innerHTML = `
-    <thead><tr><th>Nome</th><th>CNPJ</th><th>Contato</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>CNPJ</th><th>Cidade/UF</th><th>Contato</th><th></th></tr></thead>
     <tbody>${estoqueCacheFornecedores.map(f=>`
       <tr data-id="${f.id}">
         <td>${f.nome}</td>
         <td class="mono">${f.cnpj||'—'}</td>
+        <td>${[f.cidade, f.uf].filter(Boolean).join('/')||'—'}</td>
         <td>${f.contato||'—'}</td>
-        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-fornecedor" data-id="${f.id}">Editar</button>`:''}</td>
+        <td>${podeEditar?`<button class="botao secundario pequeno botao-editar-fornecedor" data-id="${f.id}">Editar</button>`:''}${podeExcluir?`<button class="botao sutil pequeno botao-excluir-fornecedor" data-id="${f.id}" data-nome="${f.nome.replace(/"/g,'&quot;')}">Excluir</button>`:''}</td>
       </tr>`).join('')}</tbody>`;
-  if(!podeEditar) return;
-  tabela.querySelectorAll('.botao-editar-fornecedor').forEach(botao=>{
-    botao.addEventListener('click', ()=>{
-      const fornecedor = estoqueCacheFornecedores.find(f=>f.id===botao.dataset.id);
-      if(fornecedor) abrirModalFornecedor(fornecedor);
+  if(podeEditar){
+    tabela.querySelectorAll('.botao-editar-fornecedor').forEach(botao=>{
+      botao.addEventListener('click', ()=>{
+        const fornecedor = estoqueCacheFornecedores.find(f=>f.id===botao.dataset.id);
+        if(fornecedor) preencherFormFornecedor(fornecedor);
+      });
     });
-  });
+  }
+  if(podeExcluir){
+    tabela.querySelectorAll('.botao-excluir-fornecedor').forEach(botao=>{
+      botao.addEventListener('click', ()=>excluirFornecedorEstoque(botao.dataset.id, botao.dataset.nome));
+    });
+  }
+}
+
+async function excluirFornecedorEstoque(id, nome){
+  if(!temPermissao('excluir_fornecedor_estoque')) return;
+  if(!confirm(`Excluir fornecedor "${nome}" do banco?`)) return;
+  const resp = await api('excluirFornecedor', {id});
+  if(!resp.ok){ alert(resp.erro || 'Não foi possível excluir.'); return; }
+  await carregarFornecedoresEstoque();
+  renderizarFornecedores();
+}
+
+async function excluirMaterialEstoque(id, nome){
+  if(!temPermissao('excluir_material_estoque')) return;
+  if(!confirm(`Excluir material "${nome}" do banco?`)) return;
+  const resp = await api('excluirMaterial', {id});
+  if(!resp.ok){ alert(resp.erro || 'Não foi possível excluir.'); return; }
+  await carregarMateriaisEstoque();
+  await renderizarCatalogoMateriais();
 }
 
 
 /* ---------------------------------------------------------------------
-   MODAL FORNECEDOR — criar/editar
+   FORNECEDOR — form inline (Cadastro Manual), criar/editar no mesmo
+   lugar (sem modal). Toggle Manual/Automático fica pronto na primeira
+   visita à aba.
 --------------------------------------------------------------------- */
 let fornecedorEmEdicaoId = null;
-let modalFornecedorPronto = false;
-function prepararModalFornecedor(){
-  if(modalFornecedorPronto) return;
-  modalFornecedorPronto = true;
-  document.getElementById('botao-cancelar-modal-fornecedor').addEventListener('click', fecharModalFornecedor);
-  document.getElementById('sobreposicao-modal-fornecedor').addEventListener('click', (ev)=>{
-    if(ev.target.id==='sobreposicao-modal-fornecedor') fecharModalFornecedor();
-  });
-  document.getElementById('form-modal-fornecedor').addEventListener('submit', async (ev)=>{
-    ev.preventDefault();
-    const nome = document.getElementById('modal-fornecedor-nome').value.trim();
-    if(!nome){ alert('Preencha o nome do fornecedor.'); return; }
-    const botao = ev.target.querySelector('button[type="submit"]');
-    const rotuloOriginal = botao.textContent;
-    botao.disabled = true; botao.textContent = 'Salvando...';
-    const dadosFornecedor = {
-      nome, cnpj: document.getElementById('modal-fornecedor-cnpj').value,
-      contato: document.getElementById('modal-fornecedor-contato').value
+function preencherFormFornecedor(fornecedor){
+  fornecedorEmEdicaoId = fornecedor ? fornecedor.id : null;
+  document.getElementById('titulo-form-fornecedor').textContent = fornecedor ? 'Editar fornecedor' : 'Novo fornecedor';
+  document.getElementById('form-fornecedor-nome').value = fornecedor ? fornecedor.nome : '';
+  document.getElementById('form-fornecedor-cnpj').value = fornecedor ? (fornecedor.cnpj||'') : '';
+  document.getElementById('form-fornecedor-contato').value = fornecedor ? (fornecedor.contato||'') : '';
+  document.getElementById('form-fornecedor-ie').value = fornecedor ? (fornecedor.inscricao_estadual||'') : '';
+  document.getElementById('form-fornecedor-endereco').value = fornecedor ? (fornecedor.endereco||'') : '';
+  document.getElementById('form-fornecedor-cidade').value = fornecedor ? (fornecedor.cidade||'') : '';
+  document.getElementById('form-fornecedor-uf').value = fornecedor ? (fornecedor.uf||'') : '';
+  document.getElementById('form-fornecedor-cep').value = fornecedor ? (fornecedor.cep||'') : '';
+  document.getElementById('botao-cancelar-edicao-fornecedor').style.display = fornecedor ? 'inline-flex' : 'none';
+  if(fornecedor){
+    trocarModoInterno('sub-nav-fornecedor', {lista:'fornecedor-modo-lista', manual:'fornecedor-modo-manual', automatico:'fornecedor-modo-automatico'}, 'manual');
+  }
+  document.getElementById('form-fornecedor-nome').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function prepararFormFornecedor(){
+  document.getElementById('botao-cancelar-edicao-fornecedor').addEventListener('click', ()=>preencherFormFornecedor(null));
+  document.getElementById('botao-salvar-fornecedor-manual').addEventListener('click', async ()=>{
+    const nome = document.getElementById('form-fornecedor-nome').value.trim();
+    const confirmacao = document.getElementById('confirmacao-fornecedor-manual');
+    if(!nome){ confirmacao.style.color='var(--danger)'; confirmacao.textContent='Preencha o nome.'; return; }
+    const dados = {
+      nome, cnpj: document.getElementById('form-fornecedor-cnpj').value,
+      contato: document.getElementById('form-fornecedor-contato').value,
+      inscricao_estadual: document.getElementById('form-fornecedor-ie').value,
+      endereco: document.getElementById('form-fornecedor-endereco').value,
+      cidade: document.getElementById('form-fornecedor-cidade').value,
+      uf: document.getElementById('form-fornecedor-uf').value,
+      cep: document.getElementById('form-fornecedor-cep').value
     };
+    confirmacao.style.color = 'var(--ink-400)'; confirmacao.textContent = 'Salvando...';
     const resp = fornecedorEmEdicaoId
-      ? await api('atualizarFornecedor', Object.assign({id: fornecedorEmEdicaoId}, dadosFornecedor))
-      : await api('criarFornecedor', dadosFornecedor);
-    botao.disabled = false; botao.textContent = rotuloOriginal;
-    if(!resp.ok){ alert(resp.erro || 'Não foi possível salvar.'); return; }
-    fecharModalFornecedor();
+      ? await api('atualizarFornecedor', Object.assign({id: fornecedorEmEdicaoId}, dados))
+      : await api('criarFornecedor', dados);
+    if(!resp.ok){ confirmacao.style.color='var(--danger)'; confirmacao.textContent = resp.erro || 'Não foi possível salvar.'; return; }
+    confirmacao.style.color = 'var(--teal-700)'; confirmacao.textContent = 'Salvo ✓';
+    preencherFormFornecedor(null);
     await carregarFornecedoresEstoque();
     renderizarFornecedores();
+    setTimeout(()=>{ if(confirmacao.textContent==='Salvo ✓') confirmacao.textContent=''; }, 2500);
   });
-}
-function abrirModalFornecedor(fornecedor){
-  prepararModalFornecedor();
-  fornecedorEmEdicaoId = fornecedor ? fornecedor.id : null;
-  document.getElementById('titulo-modal-fornecedor').textContent = fornecedor ? 'Editar fornecedor' : 'Novo fornecedor';
-  document.getElementById('modal-fornecedor-nome').value = fornecedor ? fornecedor.nome : '';
-  document.getElementById('modal-fornecedor-cnpj').value = fornecedor ? (fornecedor.cnpj||'') : '';
-  document.getElementById('modal-fornecedor-contato').value = fornecedor ? (fornecedor.contato||'') : '';
-  document.getElementById('sobreposicao-modal-fornecedor').classList.add('aberta');
-}
-function fecharModalFornecedor(){
-  document.getElementById('sobreposicao-modal-fornecedor').classList.remove('aberta');
-  fornecedorEmEdicaoId = null;
 }
 
 
 /* ---------------------------------------------------------------------
-   MODAL MATERIAL — criar/editar
+   MATERIAL — form inline (Cadastro Manual), mesma lógica do Fornecedor.
 --------------------------------------------------------------------- */
 let materialEmEdicaoId = null;
-let modalMaterialPronto = false;
-function prepararModalMaterial(){
-  if(modalMaterialPronto) return;
-  modalMaterialPronto = true;
-  document.getElementById('botao-cancelar-modal-material').addEventListener('click', fecharModalMaterial);
-  document.getElementById('sobreposicao-modal-material').addEventListener('click', (ev)=>{
-    if(ev.target.id==='sobreposicao-modal-material') fecharModalMaterial();
-  });
-  document.getElementById('form-modal-material').addEventListener('submit', async (ev)=>{
-    ev.preventDefault();
-    const nome = document.getElementById('modal-material-nome').value.trim();
-    if(!nome){ alert('Preencha o nome do material.'); return; }
-    const botao = ev.target.querySelector('button[type="submit"]');
-    const rotuloOriginal = botao.textContent;
-    botao.disabled = true; botao.textContent = 'Salvando...';
-    const dadosMaterial = {
-      nome, categoria: document.getElementById('modal-material-categoria').value,
-      unidade: document.getElementById('modal-material-unidade').value || 'unidade',
-      estoque_minimo: document.getElementById('modal-material-estoque-minimo').value,
-      ativo: document.getElementById('modal-material-ativo').checked
-    };
-    const resp = materialEmEdicaoId
-      ? await api('atualizarMaterial', Object.assign({id: materialEmEdicaoId}, dadosMaterial))
-      : await api('criarMaterial', dadosMaterial);
-    botao.disabled = false; botao.textContent = rotuloOriginal;
-    if(!resp.ok){ alert(resp.erro || 'Não foi possível salvar.'); return; }
-    fecharModalMaterial();
-    await carregarMateriaisEstoque();
-    renderizarCatalogoMateriais();
-  });
-}
-function abrirModalMaterial(material){
-  prepararModalMaterial();
+function preencherFormMaterial(material){
   materialEmEdicaoId = material ? material.id : null;
-  document.getElementById('titulo-modal-material').textContent = material ? 'Editar material' : 'Novo material';
-  document.getElementById('modal-material-nome').value = material ? material.nome : '';
-  document.getElementById('modal-material-categoria').value = material ? (material.categoria||'') : '';
-  document.getElementById('modal-material-unidade').value = material ? (material.unidade||'unidade') : 'unidade';
-  document.getElementById('modal-material-estoque-minimo').value = material ? (material.estoque_minimo||0) : '';
-  document.getElementById('modal-material-ativo').checked = material ? material.ativo!==false : true;
-  document.getElementById('sobreposicao-modal-material').classList.add('aberta');
-}
-function fecharModalMaterial(){
-  document.getElementById('sobreposicao-modal-material').classList.remove('aberta');
-  materialEmEdicaoId = null;
+  document.getElementById('titulo-form-material').textContent = material ? 'Editar material' : 'Novo material';
+  document.getElementById('form-material-nome').value = material ? material.nome : '';
+  document.getElementById('form-material-categoria').value = material ? (material.categoria||'') : '';
+  document.getElementById('form-material-unidade').value = material ? (material.unidade||'unidade') : 'unidade';
+  document.getElementById('form-material-estoque-minimo').value = material ? (material.estoque_minimo||0) : '';
+  document.getElementById('form-material-codigo-fornecedor').value = material ? (material.codigo_fornecedor||'') : '';
+  document.getElementById('form-material-valor-referencia').value = material ? (material.valor_referencia!=null ? material.valor_referencia : '') : '';
+  document.getElementById('form-material-codigo-barras').value = material ? (material.codigo_barras||'') : '';
+  document.getElementById('form-material-ativo').checked = material ? material.ativo!==false : true;
+  document.getElementById('botao-cancelar-edicao-material').style.display = material ? 'inline-flex' : 'none';
+  if(material){
+    trocarModoInterno('sub-nav-material', {lista:'material-modo-lista', manual:'material-modo-manual', automatico:'material-modo-automatico'}, 'manual');
+  }
+  document.getElementById('form-material-nome').scrollIntoView({behavior:'smooth', block:'center'});
 }
 
+function prepararFormMaterial(){
+  document.getElementById('form-material-categoria').innerHTML = '<option value="">—</option>' +
+    (estado.listas.categorias_material||[]).map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('form-material-unidade').innerHTML =
+    (estado.listas.unidades_material||[]).map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('botao-cancelar-edicao-material').addEventListener('click', ()=>preencherFormMaterial(null));
+  document.getElementById('botao-salvar-material-manual').addEventListener('click', async ()=>{
+    const nome = document.getElementById('form-material-nome').value.trim();
+    const confirmacao = document.getElementById('confirmacao-material-manual');
+    if(!nome){ confirmacao.style.color='var(--danger)'; confirmacao.textContent='Preencha o nome.'; return; }
+    const dados = {
+      nome, categoria: document.getElementById('form-material-categoria').value,
+      unidade: document.getElementById('form-material-unidade').value || 'unidade',
+      estoque_minimo: document.getElementById('form-material-estoque-minimo').value,
+      codigo_fornecedor: document.getElementById('form-material-codigo-fornecedor').value,
+      valor_referencia: document.getElementById('form-material-valor-referencia').value,
+      codigo_barras: document.getElementById('form-material-codigo-barras').value,
+      ativo: document.getElementById('form-material-ativo').checked
+    };
+    confirmacao.style.color = 'var(--ink-400)'; confirmacao.textContent = 'Salvando...';
+    const resp = materialEmEdicaoId
+      ? await api('atualizarMaterial', Object.assign({id: materialEmEdicaoId}, dados))
+      : await api('criarMaterial', dados);
+    if(!resp.ok){ confirmacao.style.color='var(--danger)'; confirmacao.textContent = resp.erro || 'Não foi possível salvar.'; return; }
+    confirmacao.style.color = 'var(--teal-700)'; confirmacao.textContent = 'Salvo ✓';
+    preencherFormMaterial(null);
+    await carregarMateriaisEstoque();
+    await renderizarCatalogoMateriais();
+    setTimeout(()=>{ if(confirmacao.textContent==='Salvo ✓') confirmacao.textContent=''; }, 2500);
+  });
+}
 
 /* ---------------------------------------------------------------------
    ENTRADA POR NF
 --------------------------------------------------------------------- */
-function prepararEntradaEstoque(){
+async function prepararEntradaEstoque(){
   document.getElementById('entrada-material').innerHTML = estoqueCacheMateriais.map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');
   document.getElementById('entrada-fornecedor').innerHTML = '<option value="">—</option>' + estoqueCacheFornecedores.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('');
   if(!document.getElementById('entrada-data').value){
     document.getElementById('entrada-data').value = new Date().toISOString().slice(0,10);
   }
+  await carregarTabelaEntradas();
   if(estoqueSubAbaPronta.entrada) return;
   estoqueSubAbaPronta.entrada = true;
-  prepararImportacaoPdfNf();
   document.getElementById('botao-registrar-entrada').addEventListener('click', async ()=>{
     const confirmacao = document.getElementById('confirmacao-entrada-estoque');
     const quantidade = document.getElementById('entrada-quantidade').value;
@@ -263,13 +349,54 @@ function prepararEntradaEstoque(){
       lote: document.getElementById('entrada-lote').value,
       data_entrada: document.getElementById('entrada-data').value,
       validade: document.getElementById('entrada-validade').value || null,
-      quantidade, valor_unitario: document.getElementById('entrada-valor-unitario').value || null
+      quantidade, valor_unitario: document.getElementById('entrada-valor-unitario').value || null,
+      permitir_nf_repetida: temPermissao('importar_nf_repetida')
     });
     if(!resp.ok){ confirmacao.style.color='var(--danger)'; confirmacao.textContent = resp.erro || 'Não foi possível salvar.'; return; }
     confirmacao.style.color = 'var(--teal-700)'; confirmacao.textContent = 'Entrada registrada ✓';
     ['entrada-nf','entrada-lote','entrada-validade','entrada-quantidade','entrada-valor-unitario'].forEach(id=>document.getElementById(id).value='');
+    carregarTabelaEntradas();
     setTimeout(()=>{ if(confirmacao.textContent==='Entrada registrada ✓') confirmacao.textContent=''; }, 2500);
   });
+}
+
+async function carregarTabelaEntradas(){
+  const resp = await api('obterPosicaoEstoque', {});
+  const lotes = resp.ok ? (resp.lotes||[]) : [];
+  const podeExcluir = estado.papel === 'gerente';
+  const tabela = document.getElementById('tabela-entradas');
+  if(!tabela) return;
+  tabela.innerHTML = lotes.length===0 ? '<tr><td class="vazio">Nenhuma entrada registrada.</td></tr>' : `
+    <thead><tr><th>Material</th><th>NF</th><th>Lote</th><th>Validade</th><th>Qtd.</th><th>Valor</th><th></th></tr></thead>
+    <tbody>${lotes.map(l=>{
+      const mat = estoqueCacheMateriais.find(m=>m.id===l.material_id) || {};
+      const valorTotal = l.valor_unitario ? (Number(l.valor_unitario) * Number(l.quantidade_entrada||l.quantidade_atual)) : null;
+      return `<tr data-id="${l.id}">
+        <td>${mat.nome||'—'}</td>
+        <td class="mono">${l.nota_fiscal||'—'}</td>
+        <td class="mono">${l.lote||'—'}</td>
+        <td>${l.validade||'—'}</td>
+        <td class="mono">${l.quantidade_atual}</td>
+        <td class="mono">${valorTotal!=null ? 'R$ '+valorTotal.toFixed(2).replace('.',',') : '—'}</td>
+        <td>${podeExcluir?`<button class="botao sutil pequeno botao-excluir-entrada" data-id="${l.id}">Excluir</button>`:''}</td>
+      </tr>`;
+    }).join('')}</tbody>`;
+  if(podeExcluir){
+    tabela.querySelectorAll('.botao-excluir-entrada').forEach(botao=>{
+      botao.addEventListener('click', ()=>excluirEntradaEstoque(botao.dataset.id));
+    });
+  }
+}
+
+async function excluirEntradaEstoque(id){
+  if(estado.papel !== 'gerente') return;
+  if(!confirm('Excluir essa entrada? Se algum pedido já usou esse lote, ele volta pra "pendente" (não perde o pedido) e o vínculo é desfeito. Essa ação não pode ser desfeita.')) return;
+  const resp = await api('excluirEntradaEstoque', {id});
+  if(!resp.ok){ alert(resp.erro || 'Não foi possível excluir.'); return; }
+  if(resp.solicitacoesRevertidas > 0){
+    alert(`Entrada excluída. ${resp.solicitacoesRevertidas} solicitação(ões) que usavam esse lote voltaram pra "pendente".`);
+  }
+  await carregarTabelaEntradas();
 }
 
 
@@ -320,9 +447,19 @@ async function carregarMinhasSolicitacoes(){
   const resp = await api('listarSolicitacoesMaterial', {status:'pendente'});
   const tabela = document.getElementById('tabela-minhas-solicitacoes');
   const lista = resp.ok ? (resp.solicitacoes||[]) : [];
+  const podeRetroceder = temPermissao('retroceder_estoque');
   tabela.innerHTML = lista.length===0 ? '<tr><td class="vazio">Nenhuma solicitação pendente.</td></tr>' : `
-    <thead><tr><th>Material</th><th>Qtd.</th><th>Atendimento</th><th>Exame</th><th>Solicitado em</th></tr></thead>
-    <tbody>${lista.map(s=>`<tr><td>${(s.materiais||{}).nome||'—'}</td><td>${s.quantidade}</td><td>${s.procedimento||'—'}</td><td>${s.exame||'—'}</td><td>${new Date(s.solicitado_em).toLocaleDateString('pt-BR')}</td></tr>`).join('')}</tbody>`;
+    <thead><tr><th>Material</th><th>Qtd.</th><th>Atendimento</th><th>Exame</th><th>Solicitado em</th><th></th></tr></thead>
+    <tbody>${lista.map(s=>`<tr data-id="${s.id}"><td>${(s.materiais||{}).nome||'—'}</td><td>${s.quantidade}</td><td>${s.procedimento||'—'}</td><td>${s.exame||'—'}</td><td>${new Date(s.solicitado_em).toLocaleDateString('pt-BR')}</td><td>${podeRetroceder?`<button class="botao sutil pequeno botao-cancelar-solicitacao" data-id="${s.id}">Cancelar</button>`:''}</td></tr>`).join('')}</tbody>`;
+
+  tabela.querySelectorAll('.botao-cancelar-solicitacao').forEach(botao=>{
+    botao.addEventListener('click', async ()=>{
+      if(!confirm('Cancelar essa solicitação?')) return;
+      const resp2 = await api('excluirSolicitacaoMaterial', {id: botao.dataset.id});
+      if(!resp2.ok){ alert(resp2.erro || 'Não foi possível cancelar.'); return; }
+      await carregarMinhasSolicitacoes();
+    });
+  });
 }
 
 
@@ -333,6 +470,7 @@ async function carregarSolicitacoesPendentes(){
   const resp = await api('listarSolicitacoesMaterial', {status:'pendente'});
   const tabela = document.getElementById('tabela-solicitacoes-pendentes');
   const lista = resp.ok ? (resp.solicitacoes||[]) : [];
+  const podeRetroceder = temPermissao('retroceder_estoque');
   tabela.innerHTML = lista.length===0 ? '<tr><td class="vazio">Nenhuma solicitação pendente.</td></tr>' : `
     <thead><tr><th>Material</th><th>Qtd.</th><th>Profissional</th><th>Atendimento</th><th>Exame</th><th>Solicitado por</th><th>Quando</th><th></th></tr></thead>
     <tbody>${lista.map(s=>`
@@ -347,6 +485,7 @@ async function carregarSolicitacoesPendentes(){
         <td style="display:flex;gap:6px;">
           <button class="botao secundario pequeno botao-dispensar-solicitacao">Dispensar</button>
           <button class="botao sutil pequeno botao-negar-solicitacao">Negar</button>
+          ${podeRetroceder?'<button class="botao sutil pequeno botao-excluir-solicitacao">Excluir</button>':''}
         </td>
       </tr>`).join('')}</tbody>`;
 
@@ -364,6 +503,15 @@ async function carregarSolicitacoesPendentes(){
       const id = ev.target.closest('tr').dataset.id;
       const motivo = prompt('Motivo da negativa (opcional):') || '';
       await api('negarSolicitacaoMaterial', {id, motivo});
+      await carregarSolicitacoesPendentes();
+    });
+  });
+  tabela.querySelectorAll('.botao-excluir-solicitacao').forEach(botao=>{
+    botao.addEventListener('click', async (ev)=>{
+      if(!confirm('Excluir essa solicitação? Essa ação não pode ser desfeita.')) return;
+      const id = ev.target.closest('tr').dataset.id;
+      const resp = await api('excluirSolicitacaoMaterial', {id});
+      if(!resp.ok){ alert(resp.erro || 'Não foi possível excluir.'); return; }
       await carregarSolicitacoesPendentes();
     });
   });
@@ -470,15 +618,20 @@ async function carregarDispensados(){
   const tabela = document.getElementById('tabela-dispensados');
   const lista = resp.ok ? (resp.solicitacoes||[]) : [];
 
-  // Só pode marcar/confirmar quem solicitou aquele item, ou quem tem
-  // permissão de dispensar (farmácia/gerente pode confirmar em nome de
-  // alguém, se precisar).
+  // Confirmar recebimento: quem solicitou, ou quem tem permissão de
+  // dispensar (farmácia/gerente pode confirmar em nome de alguém).
+  // Desfazer/Excluir: permissão própria (retroceder_estoque) — mexer numa
+  // baixa de estoque já feita é mais sensível que só confirmar.
   const podeConfirmarGeral = temPermissao('dispensar_estoque');
+  const podeRetroceder = temPermissao('retroceder_estoque');
 
   tabela.innerHTML = lista.length===0 ? '<tr><td class="vazio">Nada aqui.</td></tr>' : `
-    <thead><tr><th></th><th>Material</th><th>Qtd.</th><th>Solicitante</th><th>Dispensado em</th><th>Status</th><th>Recebido por / Observação</th></tr></thead>
+    <thead><tr><th></th><th>Material</th><th>Qtd.</th><th>Solicitante</th><th>Dispensado em</th><th>Status</th><th>Recebido por / Observação</th><th></th></tr></thead>
     <tbody>${lista.map(s=>{
       const podeConfirmarEsta = s.status==='dispensado' && (podeConfirmarGeral || s.solicitado_por===estado.usuario);
+      const botaoDesfazer = s.status==='dispensado'
+        ? `<button class="botao sutil pequeno botao-desfazer-dispensados" data-id="${s.id}" data-acao="dispensacao">Desfazer</button>`
+        : `<button class="botao sutil pequeno botao-desfazer-dispensados" data-id="${s.id}" data-acao="confirmacao">Desfazer</button>`;
       return `<tr data-id="${s.id}">
         <td>${podeConfirmarEsta?`<input type="checkbox" class="chk-dispensado-recebido" data-id="${s.id}">`:''}</td>
         <td>${(s.materiais||{}).nome||'—'}</td>
@@ -487,84 +640,41 @@ async function carregarDispensados(){
         <td>${new Date(s.solicitado_em).toLocaleDateString('pt-BR')}</td>
         <td>${s.status==='confirmado'?'<span style="color:var(--teal-700);">Confirmado</span>':'<span style="color:var(--gold-600);">Aguardando confirmação</span>'}</td>
         <td>${s.status==='confirmado'?`${s.confirmado_por||'—'}${s.observacao_recebimento?' — '+s.observacao_recebimento:''}`:'—'}</td>
+        <td style="display:flex;gap:6px;">
+          ${podeRetroceder?botaoDesfazer:''}
+          ${podeRetroceder?`<button class="botao sutil pequeno botao-excluir-dispensados" data-id="${s.id}">Excluir</button>`:''}
+        </td>
       </tr>`;
     }).join('')}</tbody>`;
 
   const temCheckboxVisivel = tabela.querySelectorAll('.chk-dispensado-recebido').length > 0;
   document.getElementById('dispensados-acoes-confirmacao').style.display = temCheckboxVisivel ? 'block' : 'none';
-}
 
-
-/* ---------------------------------------------------------------------
-   IMPORTAÇÃO DE NF EM PDF — extrai o texto (pdf.js), tenta achar CNPJ do
-   fornecedor / Nº da NF / Data por regex, e pré-preenche o formulário.
-   NÃO tenta extrair Material/Quantidade/Lote/Validade automaticamente —
-   cada fornecedor descreve item de um jeito diferente, arriscar isso
-   sozinho geraria erro silencioso de estoque. Texto extraído fica
-   visível pra copiar manualmente o que precisar.
---------------------------------------------------------------------- */
-function prepararImportacaoPdfNf(){
-  if(typeof pdfjsLib !== 'undefined'){
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-  document.getElementById('entrada-pdf-arquivo').addEventListener('change', async (ev)=>{
-    const arquivo = ev.target.files[0];
-    const status = document.getElementById('entrada-pdf-status');
-    if(!arquivo) return;
-    if(typeof pdfjsLib === 'undefined'){
-      status.style.color = 'var(--danger)';
-      status.textContent = 'Não consegui carregar o leitor de PDF (sem internet?). Preencha manualmente.';
-      return;
-    }
-    status.style.color = 'var(--ink-400)';
-    status.textContent = 'Lendo PDF...';
-    try{
-      const bytes = await arquivo.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
-      const textoCompleto = await extrairTextoPdfComLinhas(pdf);
-
-      document.getElementById('entrada-pdf-texto').value = textoCompleto;
-      document.getElementById('entrada-pdf-texto-detalhes').style.display = 'block';
-
-      const achados = [];
-
-      // CNPJ do fornecedor — tenta casar contra o cadastro já existente
-      const matchCnpj = textoCompleto.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
-      if(matchCnpj){
-        const cnpjLimpo = matchCnpj[0].replace(/\D/g,'');
-        const fornecedorAchado = estoqueCacheFornecedores.find(f=>String(f.cnpj||'').replace(/\D/g,'')===cnpjLimpo);
-        if(fornecedorAchado){
-          document.getElementById('entrada-fornecedor').value = fornecedorAchado.id;
-          achados.push(`Fornecedor: ${fornecedorAchado.nome} (por CNPJ)`);
-        } else {
-          achados.push(`CNPJ ${matchCnpj[0]} encontrado, mas nenhum fornecedor cadastrado bate com ele — cadastre ele em Cadastro → Fornecedores primeiro, se for novo.`);
-        }
-      }
-
-      // Número da NF — procura perto de palavras-chave comuns
-      const matchNf = textoCompleto.match(/(?:N[ºO°]?\s*(?:DA\s*)?(?:NOTA|NF-?E?)?\s*[:\-]?\s*)(\d{3,9})/i);
-      if(matchNf){
-        document.getElementById('entrada-nf').value = matchNf[1];
-        achados.push(`Nº da NF: ${matchNf[1]}`);
-      }
-
-      // Data de emissão — primeira data no formato dd/mm/aaaa do documento
-      const matchData = textoCompleto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-      if(matchData){
-        document.getElementById('entrada-data').value = `${matchData[3]}-${matchData[2]}-${matchData[1]}`;
-        achados.push(`Data: ${matchData[0]}`);
-      }
-
-      status.style.color = achados.length ? 'var(--teal-700)' : 'var(--gold-600)';
-      status.textContent = achados.length
-        ? `Encontrado: ${achados.join(' · ')}. Confira antes de salvar — Material/Lote/Validade/Quantidade continuam manuais.`
-        : 'Não consegui identificar nada automaticamente neste PDF — preencha manualmente (o texto extraído está disponível abaixo, se ajudar a copiar).';
-    }catch(e){
-      status.style.color = 'var(--danger)';
-      status.textContent = 'Não consegui ler esse PDF (pode ser PDF escaneado/imagem, sem texto — nesse caso preencha manualmente).';
-    }
+  tabela.querySelectorAll('.botao-desfazer-dispensados').forEach(botao=>{
+    botao.addEventListener('click', async ()=>{
+      const acao = botao.dataset.acao;
+      const aviso = acao==='confirmacao'
+        ? 'Desfazer a confirmação devolve a quantidade pro estoque e volta pra "aguardando confirmação". Confirma?'
+        : 'Desfazer a dispensação libera a reserva e volta a solicitação pra "pendente". Confirma?';
+      if(!confirm(aviso)) return;
+      const rota = acao==='confirmacao' ? 'desfazerConfirmacaoSolicitacao' : 'desfazerDispensacaoSolicitacao';
+      const resp = await api(rota, {id: botao.dataset.id});
+      if(!resp.ok){ alert(resp.erro || 'Não foi possível desfazer.'); return; }
+      await carregarDispensados();
+    });
+  });
+  tabela.querySelectorAll('.botao-excluir-dispensados').forEach(botao=>{
+    botao.addEventListener('click', async ()=>{
+      if(!confirm('Excluir esse registro? Se já tinha baixado do estoque, a quantidade volta pro lote. Essa ação não pode ser desfeita.')) return;
+      const resp = await api('excluirSolicitacaoMaterial', {id: botao.dataset.id});
+      if(!resp.ok){ alert(resp.erro || 'Não foi possível excluir.'); return; }
+      await carregarDispensados();
+    });
   });
 }
+
+
+
 
 
 /* =====================================================================
@@ -624,7 +734,7 @@ async function extrairTextoPdfComLinhas(pdf){
    qualquer DANFE de texto (não serve para PDF escaneado/imagem).
 ------------------------------------------------------------------------- */
 
-const NF_UNIDADES = ['UN','UND','UNID','PC','PÇ','CX','FR','FRC','AMP','KG','G','MG','ML','L','MT','M','M2','M3','PT','PAR','RL','TB','KIT','SC','GAL','DZ','LT','CT','BL','FD','JG','RS','SER'];
+const NF_UNIDADES = ['UN','UND','UNID','PC','PÇ','CX','CXA','FR','FRC','AMP','KG','G','MG','ML','L','MT','M','M2','M3','PT','PAR','RL','TB','KIT','SC','GAL','DZ','LT','CT','BL','FD','JG','RS','SER','PCT','F/A','FA'];
 
 function nfEhNumeroDecimal(token){
   return /^\d{1,3}(\.\d{3})*(,\d+)?$/.test(token) || /^\d+([.,]\d+)?$/.test(token);
@@ -645,20 +755,47 @@ function extrairDadosNfPdf(texto){
   const todosCnpj = [...texto.matchAll(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g)].map(m=>m[0]);
   const cnpjEmitente = todosCnpj[0] || null;
 
-  // Nome: bloco rotulado, se existir; senão a linha mais "cara de razão
-  // social" antes do primeiro CNPJ (letras, tamanho razoável, sem ser
-  // rótulo do formulário).
+  // Nome: "RECEBEMOS DE {nome} OS PRODUTOS" é uma frase fixa, sempre no
+  // topo, FORA da área de colunas (emitente/DANFE lado a lado) que
+  // costuma embaralhar a reconstrução de linha — âncora bem mais
+  // confiável que tentar ler o bloco "IDENTIFICAÇÃO DO EMITENTE" direto
+  // (esse já causou nome errado 2x: "DANFE", depois "Fiscal Eletrônica",
+  // por causa do layout em 2 colunas). Bloco antigo vira só fonte de
+  // endereço/fallback.
   let nome = null, endereco = null;
+  const ruido = /^DANFE$|DOCUMENTO AUXILIAR|NOTA FISCAL|FISCAL ELETR[ÔO]NICA|ENTRADA|SA[ÍI]DA|CHAVE DE ACESSO|CONSULTA DE AUTENTICIDADE|IDENTIFICA|RECEBEMOS DE|S[ÉE]RIE|FOLHA/i;
+
+  const mRecebemos = texto.match(/RECEBEMOS DE\s+([\s\S]+?)\s+OS PRODUTOS/i);
+  if(mRecebemos && mRecebemos[1]){
+    // Junta quebra de linha eventual dentro do próprio nome (só espaço,
+    // não deixa o \n aparecer no valor salvo).
+    mRecebemos[1] = mRecebemos[1].replace(/\s+/g, ' ').trim();
+  }
+  if(mRecebemos && mRecebemos[1] && !ruido.test(mRecebemos[1]) && mRecebemos[1].length <= 80 && !/\d{2}\.\d{3}\.\d{3}/.test(mRecebemos[1])){
+    nome = mRecebemos[1].trim();
+  }
+
   const blocoEmitente = texto.match(/IDENTIFICA[ÇC][ÃA]O DO EMITENTE\s*([\s\S]+?)(?:DANFE|DOCUMENTO AUXILIAR)/i);
   if(blocoEmitente){
     const ls = blocoEmitente[1].split('\n').map(l=>l.trim()).filter(Boolean);
-    nome = ls[0] || null;
-    endereco = ls.slice(1).join(', ') || null;
+    // Layout em 2 colunas (comum em DANFE): "IDENTIFICAÇÃO DO EMITENTE" e
+    // a caixa "DANFE" ficam lado a lado — na reconstrução de linha por
+    // posição Y, às vezes grudam e a primeira linha capturada vira só
+    // ruído ("DANFE", "Fiscal Eletrônica", etc.), não o nome de verdade.
+    const candidata = ls.find(l => l.length >= 4 && !ruido.test(l));
+    if(!nome && candidata) nome = candidata;
+    if(candidata){
+      const idx = ls.indexOf(candidata);
+      // Se a linha achada é a mesma do nome (caso normal), endereço começa
+      // DEPOIS dela. Se for diferente (nome veio de "RECEBEMOS DE" e essa
+      // linha já é outra coisa, tipo início do endereço), inclui ela.
+      const linhasEndereco = (candidata === nome) ? ls.slice(idx+1) : ls.slice(idx);
+      endereco = linhasEndereco.filter(l=>!ruido.test(l)).join(', ') || null;
+    }
   }
   if(!nome){
     const idxCnpj = linhas.findIndex(l => cnpjEmitente && l.includes(cnpjEmitente));
     const janela = linhas.slice(0, idxCnpj > 0 ? idxCnpj : 12);
-    const ruido = /DANFE|DOCUMENTO AUXILIAR|NOTA FISCAL|ENTRADA|SA[ÍI]DA|CHAVE DE ACESSO|CONSULTA DE AUTENTICIDADE|IDENTIFICA|RECEBEMOS DE|S[ÉE]RIE|FOLHA/i;
     const candidatas = janela.filter(l => l.length >= 6 && /[A-Za-zÀ-ú]{4,}/.test(l) && !ruido.test(l) && !/^\d/.test(l));
     nome = candidatas.find(l => /(LTDA|S\.?A\b|ME\b|EIRELI|EPP|COM[EÉ]RCIO|DISTRIBUID|FARMA|IND[UÚ]STRIA)/i.test(l)) || candidatas[0] || null;
     const idxNome = linhas.indexOf(nome);
@@ -686,6 +823,12 @@ function extrairDadosNfPdf(texto){
            || texto.match(/N[ºO°]\.?\s*:?\s*(\d{4,9})\b/)                    // 123456
            || texto.match(/N[UÚ]MERO\s*:?\s*(\d{4,9})\b/i);
   if(mNf) resultado.numeroNf = mNf[1];
+
+  /* ---------- Data de emissão ---------- */
+  const mData = texto.match(/DATA\s+D[AE]\s+EMISS[ÃA]O\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i)
+             || texto.match(/EMISS[ÃA]O\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i)
+             || texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);                    // qualquer data, último recurso
+  if(mData) resultado.dataEmissao = `${mData[3]}-${mData[2]}-${mData[1]}`;
 
   /* ---------- Itens ---------- */
   // Restringe à área da tabela quando o rótulo existe; senão varre tudo e
@@ -757,163 +900,259 @@ function extrairDadosNfPdf(texto){
 }
 
 
-let importacaoNfCadastroPronta = false;
-let importacaoNfCadastroResultado = null;
+/* =====================================================================
+   IMPORTAR FORNECEDOR (PDF) — só extrai/cria o fornecedor. Não mexe em
+   materiais aqui — isso é responsabilidade da aba Material.
+===================================================================== */
+let importacaoFornecedorPronta = false;
+let importacaoFornecedorResultado = null;
 
-function prepararImportacaoCadastroPdf(){
-  if(importacaoNfCadastroPronta) return;
-  importacaoNfCadastroPronta = true;
-
+function prepararImportacaoFornecedorPdf(){
+  if(importacaoFornecedorPronta) return;
+  importacaoFornecedorPronta = true;
   if(typeof pdfjsLib !== 'undefined'){
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
-  document.getElementById('cadastro-pdf-arquivo').addEventListener('change', async (ev)=>{
-    const status = document.getElementById('cadastro-pdf-status');
-    console.log('[Importar NF] arquivo selecionado, iniciando...'); // ajuda a diagnosticar no F12 se algo travar silenciosamente
+  document.getElementById('fornecedor-pdf-arquivo').addEventListener('change', async (ev)=>{
+    const status = document.getElementById('fornecedor-pdf-status');
     try{
       const arquivo = ev.target.files[0];
-      if(!arquivo){ console.log('[Importar NF] nenhum arquivo (cancelou o seletor).'); return; }
+      if(!arquivo) return;
       status.style.color = 'var(--ink-400)'; status.textContent = 'Lendo PDF...';
-      document.getElementById('cadastro-pdf-revisao').style.display = 'none';
-
+      document.getElementById('fornecedor-pdf-revisao').style.display = 'none';
       if(typeof pdfjsLib === 'undefined'){
         status.style.color = 'var(--danger)';
-        status.textContent = 'O leitor de PDF (pdf.js) não carregou — provavelmente bloqueado por firewall/rede da clínica, ou sem internet no momento. Recarregue a página (Cmd/Ctrl+Shift+R) com internet ativa e tente de novo.';
-        console.log('[Importar NF] pdfjsLib indefinido — CDN não carregou.');
+        status.textContent = 'O leitor de PDF não carregou (rede/firewall?). Recarregue com internet e tente de novo.';
         return;
       }
-
       const bytes = await arquivo.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
       const textoCompleto = await extrairTextoPdfComLinhas(pdf);
-      console.log('[Importar NF] texto extraído, tamanho:', textoCompleto.length);
-      document.getElementById('cadastro-pdf-texto').value = textoCompleto;
-      document.getElementById('cadastro-pdf-texto-detalhes').style.display = 'block';
-      const extraido = extrairDadosNfPdf(textoCompleto);
-      console.log('[Importar NF] extraído:', extraido);
+      document.getElementById('fornecedor-pdf-texto').value = textoCompleto;
+      document.getElementById('fornecedor-pdf-texto-detalhes').style.display = 'block';
 
-      // Falha total (nem fornecedor nem itens) quase sempre = PDF sem
-      // camada de texto (escaneado/foto). Diferencia isso de "layout
-      // estranho" olhando quanto texto o pdf.js conseguiu extrair.
-      if(!extraido.fornecedor && extraido.itens.length===0){
+      const extraido = extrairDadosNfPdf(textoCompleto);
+      if(!extraido.fornecedor){
         status.style.color = 'var(--danger)';
         status.textContent = textoCompleto.replace(/\s/g,'').length < 200
-          ? 'Esse PDF não tem texto — é escaneado/imagem. A importação só funciona com o DANFE em PDF de texto (o que o fornecedor emite), ou peça o XML da NF-e.'
-          : 'Li o texto, mas não reconheci a estrutura de NF-e (DANFE) nele. Confira se o arquivo é mesmo a nota, e veja o texto extraído abaixo.';
+          ? 'Esse PDF não tem texto — é escaneado/imagem.'
+          : 'Não identifiquei o fornecedor (emitente) nesse PDF — veja o texto extraído abaixo.';
         return;
       }
 
-      // Sucesso parcial: mostra o que deu, em vez de descartar tudo.
-      if(extraido.itens.length === 0){
-        status.style.color = 'var(--gold-600)';
-        status.textContent = 'Achei o fornecedor, mas nenhum item na tabela de produtos — confira o texto extraído abaixo e cadastre os materiais manualmente.';
-      }
-      if(!extraido.fornecedor){
-        extraido.fornecedor = {nome:null, endereco:null, cnpj:null, inscricao_estadual:null};
-        status.style.color = 'var(--gold-600)';
-        status.textContent = 'Achei os itens, mas não identifiquei o emitente — preencha o nome/CNPJ do fornecedor na revisão abaixo.';
-      }
-
-      // Verifica se o fornecedor já existe (por CNPJ)
       const respForn = extraido.fornecedor.cnpj ? await api('buscarFornecedorPorCnpj', {cnpj: extraido.fornecedor.cnpj}) : {ok:true, fornecedor:null};
-      const fornecedorExistente = respForn.ok ? respForn.fornecedor : null;
-
-      // Verifica cada item — já existe material com esse código de fornecedor?
-      for(const item of extraido.itens){
-        const respMat = await api('buscarMaterialPorCodigoFornecedor', {codigo_fornecedor: item.codigo});
-        item.jaExiste = respMat.ok && !!respMat.material;
-      }
-
-      importacaoNfCadastroResultado = {extraido, fornecedorExistente};
-      renderizarRevisaoImportacaoCadastro();
-      if(extraido.itens.length > 0 && extraido.fornecedor.nome){   // não sobrescreve aviso de leitura parcial
-        status.style.color = 'var(--teal-700)';
-        status.textContent = `Lido com sucesso — ${extraido.itens.length} itens encontrados. Revise abaixo antes de salvar.`;
-      }
+      importacaoFornecedorResultado = {fornecedor: extraido.fornecedor, fornecedorExistente: respForn.ok ? respForn.fornecedor : null};
+      renderizarRevisaoFornecedorPdf();
+      status.style.color = 'var(--teal-700)';
+      status.textContent = 'Lido — revise abaixo antes de salvar.';
     }catch(e){
-      console.error('[Importar NF] erro:', e);
+      console.error('[Importar Fornecedor] erro:', e);
       status.style.color = 'var(--danger)';
       status.textContent = 'Erro ao ler o PDF: ' + (e && e.message ? e.message : String(e));
     }
   });
+}
 
-  document.getElementById('botao-salvar-importacao-cadastro').addEventListener('click', async ()=>{
-    if(!importacaoNfCadastroResultado) return;
-    const {extraido, fornecedorExistente} = importacaoNfCadastroResultado;
-    const status = document.getElementById('cadastro-pdf-status');
-    status.style.color = 'var(--ink-400)'; status.textContent = 'Salvando...';
+function renderizarRevisaoFornecedorPdf(){
+  const {fornecedor, fornecedorExistente} = importacaoFornecedorResultado;
+  const div = document.getElementById('fornecedor-pdf-revisao');
+  const esc = v => String(v==null?'':v).replace(/"/g,'&quot;');
+  div.style.display = 'block';
 
-    let fornecedorId = fornecedorExistente ? fornecedorExistente.id : null;
-    if(!fornecedorId){
-      const campo = id => (document.getElementById(id)?.value || '').trim() || null;
-      const resp = await api('criarFornecedor', {
-        nome: campo('revisao-fornecedor-nome'),
-        cnpj: campo('revisao-fornecedor-cnpj'),
-        endereco: campo('revisao-fornecedor-endereco'),
-        inscricao_estadual: campo('revisao-fornecedor-ie')
-      });
-      if(!resp.ok){ status.style.color='var(--danger)'; status.textContent = resp.erro; return; }
-      fornecedorId = resp.fornecedor.id;
-    }
+  if(fornecedorExistente){
+    div.innerHTML = `
+      <p style="color:var(--teal-700);font-size:13px;font-weight:600;margin-top:16px;">Fornecedor já cadastrado: ${fornecedorExistente.nome} — não será duplicado.</p>
+      <p style="font-size:12.5px;color:var(--ink-600);">CNPJ ${esc(fornecedorExistente.cnpj)} · IE ${esc(fornecedorExistente.inscricao_estadual)||'—'}</p>`;
+    return;
+  }
+  div.innerHTML = `
+    <h4 style="margin:16px 0 8px;">Fornecedor novo — confira antes de salvar</h4>
+    <div class="grade-form">
+      <div class="campo"><label>Nome / razão social</label><input type="text" id="revisao-forn-nome" value="${esc(fornecedor.nome)}"></div>
+      <div class="campo"><label>CNPJ</label><input type="text" id="revisao-forn-cnpj" value="${esc(fornecedor.cnpj)}"></div>
+      <div class="campo"><label>Inscrição estadual</label><input type="text" id="revisao-forn-ie" value="${esc(fornecedor.inscricao_estadual)}"></div>
+      <div class="campo" style="grid-column:1/-1;"><label>Endereço</label><input type="text" id="revisao-forn-endereco" value="${esc(fornecedor.endereco)}"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:10px;">
+      <button class="botao" id="botao-salvar-fornecedor-automatico">Salvar fornecedor</button>
+      <span id="confirmacao-fornecedor-automatico" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+    </div>`;
 
-    let criados = 0, pulados = 0;
-    const linhas = document.querySelectorAll('#tabela-revisao-itens tbody tr');
-    for(const linha of linhas){
-      const incluir = linha.querySelector('.chk-incluir-item').checked;
-      if(!incluir){ pulados++; continue; }
-      const codigo = linha.dataset.codigo;
-      const jaExiste = linha.dataset.jaExiste === '1';
-      if(jaExiste){ pulados++; continue; }
-      const nome = linha.querySelector('.input-revisao-nome').value;
-      const unidade = linha.querySelector('.input-revisao-unidade').value;
-      await api('criarMaterial', {nome, unidade, codigo_fornecedor: codigo, nf_origem: extraido.numeroNf});
-      criados++;
-    }
-
+  document.getElementById('botao-salvar-fornecedor-automatico').addEventListener('click', async ()=>{
+    const confirmacao = document.getElementById('confirmacao-fornecedor-automatico');
+    const campo = id => (document.getElementById(id)?.value || '').trim() || null;
+    confirmacao.style.color='var(--ink-400)'; confirmacao.textContent='Salvando...';
+    const resp = await api('criarFornecedor', {
+      nome: campo('revisao-forn-nome'), cnpj: campo('revisao-forn-cnpj'),
+      inscricao_estadual: campo('revisao-forn-ie'), endereco: campo('revisao-forn-endereco')
+    });
+    if(!resp.ok){ confirmacao.style.color='var(--danger)'; confirmacao.textContent = resp.erro; return; }
+    confirmacao.style.color = 'var(--teal-700)'; confirmacao.textContent = 'Salvo ✓';
     await carregarFornecedoresEstoque();
-    await carregarMateriaisEstoque();
-    renderizarCatalogoMateriais();
-
-    status.style.color = 'var(--teal-700)';
-    status.textContent = `Salvo ✓ — ${criados} material(is) novo(s) cadastrado(s), ${pulados} já existiam ou foram desmarcados.`;
-    document.getElementById('cadastro-pdf-revisao').style.display = 'none';
-    importacaoNfCadastroResultado = null;
-    document.getElementById('cadastro-pdf-arquivo').value = '';
+    renderizarFornecedores();
+    importacaoFornecedorResultado = null;
+    document.getElementById('fornecedor-pdf-arquivo').value = '';
+    setTimeout(()=>{ document.getElementById('fornecedor-pdf-revisao').style.display = 'none'; }, 1500);
   });
 }
 
-function renderizarRevisaoImportacaoCadastro(){
-  const {extraido, fornecedorExistente} = importacaoNfCadastroResultado;
-  const div = document.getElementById('cadastro-pdf-revisao');
+
+/* =====================================================================
+   IMPORTAR MATERIAIS + ENTRADA (PDF) — extrai os itens da NF, cadastra
+   os materiais que ainda não existem (por código do fornecedor), e já
+   registra a entrada de cada um (lote), com a quantidade da nota. NÃO
+   cria fornecedor aqui — se o CNPJ não bater com nenhum já cadastrado,
+   a entrada fica sem fornecedor vinculado (cadastra ele em Fornecedor
+   primeiro, se quiser o vínculo).
+===================================================================== */
+let importacaoMaterialPronta = false;
+let importacaoMaterialResultado = null;
+
+function prepararImportacaoMaterialPdf(){
+  if(importacaoMaterialPronta) return;
+  importacaoMaterialPronta = true;
+  if(typeof pdfjsLib !== 'undefined'){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  document.getElementById('material-pdf-arquivo').addEventListener('change', async (ev)=>{
+    const status = document.getElementById('material-pdf-status');
+    try{
+      const arquivo = ev.target.files[0];
+      if(!arquivo) return;
+      status.style.color = 'var(--ink-400)'; status.textContent = 'Lendo PDF...';
+      document.getElementById('material-pdf-revisao').style.display = 'none';
+      if(typeof pdfjsLib === 'undefined'){
+        status.style.color = 'var(--danger)';
+        status.textContent = 'O leitor de PDF não carregou (rede/firewall?). Recarregue com internet e tente de novo.';
+        return;
+      }
+      const bytes = await arquivo.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
+      const textoCompleto = await extrairTextoPdfComLinhas(pdf);
+      document.getElementById('material-pdf-texto').value = textoCompleto;
+      document.getElementById('material-pdf-texto-detalhes').style.display = 'block';
+
+      const extraido = extrairDadosNfPdf(textoCompleto);
+      if(extraido.itens.length === 0){
+        status.style.color = 'var(--danger)';
+        status.textContent = textoCompleto.replace(/\s/g,'').length < 200
+          ? 'Esse PDF não tem texto — é escaneado/imagem.'
+          : 'Li o texto, mas não reconheci a tabela de produtos — veja o texto extraído abaixo.';
+        return;
+      }
+
+      for(const item of extraido.itens){
+        const respMat = await api('buscarMaterialPorCodigoFornecedor', {codigo_fornecedor: item.codigo});
+        item.jaExiste = respMat.ok && !!respMat.material;
+        item.materialId = item.jaExiste ? respMat.material.id : null;
+      }
+
+      // Fornecedor: se já existe (por CNPJ), só informa. Se NÃO existe,
+      // pede autorização — só quem tem a permissão nova pode cadastrar
+      // ele ali mesmo, na hora; sem a permissão, só avisa que precisa
+      // pedir liberação ou cadastrar manualmente em Fornecedor.
+      let avisoFornecedor = null;
+      if(extraido.fornecedor && extraido.fornecedor.cnpj){
+        const respForn = await api('buscarFornecedorPorCnpj', {cnpj: extraido.fornecedor.cnpj});
+        const fornecedorExistente = respForn.ok ? respForn.fornecedor : null;
+        if(fornecedorExistente){
+          avisoFornecedor = {tipo:'existente', nome: fornecedorExistente.nome};
+        } else if(temPermissao('autorizar_fornecedor_na_importacao')){
+          const nomeFornecedor = extraido.fornecedor.nome || extraido.fornecedor.cnpj;
+          if(confirm(`Fornecedor "${nomeFornecedor}" (CNPJ ${extraido.fornecedor.cnpj}) não está cadastrado. Cadastrar agora com os dados lidos da NF?`)){
+            const respCriar = await api('criarFornecedor', {
+              nome: extraido.fornecedor.nome, cnpj: extraido.fornecedor.cnpj,
+              endereco: extraido.fornecedor.endereco, inscricao_estadual: extraido.fornecedor.inscricao_estadual
+            });
+            if(respCriar.ok){
+              avisoFornecedor = {tipo:'criado', nome: respCriar.fornecedor.nome};
+              await carregarFornecedoresEstoque();
+            } else {
+              avisoFornecedor = {tipo:'erro_criar', erro: respCriar.erro};
+            }
+          } else {
+            avisoFornecedor = {tipo:'nao_cadastrado_recusado', nome: nomeFornecedor};
+          }
+        } else {
+          avisoFornecedor = {tipo:'nao_cadastrado_sem_permissao', nome: extraido.fornecedor.nome || extraido.fornecedor.cnpj};
+        }
+      }
+
+      importacaoMaterialResultado = {extraido, avisoFornecedor};
+      renderizarRevisaoMaterialPdf();
+      status.style.color = 'var(--teal-700)';
+      status.textContent = `Lido — ${extraido.itens.length} itens encontrados. Revise abaixo antes de salvar.`;
+    }catch(e){
+      console.error('[Importar Material] erro:', e);
+      status.style.color = 'var(--danger)';
+      status.textContent = 'Erro ao ler o PDF: ' + (e && e.message ? e.message : String(e));
+    }
+  });
+}
+
+function renderizarRevisaoMaterialPdf(){
+  const {extraido, avisoFornecedor} = importacaoMaterialResultado;
+  const div = document.getElementById('material-pdf-revisao');
   div.style.display = 'block';
 
-  const esc = v => String(v==null?'':v).replace(/"/g,'&quot;');
-  const f = extraido.fornecedor;
-
-  const blocoFornecedor = fornecedorExistente
-    ? `<p style="color:var(--teal-700);font-size:13px;font-weight:600;">Fornecedor já cadastrado: ${fornecedorExistente.nome} — não será duplicado.</p>
-       <p style="font-size:12.5px;color:var(--ink-600);">CNPJ ${esc(fornecedorExistente.cnpj||f.cnpj)} · IE ${esc(fornecedorExistente.inscricao_estadual||f.inscricao_estadual)||'—'}<br>${esc(fornecedorExistente.endereco||f.endereco)||''}</p>`
-    : `<p style="font-size:12.5px;color:var(--ink-600);margin-bottom:8px;">Fornecedor novo — confira os dados lidos da NF antes de salvar.</p>
-       <div class="campo"><label>Nome / razão social</label><input type="text" id="revisao-fornecedor-nome" value="${esc(f.nome)}"></div>
-       <div class="campo"><label>CNPJ</label><input type="text" id="revisao-fornecedor-cnpj" value="${esc(f.cnpj)}"></div>
-       <div class="campo"><label>Inscrição estadual</label><input type="text" id="revisao-fornecedor-ie" value="${esc(f.inscricao_estadual)}"></div>
-       <div class="campo"><label>Endereço</label><input type="text" id="revisao-fornecedor-endereco" value="${esc(f.endereco)}"></div>`;
+  const mensagensFornecedor = {
+    existente: a => `<p style="font-size:12.5px;color:var(--teal-700);">Fornecedor já cadastrado: ${a.nome}.</p>`,
+    criado: a => `<p style="font-size:12.5px;color:var(--teal-700);">Fornecedor "${a.nome}" cadastrado agora, com os dados da NF.</p>`,
+    erro_criar: a => `<p style="font-size:12.5px;color:var(--danger);">Não consegui cadastrar o fornecedor: ${a.erro}</p>`,
+    nao_cadastrado_recusado: a => `<p style="font-size:12.5px;color:var(--gold-600);">Fornecedor "${a.nome}" não foi cadastrado (você optou por não cadastrar agora).</p>`,
+    nao_cadastrado_sem_permissao: a => `<p style="font-size:12.5px;color:var(--gold-600);">Fornecedor "${a.nome}" não está cadastrado, e você não tem permissão pra cadastrá-lo aqui — peça pra um gerente liberar "Autorizar cadastro de Fornecedor durante importação de Material" em Direitos e Privilégios, ou cadastre manualmente na aba Fornecedor.</p>`
+  };
+  const blocoFornecedor = avisoFornecedor ? mensagensFornecedor[avisoFornecedor.tipo](avisoFornecedor) : '';
 
   div.innerHTML = `
-    <h4 style="margin:16px 0 8px;">Fornecedor</h4>
     ${blocoFornecedor}
     <h4 style="margin:16px 0 8px;">Itens encontrados (${extraido.itens.length}) — NF nº ${extraido.numeroNf||'?'}</h4>
-    <div class="tabela-scroll"><table id="tabela-revisao-itens">
+    <p style="font-size:12.5px;color:var(--ink-400);">Só cadastra no catálogo — pra dar entrada no estoque, use "Registrar entrada por Nota Fiscal" (Cadastro Manual).</p>
+    <div class="tabela-scroll"><table id="tabela-revisao-material">
       <thead><tr><th></th><th>Código</th><th>Nome</th><th>Unidade</th><th>Situação</th></tr></thead>
       <tbody>${extraido.itens.map(item=>`
-        <tr data-codigo="${item.codigo}" data-ja-existe="${item.jaExiste?'1':'0'}">
-          <td><input type="checkbox" class="chk-incluir-item" ${item.jaExiste?'':'checked'}></td>
+        <tr data-codigo="${item.codigo}" data-ja-existe="${item.jaExiste?'1':'0'}" data-material-id="${item.materialId||''}">
+          <td><input type="checkbox" class="chk-incluir-material" ${item.jaExiste?'':'checked'}></td>
           <td class="mono">${item.codigo}</td>
-          <td><input type="text" class="input-revisao-nome" value="${item.descricao.replace(/"/g,'&quot;')}" ${item.jaExiste?'disabled':''} style="width:280px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-          <td><input type="text" class="input-revisao-unidade" value="${item.unidade}" ${item.jaExiste?'disabled':''} style="width:70px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
-          <td>${item.jaExiste?'<span style="color:var(--ink-400);">Já cadastrado</span>':'<span style="color:var(--gold-600);">Novo</span>'}</td>
+          <td><input type="text" class="input-revisao-material-nome" value="${item.descricao.replace(/"/g,'&quot;')}" ${item.jaExiste?'disabled':''} style="width:260px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
+          <td><input type="text" class="input-revisao-material-unidade" value="${item.unidade}" ${item.jaExiste?'disabled':''} style="width:70px;padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;"></td>
+          <td>${item.jaExiste?'<span style="color:var(--ink-400);">Já no catálogo</span>':'<span style="color:var(--gold-600);">Material novo</span>'}</td>
         </tr>`).join('')}</tbody>
     </table></div>
-  `;
+    <div style="margin-top:16px;display:flex;align-items:center;gap:10px;">
+      <button class="botao" id="botao-salvar-material-automatico">Salvar materiais</button>
+      <span id="confirmacao-material-automatico" style="font-size:13px;color:var(--teal-700);font-weight:600;"></span>
+    </div>`;
+
+  document.getElementById('botao-salvar-material-automatico').addEventListener('click', async ()=>{
+    const {extraido} = importacaoMaterialResultado;
+    const confirmacao = document.getElementById('confirmacao-material-automatico');
+    confirmacao.style.color = 'var(--ink-400)'; confirmacao.textContent = 'Salvando...';
+
+    let materiaisCriados = 0, pulados = 0;
+    const linhas = document.querySelectorAll('#tabela-revisao-material tbody tr');
+    for(const linha of linhas){
+      if(!linha.querySelector('.chk-incluir-material').checked){ pulados++; continue; }
+      const jaExiste = linha.dataset.jaExiste === '1';
+      if(jaExiste){ pulados++; continue; }
+      const codigo = linha.dataset.codigo;
+      const nome = linha.querySelector('.input-revisao-material-nome').value;
+      const unidade = linha.querySelector('.input-revisao-material-unidade').value;
+      const respMat = await api('criarMaterial', {nome, unidade, codigo_fornecedor: codigo, nf_origem: extraido.numeroNf});
+      if(respMat.ok) materiaisCriados++;
+    }
+
+    await carregarMateriaisEstoque();
+    await renderizarCatalogoMateriais();
+    await carregarTabelaEntradas();
+
+    confirmacao.style.color = 'var(--teal-700)';
+    confirmacao.textContent = `Salvo ✓ — ${materiaisCriados} material(is) novo(s) cadastrado(s), ${pulados} já existiam ou foram desmarcados.`;
+    importacaoMaterialResultado = null;
+    document.getElementById('material-pdf-arquivo').value = '';
+    setTimeout(()=>{ document.getElementById('material-pdf-revisao').style.display = 'none'; }, 2000);
+  });
 }
+
