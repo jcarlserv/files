@@ -1,0 +1,594 @@
+<!-- Vettore Finances v1.9.0 • Desenvolvido por OliverStorage -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vettore Finances - Configuração</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+  <link rel="icon" type="image/svg+xml" href="../css/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+  <style>
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--linha);
+      margin-bottom: 24px;
+    }
+    
+    .tab-btn {
+      padding: 12px 16px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--tinta-70);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .tab-btn:hover {
+      color: var(--tinta);
+    }
+    
+    .tab-btn.active {
+      color: var(--marca);
+      border-bottom-color: var(--marca);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+
+    .card table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    .card table tr {
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .card table tr:last-child {
+      border-bottom: none;
+    }
+
+    .card table td {
+      padding: 12px;
+      vertical-align: middle;
+    }
+
+    .card table td:first-child {
+      width: 160px;
+      color: var(--tinta-70);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-left">
+      <span class="logo">Vettore</span>
+      <div class="menu">
+        <a href="dashboard.html" class="menu-item">Dashboard</a>
+        <a href="extratos.html" class="menu-item">Financeiro</a>
+        <a href="configuracao.html" class="menu-item active">Configuração</a>
+      </div>
+    </div>
+    <div class="navbar-right">
+      <span id="userName">Usuário</span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>Configurações</h2>
+    <p class="subtitle">Dados gerais do sistema, salvos no Supabase.</p>
+    
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('geral')">Geral</button>
+      <button class="tab-btn" onclick="switchTab('unidades')">Unidades</button>
+      <button class="tab-btn" onclick="switchTab('usuarios')">Usuários</button>
+      <button class="tab-btn" id="tabPrivilegios" style="display:none;" onclick="switchTab('privilegios')">Privilégios</button>
+      <button class="tab-btn" onclick="switchTab('financeiro')">Financeiro</button>
+    </div>
+
+    <!-- ABA 0: GERAL -->
+    <div id="geral" class="tab-content active">
+      <h3>Configurações Gerais</h3>
+      
+      <div class="card">
+        <h4>Sistema</h4>
+        <div class="form-group">
+          <label>Nome da Empresa</label>
+          <input type="text" id="inputNomeEmpresa" placeholder="Vettore Finances">
+        </div>
+        <div class="form-group">
+          <label>Versão Atual</label>
+          <input type="text" value="v1.9.0" readonly style="background:var(--papel); cursor:not-allowed;">
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <h4>Informações do Usuário Logado</h4>
+        <table>
+          <tr>
+            <td><strong>Nome:</strong></td>
+            <td id="infoUsuarioNome">-</td>
+          </tr>
+          <tr>
+            <td><strong>Email:</strong></td>
+            <td id="infoUsuarioEmail">-</td>
+          </tr>
+          <tr>
+            <td><strong>Franquia:</strong></td>
+            <td id="infoUsuarioFranquia">-</td>
+          </tr>
+          <tr>
+            <td><strong>Perfil:</strong></td>
+            <td id="infoUsuarioPerfil">-</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ABA 1: UNIDADES -->
+    <div id="unidades" class="tab-content">
+      <div class="card">
+        <h3>Cadastro de Unidades/Franquias</h3>
+        <p class="description">Registre suas unidades e franquias. Campos com asterisco (*) são obrigatórios</p>
+        
+        <form onsubmit="handleNovaUnidade(event)">
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Nome da Franquia *</label>
+              <input type="text" id="inputNomeFranquia" placeholder="Nome da franquia" required>
+            </div>
+            <div class="form-group">
+              <label>Razão Social</label>
+              <input type="text" id="inputRazaoSocial" placeholder="Razão social completa">
+            </div>
+            <div class="form-group">
+              <label>CNPJ *</label>
+              <input type="text" id="inputCNPJ" placeholder="00.000.000/0000-00" required>
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="inputEmail" placeholder="email@empresa.com">
+            </div>
+            <div class="form-group">
+              <label>Telefone</label>
+              <input type="text" id="inputTelefone" placeholder="(00) 0000-0000">
+            </div>
+            <div class="form-group">
+              <label>CEP</label>
+              <input type="text" id="inputCEP" placeholder="00000-000">
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Rua</label>
+              <input type="text" id="inputRua" placeholder="Nome da rua">
+            </div>
+            <div class="form-group">
+              <label>Número</label>
+              <input type="text" id="inputNumero" placeholder="123">
+            </div>
+            <div class="form-group">
+              <label>Complemento</label>
+              <input type="text" id="inputComplemento" placeholder="Apto, Sala">
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Bairro</label>
+              <input type="text" id="inputBairro" placeholder="Bairro">
+            </div>
+            <div class="form-group">
+              <label>Cidade</label>
+              <input type="text" id="inputCidade" placeholder="Cidade">
+            </div>
+            <div class="form-group">
+              <label>Estado</label>
+              <input type="text" id="inputEstado" placeholder="UF" maxlength="2">
+            </div>
+          </div>
+
+          <div class="form-row-4">
+            <div class="form-group">
+              <label>Banco</label>
+              <input type="text" id="inputBanco" placeholder="Código do banco">
+            </div>
+            <div class="form-group">
+              <label>Agência</label>
+              <input type="text" id="inputAgencia" placeholder="Número da agência">
+            </div>
+            <div class="form-group">
+              <label>Conta</label>
+              <input type="text" id="inputConta" placeholder="Número da conta">
+            </div>
+            <div class="form-group">
+              <label>Tipo Conta</label>
+              <input type="text" id="inputTipoConta" placeholder="Corrente, Poupança">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary">Salvar Unidade</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Unidades Cadastradas</h3>
+        <table id="tabelaUnidades">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>CNPJ</th>
+              <th>Telefone</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyUnidades"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODAL EDITAR USUÁRIO -->
+    <div id="modalEditarUsuario" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;" onclick="if(event.target.id === 'modalEditarUsuario') fecharModalUsuario();">
+      <div style="background:var(--papel-alto); border-radius:8px; padding:24px; width:90%; max-width:450px; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="margin-bottom:16px; color:var(--tinta);">Editar Usuário</h3>
+        
+        <form onsubmit="salvarEdicaoUsuario(event)">
+          <input type="hidden" id="modalUsuarioId">
+          
+          <div class="form-group">
+            <label>Nome *</label>
+            <input type="text" id="modalNomeUsuario" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" id="modalEmailUsuario" required>
+          </div>
+          
+          <div class="form-group">
+            <label>CPF</label>
+            <input type="text" id="modalCPFUsuario" maxlength="14">
+          </div>
+          
+          <div class="form-group">
+            <label>Franquia *</label>
+            <select id="modalFranquiaUsuario" required></select>
+          </div>
+          
+          <div class="form-group">
+            <label>Perfil *</label>
+            <select id="modalPerfilUsuario" required>
+              <option value="administrador">Administrador</option>
+              <option value="gerente">Gerente</option>
+              <option value="usuario">Usuário</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Senha (deixar vazio para manter)</label>
+            <input type="password" id="modalSenhaUsuario">
+          </div>
+          
+          <div style="display:flex; gap:10px; margin-top:20px;">
+            <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
+            <button type="button" class="btn-secondary" style="flex:1; background:var(--tinta-40); border:none; border-radius:6px; padding:10px; color:white; cursor:pointer;" onclick="fecharModalUsuario()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="usuarios" class="tab-content">
+      <div class="card">
+        <h3>Cadastro de Usuários</h3>
+        <p class="description">Adicione usuários ao sistema. Cada usuário pode ter acesso a uma franquia específica</p>
+        
+        <form onsubmit="handleNovoUsuario(event)">
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Nome *</label>
+              <input type="text" id="inputNomeUsuario" placeholder="Nome completo" required>
+            </div>
+            <div class="form-group">
+              <label>Email *</label>
+              <input type="email" id="inputEmailUsuario" placeholder="email@example.com" required>
+            </div>
+            <div class="form-group">
+              <label>CPF</label>
+              <input type="text" id="inputCPFUsuario" placeholder="000.000.000-00" maxlength="14">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Franquia *</label>
+              <select id="selectFranquiaUsuario" required>
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Perfil *</label>
+              <select id="selectPerfilUsuario" required>
+                <option value="">Selecione...</option>
+                <option value="administrador">Administrador</option>
+                <option value="gestor">Gestor</option>
+                <option value="usuario">Usuário</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Senha *</label>
+              <input type="password" id="inputSenhaUsuario" placeholder="Mínimo 6 caracteres" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">Criar Usuário</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Usuários Cadastrados</h3>
+        <table id="tabelaUsuarios">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>CPF</th>
+              <th>Franquia</th>
+              <th>Perfil</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyUsuarios"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODAL EDITAR FRANQUIA -->
+    <div id="modalEditarFranquia" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;" onclick="if(event.target.id === 'modalEditarFranquia') fecharModalFranquia();">
+      <div style="background:var(--papel-alto); border-radius:8px; padding:24px; width:90%; max-width:500px; box-shadow:0 10px 40px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto;">
+        <h3 style="margin-bottom:16px; color:var(--tinta);">Editar Franquia</h3>
+        
+        <form onsubmit="salvarEdicaoFranquia(event)">
+          <input type="hidden" id="modalFranquiaId">
+          
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Nome Franquia *</label>
+              <input type="text" id="modalNomeFranquia" required>
+            </div>
+            <div class="form-group">
+              <label>Razão Social</label>
+              <input type="text" id="modalRazaoSocial">
+            </div>
+            <div class="form-group">
+              <label>CNPJ</label>
+              <input type="text" id="modalCNPJ">
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="modalEmailFranquia">
+            </div>
+            <div class="form-group">
+              <label>Telefone</label>
+              <input type="text" id="modalTelefoneFranquia">
+            </div>
+            <div class="form-group">
+              <label>CEP</label>
+              <input type="text" id="modalCEPFranquia">
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Rua</label>
+              <input type="text" id="modalRuaFranquia">
+            </div>
+            <div class="form-group">
+              <label>Número</label>
+              <input type="text" id="modalNumeroFranquia">
+            </div>
+            <div class="form-group">
+              <label>Complemento</label>
+              <input type="text" id="modalComplementoFranquia">
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Bairro</label>
+              <input type="text" id="modalBairroFranquia">
+            </div>
+            <div class="form-group">
+              <label>Cidade</label>
+              <input type="text" id="modalCidadeFranquia">
+            </div>
+            <div class="form-group">
+              <label>Estado</label>
+              <input type="text" id="modalEstadoFranquia" maxlength="2">
+            </div>
+          </div>
+
+          <div class="form-row-4">
+            <div class="form-group">
+              <label>Banco</label>
+              <input type="text" id="modalBancoFranquia">
+            </div>
+            <div class="form-group">
+              <label>Agência</label>
+              <input type="text" id="modalAgenciaFranquia">
+            </div>
+            <div class="form-group">
+              <label>Conta</label>
+              <input type="text" id="modalContaFranquia">
+            </div>
+            <div class="form-group">
+              <label>Tipo Conta</label>
+              <input type="text" id="modalTipoContaFranquia">
+            </div>
+          </div>
+          
+          <div style="display:flex; gap:10px; margin-top:20px;">
+            <button type="submit" class="btn-primary" style="flex:1;">Salvar</button>
+            <button type="button" class="btn-secondary" style="flex:1; background:var(--tinta-40); border:none; border-radius:6px; padding:10px; color:white; cursor:pointer;" onclick="fecharModalFranquia()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="privilegios" class="tab-content">
+      <div class="card">
+        <h3>Privilégios por Perfil</h3>
+        <p class="description">Configure os privilégios de cada perfil de usuário. Apenas administradores podem acessar esta seção</p>
+        
+        <table id="tabelaPrivilegios" style="margin-top: 20px;">
+          <thead>
+            <tr>
+              <th>Funcionalidade</th>
+              <th>Admin</th>
+              <th>Gerente</th>
+              <th>Usuário</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyPrivilegios"></tbody>
+        </table>
+        
+        <button class="btn-primary" onclick="salvarPrivilegios()" style="margin-top:20px;">Salvar Privilégios</button>
+      </div>
+      </div>
+
+      <!-- SUB ABA FINANCEIRO -->
+      <div id="financeiro" class="tab-content">
+        <h3>Listas do Sistema</h3>
+        <p style="font-size:13px; color:var(--tinta-70); margin-bottom:24px;">
+          Essas são as opções que aparecem nos menus de Categoria, Subcategoria e Parâmetros. Adicionar ou remover aqui atualiza em toda a aplicação.
+        </p>
+
+        <div class="card">
+          <h4>Categorias e Subcategorias</h4>
+          
+          <!-- DROPDOWN PARA SELECIONAR LISTA -->
+          <select id="selectLista" onchange="carregarLista()" style="width:100%; padding:12px; border:2px solid var(--marca); border-radius:6px; font-size:14px; margin-bottom:16px;">
+            <option value="categorias">Categorias</option>
+            <option value="subcategorias">Subcategorias</option>
+          </select>
+          
+          <!-- INPUT + BOTÃO -->
+          <div style="display:flex; gap:8px; margin:16px 0;">
+            <input type="text" id="inputNovoItem" placeholder="Novo item nessa lista..." onkeypress="if(event.key==='Enter') adicionarItem()">
+            <button class="btn-primary" onclick="adicionarItem()" style="white-space:nowrap;">Adicionar</button>
+          </div>
+          
+          <!-- CHIPS -->
+          <div id="containerChips" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          
+          <p style="font-size:12px; color:var(--tinta-40); margin-top:16px;">
+            Remover um item daqui só tira ele das opções futuras — não muda lançamentos que já usaram esse valor.
+          </p>
+        </div>
+
+        <!-- PARÂMETROS DE AUTO-PREENCHIMENTO (MODELO ANTIGO) -->
+        <div class="card" style="margin-top:20px;">
+          <h4>⚙️ Parâmetros de Auto-Preenchimento</h4>
+          <p style="font-size:12px; color:var(--tinta-70); margin-bottom:16px;">
+            Configure automaticamente: se o histórico contiver a descrição, a categoria será pré-preenchida.
+          </p>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Descrição (busca no texto)</label>
+              <input type="text" id="inputParamDescricao" placeholder="Ex: RECEBIMENTO PIX">
+            </div>
+            <div class="form-group">
+              <label>Categoria</label>
+              <select id="selectParamCategoria"></select>
+            </div>
+            <div class="form-group">
+              <label>Subcategoria</label>
+              <select id="selectParamSubcategoria">
+                <option value="">Nenhuma</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="adicionarParametro()" style="margin-top:12px;">✅ Adicionar Parâmetro</button>
+
+          <div style="margin-top:24px;">
+            <h5 style="margin:0 0 12px 0; font-size:13px;">Parâmetros Cadastrados</h5>
+            
+            <!-- AÇÕES EM MASSA (aparece quando há selecionados) -->
+            <div id="acoesMassaParametros" style="display:none; margin-bottom:16px; padding:12px; background:var(--papel); border-radius:6px; border-left:4px solid var(--marca);">
+              <strong style="font-size:12px;">Ações em Massa:</strong>
+              <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                <button class="action-button" onclick="editarCategoryEmLote()" title="Editar Categoria em Lote" style="width: auto; padding: 0 12px;">✏️ Editar Categoria</button>
+                <button class="action-button" onclick="editarSubcategoryEmLote()" title="Editar Subcategoria em Lote" style="width: auto; padding: 0 12px;">✏️ Editar Subcategoria</button>
+                <button class="action-button delete" onclick="deletarSelecionados()" title="Deletar Selecionados" style="width: auto; padding: 0 12px;">🗑️ Deletar</button>
+              </div>
+            </div>
+
+            <table style="width:100%;">
+              <thead>
+                <tr>
+                  <th style="width: auto; text-align: center; padding: 12px 6px;">
+                    <input type="checkbox" class="checkbox-sistema" id="checkAllParametros" onchange="toggleAllParametros(this.checked)">
+                  </th>
+                  <th style="padding:12px;">Descrição</th>
+                  <th style="padding:12px;">Categoria</th>
+                  <th style="padding:12px;">Subcategoria</th>
+                  <th style="text-align:center; width:100px; padding:12px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyParametros"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    <p>&copy; Vettore Finances 2026 - v1.9.0.15 Desenvolvido por OliverStorage</p>
+  </footer>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/masks.js"></script>
+  <script src="../js/supabase-utils.js"></script>
+  <script src="../js/configuracao.js"></script>
+
+  <script>
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+      
+      // Carregar dados específicos por ABA
+      if (tabName === 'financeiro') {
+        setTimeout(() => {
+          carregarLista();
+          atualizarSelectsParametros();
+          carregarParametros();
+        }, 50);
+      }
+    }
+  </script>
+</body>
+</html>

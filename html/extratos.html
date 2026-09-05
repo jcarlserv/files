@@ -1,0 +1,942 @@
+<!-- Vettore Finances v1.9.0 • Desenvolvido por OliverStorage -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vettore Finances - Financeiro</title>
+  
+  <!-- XLSX -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+  <link rel="icon" type="image/svg+xml" href="../css/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+  <style>
+    /* Barra de progresso no topo */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--marca), var(--destaque), var(--marca));
+      animation: progresso 2s infinite;
+      z-index: 9999;
+    }
+
+    @keyframes progresso {
+      0% { left: -100%; }
+      50% { left: 100%; }
+      100% { left: 100%; }
+    }
+
+    footer.footer {
+      background: var(--topo-bg);
+      color: rgba(255, 255, 255, 0.8);
+      text-align: center;
+      padding: 16px 20px;
+      margin-top: 40px;
+      border-top: 1px solid var(--linha);
+      font-size: 12px;
+    }
+
+    footer.footer p {
+      margin: 0;
+    }
+    /* 
+    ═══════════════════════════════════════════════════════════════
+    ANÁLISE SEMIÓTICA DA TABELA FINANCEIRA
+    ═══════════════════════════════════════════════════════════════
+    
+    HIERARQUIA VISUAL:
+    1. VALOR (R$) - Coluna mais importante
+       • Destacado em cor (marca azul), maior peso tipográfico
+       • Alinhado à direita (padrão financeiro internacional)
+       • Coluna fixa para referência constante
+    
+    2. DATA + HISTÓRICO BANCO - Contexto
+       • Fixas (referência durante scroll)
+       • Data em cinza menor (metadado de caixa)
+       • Histórico em tamanho maior (descrição)
+    
+    3. HISTÓRICO CORREÇÃO - Edição primária
+       • Campo mais largo (280px) para texto descritivo
+       • Placeholder guia o usuário
+       • Primeira coluna editável após o trio fixo
+    
+    LEGIBILIDADE:
+    • Padding 12px: respira melhor que 8px
+    • Inputs 130px+: confortáveis para edição
+    • Fonte 13px: legível sem zoom
+    • Hover suave: feedback visual sem agressividade
+    
+    AFFORDANCE (Ação):
+    • Botão "×" em vez de "Deletar" (ícone reconhecível)
+    • Focus com sombra (não apenas borda)
+    • Select com cursor pointer (indica interatividade)
+    • Placeholders descritivos (guiam preenchimento)
+    
+    FLUXO DE LEITURA (LTR - Left to Right):
+    Data → Histórico → Valor (trio fixo, lido primeiro)
+       ↓ (scroll) → Correção → Categoria → Serviços → Cliente → Observação
+    ═══════════════════════════════════════════════════════════════
+    */
+    .conta-info {
+      background: var(--papel);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    
+    .conta-item {
+      border-left: 3px solid var(--marca);
+      padding-left: 12px;
+    }
+    
+    .conta-item label {
+      font-size: 11px;
+      color: var(--tinta-70);
+      text-transform: uppercase;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .conta-item value {
+      font-size: 16px;
+      color: var(--tinta);
+      font-weight: 500;
+      display: block;
+    }
+
+    .resumo-categorias {
+      background: var(--papel);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .categoria-box {
+      text-align: center;
+      padding: 12px;
+      background: var(--papel-alto);
+      border-radius: 6px;
+      border-top: 2px solid var(--marca);
+    }
+
+    .categoria-box label {
+      font-size: 11px;
+      color: var(--tinta-70);
+      text-transform: uppercase;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .categoria-box value {
+      font-size: 14px;
+      color: var(--marca);
+      font-weight: 600;
+      display: block;
+    }
+
+    table input, table select {
+      font-size: 12px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--linha);
+    }
+
+    #tabelaExtratos {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    /* COLUNAS FIXAS - COM CHECKBOX NA PRIMEIRA */
+    #tabelaExtratos th:nth-child(1),
+    #tabelaExtratos td:nth-child(1) {
+      position: sticky;
+      left: 0;
+      background: var(--papel-alto);
+      z-index: 11;
+      width: auto;
+      min-width: 40px;
+      text-align: center;
+      padding: 12px 6px;
+    }
+
+    #tabelaExtratos th:nth-child(2),
+    #tabelaExtratos td:nth-child(2) {
+      position: sticky;
+      left: 40px;
+      background: var(--papel-alto);
+      z-index: 10;
+      min-width: 80px;
+      text-align: center;
+      font-weight: 400;
+      font-size: 13px;
+    }
+
+    #tabelaExtratos th:nth-child(3),
+    #tabelaExtratos td:nth-child(3) {
+      position: sticky;
+      left: 120px;
+      background: var(--papel-alto);
+      z-index: 10;
+      min-width: 320px;
+      padding-left: 16px;
+    }
+
+    #tabelaExtratos th:nth-child(4),
+    #tabelaExtratos td:nth-child(4) {
+      position: sticky;
+      left: 440px;
+      background: var(--papel-alto);
+      z-index: 10;
+      min-width: 140px;
+      text-align: right;
+      padding-right: 16px;
+    }
+
+    #tabelaExtratos th:nth-child(5),
+    #tabelaExtratos td:nth-child(5) {
+      text-align: center;
+      color: var(--tinta-40);
+      font-size: 12px;
+    }
+
+    /* Data Ref. - Tamanho exato do input date */
+    #tabelaExtratos th:nth-child(6),
+    #tabelaExtratos td:nth-child(6) {
+      min-width: 110px;
+      text-align: center;
+    }
+
+    #tabelaExtratos td:nth-child(6) input[type="date"] {
+      width: 100%;
+      max-width: 100px;
+    }
+
+    /* Histórico Correção - Aumentar 250px */
+    #tabelaExtratos th:nth-child(7),
+    #tabelaExtratos td:nth-child(7) {
+      min-width: 450px;
+    }
+
+    #tabelaExtratos td:nth-child(7) input[type="text"] {
+      width: 100%;
+    }
+
+    #tabelaExtratos thead th {
+      background: var(--marca);
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 14px 12px;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Override: manter azul nas colunas fixas do header */
+    #tabelaExtratos thead th:nth-child(1),
+    #tabelaExtratos thead th:nth-child(2),
+    #tabelaExtratos thead th:nth-child(3),
+    #tabelaExtratos thead th:nth-child(4) {
+      background: var(--marca);
+      color: white;
+    }
+
+    #tabelaExtratos tbody tr {
+      border-bottom: 1px solid var(--linha);
+      transition: background 0.15s ease;
+    }
+
+    #tabelaExtratos tbody tr:hover {
+      background: var(--papel);
+    }
+
+    #tabelaExtratos td {
+      padding: 12px 12px;
+      vertical-align: middle;
+    }
+
+    /* COLUNAS COM LARGURA ESPECÍFICA */
+    #tabelaExtratos td:nth-child(4) { min-width: 100px; }
+    #tabelaExtratos td:nth-child(5) { min-width: 120px; }
+    #tabelaExtratos td:nth-child(6) { min-width: 280px; }
+    #tabelaExtratos td:nth-child(7) { min-width: 160px; }
+    #tabelaExtratos td:nth-child(8) { min-width: 180px; }
+    #tabelaExtratos td:nth-child(9) { min-width: 180px; }
+    #tabelaExtratos td:nth-child(10) { min-width: 200px; }
+    #tabelaExtratos td:nth-child(11) { min-width: 100px; text-align: center; }
+
+    #tabelaExtratos input,
+    #tabelaExtratos select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 13px;
+      border: 1px solid var(--linha);
+      border-radius: 4px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      transition: border-color 0.2s ease;
+      background: var(--papel-alto);
+      color: var(--tinta);
+    }
+
+    #tabelaExtratos input::placeholder {
+      color: var(--tinta-40);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    #tabelaExtratos select option {
+      color: var(--tinta);
+      background: var(--papel-alto);
+    }
+
+    #tabelaExtratos input:focus,
+    #tabelaExtratos select:focus {
+      outline: none;
+      border-color: var(--marca);
+      box-shadow: 0 0 0 3px rgba(31, 85, 165, 0.12);
+      background: white;
+    }
+
+    #tabelaExtratos select {
+      cursor: pointer;
+    }
+
+    .btn-danger {
+      padding: 8px 12px;
+      font-size: 16px;
+      font-weight: 300;
+      white-space: nowrap;
+      background: #f5f5f5;
+      border: 1px solid var(--linha);
+      color: var(--tinta-70);
+      transition: all 0.15s ease;
+    }
+
+    .btn-danger:hover {
+      background: #e8e8e8;
+      color: var(--alerta);
+      border-color: var(--alerta);
+    }
+
+    /* Checkboxes e Ações em Massa */
+    .checkbox-selecao {
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--marca);
+    }
+
+    .acoes-em-massa {
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .acoes-em-massa h4 {
+      margin: 0 0 12px 0;
+      color: var(--marca);
+      font-size: 14px;
+    }
+
+    .acoes-em-massa .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .acoes-em-massa .form-group label {
+      font-weight: 500;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--tinta);
+    }
+
+    .acoes-em-massa .form-group select,
+    .acoes-em-massa .form-group input {
+      padding: 8px;
+      border: 1px solid var(--linha);
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+      margin-bottom: 0;
+    }
+
+    .acoes-em-massa .btn-primary,
+    .acoes-em-massa .btn-danger {
+      font-size: 12px;
+      padding: 8px 12px;
+      margin-top: 6px;
+    }
+
+    #contadorSelecionados {
+      font-weight: 600;
+      color: var(--marca);
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-left">
+      <span class="logo">Vettore</span>
+      <div class="menu">
+        <a href="dashboard.html" class="menu-item">Dashboard</a>
+        <a href="extratos.html" class="menu-item active">Financeiro</a>
+        <a href="configuracao.html" class="menu-item">Configuração</a>
+      </div>
+    </div>
+    <div class="navbar-right">
+      <span id="userName">Usuário</span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2 style="color: var(--tinta);">Financeiro</h2>
+    <p class="subtitle">Gestão de extratos bancários por categoria</p>
+
+    <!-- INFORMAÇÕES DA CONTA -->
+    <div class="conta-info">
+      <div class="conta-item">
+        <label>Franquia</label>
+        <value id="infoFranquia">-</value>
+      </div>
+      <div class="conta-item">
+        <label>Banco</label>
+        <value id="infoBanco">-</value>
+      </div>
+      <div class="conta-item">
+        <label>Agência</label>
+        <value id="infoAgencia">-</value>
+      </div>
+      <div class="conta-item">
+        <label>Conta</label>
+        <value id="infoConta">-</value>
+      </div>
+    </div>
+
+    <!-- RESUMO POR CATEGORIA -->
+    <div id="resumoCategorias" class="resumo-categorias" style="display:none;"></div>
+
+    <!-- IMPORTAR EXTRATO -->
+    <div class="card">
+      <h3>Importar Extrato</h3>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Banco</label>
+          <input type="text" id="inputBanco" placeholder="Ex: Sicredi, Bradesco">
+        </div>
+        <div class="form-group">
+          <label>Agência</label>
+          <input type="text" id="inputAgencia" placeholder="Ex: 2301">
+        </div>
+        <div class="form-group">
+          <label>Conta</label>
+          <input type="text" id="inputConta" placeholder="Ex: 53058-1">
+        </div>
+      </div>
+      
+      <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+        📤 Importar XLS/XLSX
+      </button>
+      <input type="file" id="fileInput" accept=".xls,.xlsx" style="display:none;" onchange="handleFileUpload(event)">
+    </div>
+
+    <!-- TABELA DE EXTRATOS -->
+    <div class="card">
+      <h3>Extratos</h3>
+      <div class="form-row-3" style="margin-bottom: 16px;">
+        <div class="form-group">
+          <label>Mês</label>
+          <select id="mesFilter" onchange="loadExtratos()">
+            <option value="">Todos</option>
+            <option value="01">Janeiro</option>
+            <option value="02">Fevereiro</option>
+            <option value="03">Março</option>
+            <option value="04">Abril</option>
+            <option value="05">Maio</option>
+            <option value="06">Junho</option>
+            <option value="07">Julho</option>
+            <option value="08">Agosto</option>
+            <option value="09">Setembro</option>
+            <option value="10">Outubro</option>
+            <option value="11">Novembro</option>
+            <option value="12">Dezembro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ano</label>
+          <select id="anoFilter" onchange="loadExtratos()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- AÇÕES EM MASSA -->
+      <div class="acoes-em-massa card" style="background: var(--papel); padding: 16px; border-radius: 8px; margin-bottom: 16px; display: none;" id="secaoAcoesEmMassa">
+        <h4 style="margin-top: 0;">🎯 Ações em Massa</h4>
+        <div class="form-row-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+          <div class="form-group">
+            <label>Categoria</label>
+            <select id="selectCategoriaEmMassa">
+              <option value="">Selecione...</option>
+            </select>
+            <button class="btn-primary" onclick="aplicarCategoriaEmMassa()" style="margin-top: 8px; width: 100%; padding: 8px;">Aplicar</button>
+          </div>
+          <div class="form-group">
+            <label>Serviço</label>
+            <input type="text" id="inputServicoEmMassa" placeholder="Ex: Consultoria">
+            <button class="btn-primary" onclick="aplicarServicoEmMassa()" style="margin-top: 8px; width: 100%; padding: 8px;">Aplicar</button>
+          </div>
+          <div class="form-group">
+            <label>Cliente</label>
+            <input type="text" id="inputClienteEmMassa" placeholder="Ex: Empresa X">
+            <button class="btn-primary" onclick="aplicarClienteEmMassa()" style="margin-top: 8px; width: 100%; padding: 8px;">Aplicar</button>
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn-danger" onclick="deletarSelecionados()" style="width: 100%; padding: 10px; margin-top: 0;">🗑️ Deletar Selecionados</button>
+          </div>
+        </div>
+        <p style="font-size: 12px; color: var(--tinta-70); margin: 12px 0 0 0;">
+          <span id="contadorSelecionados">0</span> lançamento(s) selecionado(s)
+        </p>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="tabelaExtratos">
+          <thead>
+            <tr>
+              <th style="width: auto; text-align: center; padding: 12px 6px;"><input type="checkbox" class="checkbox-sistema" id="selectTodos" onchange="selecionarTodos(this.checked)"></th>
+              <th>Data</th>
+              <th>Histórico Banco</th>
+              <th>Valor</th>
+              <th>CÓD</th>
+              <th>Data Ref.</th>
+              <th>Histórico Correção</th>
+              <th>Categoria</th>
+              <th>Serviços</th>
+              <th>Cliente</th>
+              <th>Observação</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; Vettore Finances 2026 - v1.9.0.5 Desenvolvido por OliverStorage</p>
+  </footer>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/supabase-utils.js"></script>
+  <script src="../js/importador.js"></script>
+
+  <script>
+    const CATEGORIAS = [
+      'BOLETOS', 'CUSTEIO', 'DAE CLIENTE', 'ENDEREÇO FISCAL',
+      'HONORÁRIOS', 'NEGOCIAÇÃO', 'PARCEIROS', 'SERVIÇOS', 'TARIFAS', 'SALDO ANTERIOR'
+    ];
+
+    function formatarMoedaBR(valor) {
+      return parseFloat(valor || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+    }
+
+    function formatarValorComSinal(valor) {
+      const v = parseFloat(valor || 0);
+      const formatado = Math.abs(v).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+      return v >= 0 ? `+ ${formatado}` : `- ${formatado}`;
+    }
+
+    function corValor(valor) {
+      return parseFloat(valor || 0) >= 0 ? 'var(--destaque)' : 'var(--alerta)';
+    }
+
+    function formatarDataBR(data) {
+      if (!data) return '';
+      const [ano, mes, dia] = data.split('-');
+      const anoAbrev = ano.slice(-2);
+      return `${dia}/${mes}/${anoAbrev}`;
+    }
+
+    function formatarDataISO(dataBR) {
+      if (!dataBR || dataBR.length !== 10) return '';
+      const [dia, mes, anoAbrev] = dataBR.split('/');
+      const ano = anoAbrev.length === 2 ? '20' + anoAbrev : anoAbrev;
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    async function inicializar() {
+      try {
+        checkAuth();
+        
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        const unidades = await SupabaseAPI.get('unidades');
+        const franquia = unidades.find(u => u.id === user.unidade_id);
+        
+        document.getElementById('userName').textContent = `${franquia?.nomefranquia} - ${user.nome}`;
+        
+        // Preencher informações da conta
+        document.getElementById('infoFranquia').textContent = franquia?.nomefranquia || '-';
+        document.getElementById('infoBanco').textContent = franquia?.banco || '-';
+        document.getElementById('infoAgencia').textContent = franquia?.agencia || '-';
+        document.getElementById('infoConta').textContent = franquia?.conta || '-';
+
+        // Pré-preencher dados do formulário
+        document.getElementById('inputBanco').value = franquia?.banco || '';
+        document.getElementById('inputAgencia').value = franquia?.agencia || '';
+        document.getElementById('inputConta').value = franquia?.conta || '';
+
+        // Preencher anos
+        const selectAno = document.getElementById('anoFilter');
+        const anoAtual = new Date().getFullYear();
+        for (let i = anoAtual - 5; i <= anoAtual; i++) {
+          const option = document.createElement('option');
+          option.value = i;
+          option.textContent = i;
+          selectAno.appendChild(option);
+        }
+
+        // Carregar dados
+        await loadExtratos(user);
+        atualizarSelecionamentos();
+        
+      } catch (error) {
+        console.error('❌ Erro:', error);
+      }
+    }
+
+    async function loadExtratos(user) {
+      const userCurrent = user || JSON.parse(localStorage.getItem('currentUser'));
+      const mes = document.getElementById('mesFilter').value;
+      const ano = document.getElementById('anoFilter').value;
+
+      try {
+        let extratos = await SupabaseAPI.get('extratos');
+
+        // Filtrar por unidade
+        extratos = extratos.filter(e => e.unidade_id === userCurrent.unidade_id);
+
+        if (mes) extratos = extratos.filter(e => e.mes === mes);
+        if (ano) extratos = extratos.filter(e => e.ano === ano);
+
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '';
+
+        if (extratos.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:20px;">Nenhum extrato</td></tr>';
+          return;
+        }
+
+        // Aplicar parâmetros de auto-preenchimento
+        extratos = aplicarParametrosAuto(extratos);
+
+        extratos.forEach(e => {
+          const tr = document.createElement('tr');
+          const valorFormatado = formatarValorComSinal(e.valor);
+          const corVal = corValor(e.valor);
+          const dataFormatada = formatarDataBR(e.data);
+          const dataRef = e.data_referencia || e.data;
+          const historicoCorrecao = e.historico_correcao || e.descricao;
+          
+          tr.innerHTML = `
+            <td style="text-align:center; padding: 12px 6px;"><input type="checkbox" class="checkbox-sistema" value="${e.id}" onchange="atualizarContadorSelecionados()"></td>
+            <td style="font-weight:400; color:var(--tinta); font-size:13px;">${dataFormatada}</td>
+            <td style="font-size:13px; color:var(--tinta);">${e.descricao}</td>
+            <td style="font-weight:600; color:${corVal}; font-size:14px;">${valorFormatado}</td>
+            <td style="text-align:center; color:var(--tinta-40); font-size:12px;">${e.codigo || '-'}</td>
+            <td><input type="date" value="${dataRef}" onchange="atualizarCampo(${e.id}, 'data_referencia', this.value)"></td>
+            <td><input type="text" placeholder="Descrição do lançamento" value="${historicoCorrecao}" onchange="atualizarCampo(${e.id}, 'historico_correcao', this.value)"></td>
+            <td>
+              <select onchange="atualizarCampo(${e.id}, 'categoria', this.value); this.style.backgroundColor = '';" style="${e._autoPreenchido ? 'background-color: #FFFACD;' : ''}">
+                <option value="">Selecione...</option>
+                ${CATEGORIAS.map(c => `<option value="${c}" ${e.categoria === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+            </td>
+            <td><input type="text" placeholder="Ex: Consultoria" value="${e.servicos || ''}" onchange="atualizarCampo(${e.id}, 'servicos', this.value)"></td>
+            <td><input type="text" placeholder="Ex: Empresa X" value="${e.cliente || ''}" onchange="atualizarCampo(${e.id}, 'cliente', this.value)"></td>
+            <td><input type="text" placeholder="Observações" value="${e.observacao || ''}" onchange="atualizarCampo(${e.id}, 'observacao', this.value)"></td>
+            <td><button class="btn-danger" onclick="deletarExtrato(${e.id})">×</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Atualizar resumo de categorias
+        atualizarResumoCategorias(extratos);
+
+      } catch (error) {
+        console.error('❌ Erro ao carregar:', error);
+      }
+    }
+
+    async function atualizarCampo(id, campo, valor) {
+      try {
+        await SupabaseAPI.update('extratos', id, { [campo]: valor || null });
+        console.log(`✅ ${campo} atualizado`);
+      } catch (error) {
+        console.error('❌ Erro:', error);
+      }
+    }
+
+    async function deletarExtrato(id) {
+      if (!confirm('Deletar este extrato?')) return;
+      
+      try {
+        await SupabaseAPI.delete('extratos', id);
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        await loadExtratos(user);
+      } catch (error) {
+        console.error('❌ Erro:', error);
+      }
+    }
+
+    // ========== AÇÕES EM MASSA ==========
+    function obterSelecionados() {
+      const checkboxes = document.querySelectorAll('.checkbox-selecao:checked');
+      return Array.from(checkboxes).map(cb => parseInt(cb.value));
+    }
+
+    function atualizarContadorSelecionados() {
+      const selecionados = obterSelecionados();
+      const contador = document.getElementById('contadorSelecionados');
+      const secao = document.getElementById('secaoAcoesEmMassa');
+      
+      contador.textContent = selecionados.length;
+      
+      // Mostrar/esconder seção se houver selecionados
+      if (selecionados.length > 0) {
+        secao.style.display = 'block';
+      } else {
+        secao.style.display = 'none';
+        document.getElementById('selectTodos').checked = false;
+      }
+    }
+
+    function selecionarTodos(checked) {
+      document.querySelectorAll('.checkbox-selecao').forEach(cb => {
+        cb.checked = checked;
+      });
+      atualizarContadorSelecionados();
+    }
+
+    async function aplicarCategoriaEmMassa() {
+      const selecionados = obterSelecionados();
+      if (selecionados.length === 0) {
+        alert('⚠️ Selecione pelo menos um lançamento');
+        return;
+      }
+
+      const categoria = document.getElementById('selectCategoriaEmMassa').value;
+      if (!categoria) {
+        alert('⚠️ Selecione uma categoria');
+        return;
+      }
+
+      if (!confirm(`Aplicar categoria "${categoria}" a ${selecionados.length} lançamento(s)?`)) return;
+
+      try {
+        for (const id of selecionados) {
+          await SupabaseAPI.update('extratos', id, { categoria });
+        }
+        alert(`✅ Categoria aplicada a ${selecionados.length} lançamento(s)`);
+        document.getElementById('selectCategoriaEmMassa').value = '';
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        await loadExtratos(user);
+      } catch (error) {
+        alert('❌ Erro: ' + error.message);
+      }
+    }
+
+    async function aplicarServicoEmMassa() {
+      const selecionados = obterSelecionados();
+      if (selecionados.length === 0) {
+        alert('⚠️ Selecione pelo menos um lançamento');
+        return;
+      }
+
+      const servico = document.getElementById('inputServicoEmMassa').value;
+      if (!servico) {
+        alert('⚠️ Digite um serviço');
+        return;
+      }
+
+      if (!confirm(`Aplicar serviço "${servico}" a ${selecionados.length} lançamento(s)?`)) return;
+
+      try {
+        for (const id of selecionados) {
+          await SupabaseAPI.update('extratos', id, { servicos: servico });
+        }
+        alert(`✅ Serviço aplicado a ${selecionados.length} lançamento(s)`);
+        document.getElementById('inputServicoEmMassa').value = '';
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        await loadExtratos(user);
+      } catch (error) {
+        alert('❌ Erro: ' + error.message);
+      }
+    }
+
+    async function aplicarClienteEmMassa() {
+      const selecionados = obterSelecionados();
+      if (selecionados.length === 0) {
+        alert('⚠️ Selecione pelo menos um lançamento');
+        return;
+      }
+
+      const cliente = document.getElementById('inputClienteEmMassa').value;
+      if (!cliente) {
+        alert('⚠️ Digite um cliente');
+        return;
+      }
+
+      if (!confirm(`Aplicar cliente "${cliente}" a ${selecionados.length} lançamento(s)?`)) return;
+
+      try {
+        for (const id of selecionados) {
+          await SupabaseAPI.update('extratos', id, { cliente });
+        }
+        alert(`✅ Cliente aplicado a ${selecionados.length} lançamento(s)`);
+        document.getElementById('inputClienteEmMassa').value = '';
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        await loadExtratos(user);
+      } catch (error) {
+        alert('❌ Erro: ' + error.message);
+      }
+    }
+
+    async function deletarSelecionados() {
+      const selecionados = obterSelecionados();
+      if (selecionados.length === 0) {
+        alert('⚠️ Selecione pelo menos um lançamento');
+        return;
+      }
+
+      if (!confirm(`🗑️ Deletar ${selecionados.length} lançamento(s)? Esta ação não pode ser desfeita.`)) return;
+
+      try {
+        for (const id of selecionados) {
+          await SupabaseAPI.delete('extratos', id);
+        }
+        alert(`✅ ${selecionados.length} lançamento(s) deletado(s)`);
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        await loadExtratos(user);
+      } catch (error) {
+        alert('❌ Erro: ' + error.message);
+      }
+    }
+
+    function atualizarSelecionamentos() {
+      // Atualizar categorias no select de ações em massa
+      const selectCategoriaEmMassa = document.getElementById('selectCategoriaEmMassa');
+      selectCategoriaEmMassa.innerHTML = '<option value="">Selecione...</option>';
+      CATEGORIAS.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        selectCategoriaEmMassa.appendChild(option);
+      });
+    }
+    // ========== FIM AÇÕES EM MASSA ==========
+
+    // ========== APLICAR PARÂMETROS AUTO ==========
+    function aplicarParametrosAuto(extratos) {
+      const parametros = JSON.parse(localStorage.getItem('parametros_auto') || '[]');
+      if (parametros.length === 0) return extratos;
+
+      return extratos.map(extrato => {
+        const param = parametros.find(p => 
+          extrato.descricao.toUpperCase().includes(p.descricao)
+        );
+        if (param) {
+          extrato.categoria = param.categoria;
+          extrato.subcategoria = param.subcategoria || '';
+          extrato._autoPreenchido = true;
+        }
+        return extrato;
+      });
+    }
+    // ========== FIM PARÂMETROS ==========
+
+    function atualizarResumoCategorias(extratos) {
+      const resumo = {};
+      
+      CATEGORIAS.forEach(cat => {
+        resumo[cat] = 0;
+      });
+
+      extratos.forEach(e => {
+        if (e.categoria && resumo.hasOwnProperty(e.categoria)) {
+          resumo[e.categoria] += parseFloat(e.valor) || 0;
+        }
+      });
+
+      const resumoDiv = document.getElementById('resumoCategorias');
+      let html = '';
+
+      Object.entries(resumo).forEach(([cat, valor]) => {
+        if (valor !== 0) {
+          const corVal = corValor(valor);
+          const valorFormatado = formatarValorComSinal(valor);
+          html += `
+            <div class="categoria-box">
+              <label>${cat}</label>
+              <value style="color:${corVal};">${valorFormatado}</value>
+            </div>
+          `;
+        }
+      });
+
+      if (html) {
+        resumoDiv.innerHTML = html;
+        resumoDiv.style.display = 'grid';
+      } else {
+        resumoDiv.style.display = 'none';
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+      inicializar();
+    }
+  </script>
+</body>
+</html>

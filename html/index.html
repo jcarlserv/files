@@ -1,0 +1,336 @@
+<!-- Vettore Finances v1.9.0 • Desenvolvido por OliverStorage -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vettore Finances - Login</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="../css/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1a2a42 0%, #2c3e50 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      font-family: "IBM Plex Sans", sans-serif;
+    }
+
+    .login-container {
+      background: var(--papel-alto);
+      border-radius: 16px;
+      padding: 36px 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 380px;
+      animation: slideUp 0.5s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .logo svg {
+      width: 40px;
+      height: 40px;
+    }
+
+    .logo-text {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--tinta-70);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--tinta);
+      margin-bottom: 4px;
+      font-family: "IBM Plex Sans Condensed", sans-serif;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--tinta-70);
+      text-align: center;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--tinta);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--linha);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: "IBM Plex Sans", sans-serif;
+      background: var(--papel);
+      color: var(--tinta);
+      transition: all 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--marca);
+      background: var(--papel-alto);
+      box-shadow: 0 0 0 3px rgba(31, 85, 165, 0.1);
+    }
+
+    input::placeholder {
+      color: var(--tinta-40);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--topo-bg);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-login:hover {
+      background: var(--marca);
+      box-shadow: 0 4px 12px rgba(31, 85, 165, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .btn-login:active {
+      transform: translateY(0);
+    }
+
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: var(--linha);
+      margin: 18px 0;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 10px;
+      color: var(--tinta-40);
+      margin-top: 12px;
+    }
+
+    .error-msg {
+      display: none;
+      padding: 8px 10px;
+      background: #ffebee;
+      color: #c62828;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      border-left: 2px solid #c62828;
+    }
+
+    .error-msg.show {
+      display: block;
+      animation: shake 0.3s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-login.loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">
+      <img src="../css/favicon.svg" alt="Logo">
+      <div class="logo-text">Vettore</div>
+    </div>
+
+    <h1>Vettore Finances</h1>
+    <p class="subtitle">Acesso restrito à equipe — Sistema Financeiro</p>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label for="usuario">Usuário</label>
+        <input 
+          type="text" 
+          id="usuario" 
+          name="usuario" 
+          placeholder="Email ou CPF"
+          required
+          autocomplete="username"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input 
+          type="password" 
+          id="senha" 
+          name="senha" 
+          placeholder="Sua senha"
+          required
+          autocomplete="current-password"
+        >
+      </div>
+
+      <button type="submit" class="btn-login" id="btnLogin">
+        <span id="btnText">Entrar</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </form>
+
+    <div class="divider"></div>
+
+    <div class="footer">
+      © Vettore Finances 2026 - v1.9.0.5 Desenvolvido por OliverStorage
+    </div>
+  </div>
+
+  <script src="../js/supabase-utils.js"></script>
+  <script>
+    async function handleLogin(e) {
+      e.preventDefault();
+
+      const usuario = document.getElementById('usuario').value.trim();
+      const senha = document.getElementById('senha').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const btnLogin = document.getElementById('btnLogin');
+      const spinner = document.getElementById('spinner');
+      const btnText = document.getElementById('btnText');
+
+      errorMsg.classList.remove('show');
+
+      if (!usuario || !senha) {
+        mostrarErro('Preencha todos os campos');
+        return;
+      }
+
+      btnLogin.classList.add('loading');
+      btnText.style.display = 'none';
+      spinner.style.display = 'block';
+
+      try {
+        console.log('📡 Buscando usuários...');
+        const usuarios = await SupabaseAPI.get('usuarios');
+        console.log('✅ Usuários recebidos:', usuarios);
+        console.log('📝 Procurando por:', usuario);
+        
+        const user = usuarios.find(u => {
+          console.log('Verificando:', u.email, '===', usuario, '?', u.email === usuario);
+          return (u.email === usuario || u.nome === usuario) && u.ativo;
+        });
+
+        console.log('👤 Usuário encontrado:', user);
+
+        if (!user) {
+          throw new Error('Usuário não encontrado');
+        }
+
+        console.log('🔐 Validando senha...');
+        if (user.senha !== senha) {
+          console.log('❌ Senha incorreta. Recebido:', senha, 'Esperado:', user.senha);
+          throw new Error('Senha incorreta');
+        }
+
+        console.log('✅ Login bem-sucedido!');
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        window.location.href = 'dashboard.html';
+
+      } catch (error) {
+        console.error('❌ Erro:', error);
+        mostrarErro(error.message || 'Erro ao fazer login');
+      } finally {
+        btnLogin.classList.remove('loading');
+        btnText.style.display = 'block';
+        spinner.style.display = 'none';
+      }
+    }
+
+    function mostrarErro(msg) {
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.textContent = '❌ ' + msg;
+      errorMsg.classList.add('show');
+      setTimeout(() => {
+        errorMsg.classList.remove('show');
+      }, 4000);
+    }
+
+    // Enter key
+    document.getElementById('senha').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('usuario').form.dispatchEvent(new Event('submit'));
+      }
+    });
+  </script>
+</body>
+</html>

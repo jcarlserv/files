@@ -1,0 +1,105 @@
+/* Vettore Finances - Navbar */
+:root {
+  --marca:      #1F55A5;
+  --destaque:   #00A3E0;
+  --topo-bg:    #143A70;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--topo-bg);
+  color: #fff;
+  padding: 12px 20px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.navbar-left .logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  font-family: "IBM Plex Sans Condensed", sans-serif;
+}
+
+.menu {
+  display: flex;
+  gap: 20px;
+}
+
+.menu-item {
+  color: rgba(255,255,255,.8);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 3px;
+  transition: all .15s;
+}
+
+.menu-item:hover {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+}
+
+.menu-item.active {
+  background: var(--marca);
+  color: #fff;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+#userName {
+  font-size: 13px;
+  color: rgba(255,255,255,.9);
+  font-weight: 500;
+}
+
+.btn-logout {
+  padding: 7px 14px;
+  background: var(--alerta);
+  color: #fff;
+  border: 1px solid var(--alerta);
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: filter .15s;
+}
+
+.btn-logout:hover {
+  filter: brightness(1.1);
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .navbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .menu {
+    gap: 10px;
+  }
+  
+  .menu-item {
+    font-size: 12px;
+  }
+  
+  .navbar-right {
+    width: 100%;
+  }
+}

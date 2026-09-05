@@ -1,225 +1,179 @@
-<section class="painel" id="painel-dashboard">
-      <div class="sub-nav" id="subnav-dashboard">
-        <button type="button" class="sub-aba" data-subaba="rmr">Análises</button>
-        <button type="button" class="sub-aba" data-subaba="rmr-squad">RMR</button>
-        <button type="button" class="sub-aba" data-subaba="metas">Metas</button>
+<!-- Vettore Finances v1.9.0 • Desenvolvido por OliverStorage -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vettore Finances - Dashboard</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+  <link rel="icon" type="image/svg+xml" href="../css/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+  <style>
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    
+    .card-stat {
+      background: var(--papel-alto);
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: var(--sombra);
+    }
+    
+    .card-stat h3 {
+      font-size: 12px;
+      color: var(--tinta-70);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      letter-spacing: 0.5px;
+    }
+    
+    .card-stat .value {
+      font-size: 36px;
+      font-weight: 600;
+      color: var(--marca);
+      margin: 0;
+    }
+    
+    .card-stat .subtext {
+      font-size: 12px;
+      color: var(--tinta-40);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-left">
+      <span class="logo">Vettore</span>
+      <div class="menu">
+        <a href="dashboard.html" class="menu-item active">Dashboard</a>
+        <a href="extratos.html" class="menu-item">Financeiro</a>
+        <a href="configuracao.html" class="menu-item">Configuração</a>
       </div>
-    <div class="sub-painel" id="painel-rmr">
-      <div class="cabecalho-painel">
-        <div>
-          <h2>Análises</h2>
-          <p id="rmr-legenda-periodo">Relatório detalhado por profissional, exames, convênios e eficiência de turnos.</p>
-        </div>
-        <div class="filtros">
-          <div class="campo"><label>Mês</label><select id="rmr-mes"></select></div>
-          <div class="campo"><label>Ano</label><select id="rmr-ano"></select></div>
-          <div class="campo"><label>Andar</label><select id="rmr-andar"><option value="">Todos</option></select></div>
-          <button class="botao sutil pequeno botao-exportar-pdf" id="rmr-botao-imprimir">Exportar PDF</button>
-          <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-mes" title="Todos os profissionais e andares do mês selecionado, sem os filtros da tela">Exportar dados (mês)</button>
-          <button class="botao sutil pequeno" id="rmr-botao-exportar-dados-ano" title="Todos os profissionais e andares do ano selecionado, sem os filtros da tela">Exportar dados (ano)</button>
-        </div>
-      </div>
+    </div>
+    <div class="navbar-right">
+      <span id="userName">Usuário</span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </nav>
 
+  <div class="container">
+    <h2>Dashboard</h2>
+    <p class="subtitle">Visão geral do sistema Vettore Finances</p>
 
-      <div class="grade-kpi">
-        <div class="kpi"><div class="rotulo">Atendimentos no mês</div><div class="valor" id="rmr-kpi-atendimentos">—</div><div id="rmr-kpi-atendimentos-comp" style="font-size:12px;font-weight:600;margin-top:4px;"></div></div>
-        <div class="kpi"><div class="rotulo">Valor produzido</div><div class="valor teal" id="rmr-kpi-valor">—</div><div id="rmr-kpi-valor-comp" style="font-size:12px;font-weight:600;margin-top:4px;"></div></div>
-        <div class="kpi"><div class="rotulo">Ticket médio</div><div class="valor" id="rmr-kpi-ticket">—</div></div>
-        <div class="kpi"><div class="rotulo">% da meta de valor atingida</div><div class="valor gold" id="rmr-kpi-meta">—</div></div>
-        <div class="kpi"><div class="rotulo">Profissionais ativos</div><div class="valor" id="rmr-kpi-profissionais">—</div></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Squad Atendimento</span><div class="linha"></div></div>
-      <div class="cartao"><h3>Atendimentos por profissional</h3><div id="grafico-profissional" class="mini-grafico" style="min-height:220px;"></div></div>
-      <div class="grade-2">
-        <div class="cartao"><h3>Distribuição por convênio</h3><div id="grafico-convenio" class="mini-grafico" style="min-height:220px;"></div></div>
-        <div class="cartao"><h3>Distribuição por andar</h3><div id="grafico-andar" class="mini-grafico" style="min-height:220px;"></div></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Indicadores por profissional</span><div class="linha"></div></div>
-      <div class="cartao">
-        <h3>Selecionar profissional</h3>
-        <select id="rmr-seletor-profissional" style="max-width:320px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);"></select>
-        <div class="tabela-scroll" style="margin-top:16px;"><table id="rmr-tabela-profissional-detalhe"></table></div>
-      </div>
-      <div class="cartao">
-        <h3>Meta × realizado por profissional — mês de referência</h3>
-        <div class="tabela-scroll"><table id="rmr-tabela-profissionais-mes"></table></div>
-        <div id="grafico-meta-realizado" class="mini-grafico" style="min-height:230px;margin-top:20px;"></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Detalhamento de exames</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div class="tabela-scroll"><table id="rmr-tabela-exames"></table></div>
-        <div id="grafico-exames" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Atendimentos e biópsias</span><div class="linha"></div></div>
-      <div class="grade-2">
-        <div class="cartao">
-          <h3>Por tipo de atendimento</h3>
-          <div class="tabela-scroll"><table id="rmr-tabela-procedimentos"></table></div>
-          <div id="grafico-procedimentos" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
-        </div>
-        <div class="cartao">
-          <h3>Biópsias por quantidade de frascos</h3>
-          <div class="tabela-scroll"><table id="rmr-tabela-biopsias"></table></div>
-          <div id="grafico-biopsias" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
-        </div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Turnos: ociosos × vendidos</span><div class="linha"></div></div>
-      <div class="grade-2">
-        <div class="cartao"><h3>Por profissional</h3><div class="tabela-scroll"><table id="rmr-tabela-turnos"></table></div></div>
-        <div class="cartao"><h3>Turnos utilizados por profissional</h3><div id="rmr-grafico-turnos" class="mini-grafico" style="min-height:230px;"></div></div>
+    <div class="cards-grid">
+      <div class="card-stat">
+        <h3>Total de Unidades</h3>
+        <p class="value" id="totalUnidades">0</p>
+        <p class="subtext">Franquias cadastradas</p>
       </div>
 
-
-      <div class="squad-titulo"><span>Faturamento particular por profissional</span><div class="linha"></div></div>
-      <div class="cartao"><div id="rmr-grafico-particular" class="mini-grafico" style="min-height:220px;"></div></div>
-
-
-      <div class="squad-titulo"><span>Convênios × profissional</span><div class="linha"></div></div>
-      <div class="cartao"><div class="tabela-scroll"><table id="rmr-tabela-matriz-convenio"></table></div></div>
-      <div class="cartao"><h3 style="margin-top:0;">Total por convênio</h3><div id="rmr-grafico-matriz-convenio" class="mini-grafico" style="min-height:280px;"></div></div>
-
-
-      <div class="squad-titulo"><span>Metas financeiras por profissional</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div class="tabela-scroll"><table id="rmr-tabela-eficiencia"></table></div>
-        <div id="grafico-eficiencia" class="mini-grafico" style="min-height:220px;margin-top:20px;"></div>
+      <div class="card-stat">
+        <h3>Total de Usuários</h3>
+        <p class="value" id="totalUsuarios">0</p>
+        <p class="subtext">Usuários do sistema</p>
       </div>
 
-
-      <div class="squad-titulo"><span>Evolução do ano</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-          <h3 style="margin:0;" id="titulo-evolucao-ano">Janeiro até o mês selecionado</h3>
-          <div class="filtros">
-            <div class="campo">
-              <label>Profissional</label>
-              <select id="filtro-prof-evolucao"><option value="">Todos (somado)</option></select>
-            </div>
-          </div>
-        </div>
-        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">A matriz usa o Mês e Ano escolhidos acima como ponto final; a linha "Média período" é o valor realizado dividido pelos turnos efetivamente usados naquele mês.</p>
-        <div class="tabela-scroll">
-          <table id="tabela-evolucao-ano"></table>
-        </div>
-      </div>
-      <div class="cartao"><h3>Valor previsto × realizado</h3><div id="grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
-      <div class="grade-2">
-        <div class="cartao"><h3>Valor produzido por mês (vs. ano anterior)</h3><div id="rmr-grafico-evolucao-valor" class="mini-grafico" style="min-height:230px;"></div></div>
-        <div class="cartao"><h3>Atendimentos por mês (vs. ano anterior)</h3><div id="rmr-grafico-evolucao-qtd" class="mini-grafico" style="min-height:230px;"></div></div>
+      <div class="card-stat">
+        <h3>Extratos Importados</h3>
+        <p class="value" id="totalExtratos">0</p>
+        <p class="subtext">Lançamentos financeiros</p>
       </div>
 
-
-      <div class="squad-titulo"><span>Análise flexível</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-          <h3 style="margin:0;">Quantidade e valor por dimensão</h3>
-          <div class="filtros">
-            <div class="campo">
-              <label>Dimensão</label>
-              <select id="filtro-dimensao-analise"></select>
-            </div>
-          </div>
-        </div>
-        <div class="tabela-scroll"><table id="tabela-analise-dimensao"></table></div>
-        <div id="grafico-analise-dimensao" class="mini-grafico" style="min-height:240px;margin-top:20px;"></div>
-      </div>
-      <div class="cartao">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
-          <h3 style="margin:0;">Correlação entre duas dimensões</h3>
-          <div class="filtros">
-            <div class="campo"><label>Linhas</label><select id="filtro-correlacao-a"></select></div>
-            <div class="campo"><label>Colunas</label><select id="filtro-correlacao-b"></select></div>
-            <div class="campo"><label>Subcategoria (opcional)</label><select id="filtro-correlacao-sub"><option value="">Nenhuma</option></select></div>
-            <div class="campo">
-              <label>Métrica</label>
-              <select id="filtro-correlacao-metrica">
-                <option value="valor">Valor (R$)</option>
-                <option value="quantidade">Quantidade</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <p style="margin:-8px 0 14px;color:var(--ink-400);font-size:12.5px;">Cruze qualquer duas listas (ex.: Convênio × Atendimento, Atendente × Forma de pagamento, Profissional × Exame) para enxergar padrões qualitativos por trás dos números. Escolha uma Subcategoria (ex.: Exame) pra abrir cada coluna que tiver esse detalhe em colunas separadas — os registros sem esse detalhe continuam numa coluna só.</p>
-        <div class="tabela-scroll"><table id="tabela-correlacao"></table></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Sugestões de melhoria</span><div class="linha"></div></div>
-      <div class="cartao">
-        <textarea id="rmr-texto-nota" style="width:100%;min-height:90px;" placeholder="Nenhuma anotação registrada para este período."></textarea>
-        <div class="rodape-nota"><button class="botao secundario pequeno" id="rmr-botao-salvar-nota">Salvar anotação</button></div>
-      </div>
-
-
-      <div class="squad-titulo"><span>Atendimentos por convênio</span><div class="linha"></div></div>
-      <div class="cartao">
-        <div class="campo" style="max-width:280px;margin-bottom:12px;"><input type="text" id="rmr-busca-detalhe" placeholder="Buscar paciente, convênio, profissional..." style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--line);"></div>
-        <div class="tabela-scroll"><table id="rmr-tabela-detalhe-nominal"></table></div>
+      <div class="card-stat">
+        <h3>Período Ativo</h3>
+        <p class="value" id="periodoAtivo">--</p>
+        <p class="subtext">Mês/Ano atual</p>
       </div>
     </div>
 
-
-    <div class="sub-painel" id="painel-rmr-squad">
-      <div class="cabecalho-painel">
-        <div>
-          <h2>RMR</h2>
-          <p>Relatório por andar e por médico: atendimento, exames, procedimentos e comparativo anual.</p>
-        </div>
-        <div class="filtros">
-          <div class="campo"><label>Mês</label><select id="squad-mes"></select></div>
-          <div class="campo"><label>Ano</label><select id="squad-ano"></select></div>
-          <div class="campo"><label>Andar</label><select id="squad-andar"><option value="">Todos</option></select></div>
-          <div class="campo"><label>Profissional</label><select id="squad-prof" disabled><option value="">Todos</option></select></div>
-          <button class="botao secundario pequeno" id="rmr-botao-apresentar" title="Reunião mensal de resultados do Mês/Ano já selecionados acima">Apresentação</button>
-          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
-        </div>
-      </div>
-      <div id="squad-conteudo"><p class="vazio">Carregando...</p></div>
+    <div class="card">
+      <h3>Últimos Extratos</h3>
+      <table id="tabelaUltimosExtratos">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th>Valor</th>
+            <th>Tipo</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyUltimosExtratos"></tbody>
+      </table>
     </div>
+  </div>
 
+  <footer class="footer">
+    <p>&copy; Vettore Finances 2026 - v1.9.0.5 Desenvolvido por OliverStorage</p>
+  </footer>
 
-    <div class="sub-painel" id="painel-metas">
-      <div class="cabecalho-painel">
-        <div>
-          <h2>Metas</h2>
-          <p>Metas por profissional e anotações para a próxima reunião.</p>
-        </div>
-        <div class="filtros">
-          <div class="campo">
-            <label>Mês</label>
-            <select id="filtro-mes-metas"></select>
-          </div>
-          <div class="campo">
-            <label>Ano</label>
-            <select id="filtro-ano-metas"></select>
-          </div>
-          <button class="botao sutil pequeno botao-exportar-pdf">Exportar PDF</button>
-        </div>
-      </div>
+  <script src="../js/auth.js"></script>
+  <script src="../js/supabase-utils.js"></script>
 
+  <script>
+    async function inicializar() {
+      try {
+        checkAuth();
+        
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        const unidades = await SupabaseAPI.get('unidades');
+        const franquia = unidades.find(u => u.id === user.unidade_id);
+        const nomeFranquia = franquia?.nomeFranquia || 'Franquia';
+        
+        document.getElementById('userName').textContent = `${nomeFranquia} - ${user.nome}`;
+        
+        // Estatísticas
+        document.getElementById('totalUnidades').textContent = unidades.length;
+        
+        const usuarios = await SupabaseAPI.get('usuarios');
+        document.getElementById('totalUsuarios').textContent = usuarios.length;
+        
+        const extratos = await SupabaseAPI.get('extratos');
+        document.getElementById('totalExtratos').textContent = extratos.length;
+        
+        const mesAtual = String(new Date().getMonth() + 1).padStart(2, '0');
+        const anoAtual = new Date().getFullYear();
+        document.getElementById('periodoAtivo').textContent = `${mesAtual}/${anoAtual}`;
+        
+        // Últimos extratos
+        const ultiExtratos = extratos.slice(-10).reverse();
+        const tbody = document.getElementById('tbodyUltimosExtratos');
+        
+        if (ultiExtratos.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;">Nenhum extrato</td></tr>';
+        } else {
+          ultiExtratos.forEach(e => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${e.data}</td>
+              <td>${e.descricao_editada || e.descricao}</td>
+              <td>R$ ${parseFloat(e.valor).toFixed(2)}</td>
+              <td><span class="badge">${e.tipo_operacao}</span></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+        
+        console.log('✅ Dashboard iniciado');
+        
+      } catch (error) {
+        console.error('❌ Erro:', error);
+      }
+    }
 
-      <div class="cartao">
-        <h3>Metas do período (por profissional)</h3>
-        <div class="tabela-scroll">
-          <table id="tabela-metas"></table>
-        </div>
-      </div>
-
-
-      <div class="cartao">
-        <h3>Sugestões de melhoria para o próximo período</h3>
-        <textarea id="texto-nota" style="width:100%;" placeholder="Anote aqui os pontos discutidos na reunião mensal..."></textarea>
-        <div class="rodape-nota"><button class="botao secundario pequeno" id="botao-salvar-nota">Salvar anotação</button></div>
-      </div>
-    </div>
-    </section>
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+      inicializar();
+    }
+  </script>
+</body>
+</html>
